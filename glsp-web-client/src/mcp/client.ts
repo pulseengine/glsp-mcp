@@ -29,7 +29,7 @@ export interface JsonRpcError {
     data?: unknown;
 }
 
-export interface InitializeParams {
+export interface InitializeParams extends Record<string, unknown> {
     protocolVersion: string;
     capabilities: ClientCapabilities;
     clientInfo: ClientInfo;
@@ -89,7 +89,7 @@ export interface Tool {
     inputSchema: Record<string, unknown>;
 }
 
-export interface CallToolParams {
+export interface CallToolParams extends Record<string, unknown> {
     name: string;
     arguments?: Record<string, unknown>;
 }
@@ -116,7 +116,7 @@ export interface PromptArgument {
     required?: boolean;
 }
 
-export interface GetPromptParams {
+export interface GetPromptParams extends Record<string, unknown> {
     name: string;
     arguments?: Record<string, string>;
 }
@@ -187,6 +187,11 @@ export class McpClient {
         return this.connected;
     }
 
+    /**
+     * Send MCP notification (ready for use - just needs to be called)
+     * @param method The notification method name
+     * @param params Optional parameters for the notification
+     */
     private async sendNotification(method: string, params?: Record<string, unknown>): Promise<void> {
         console.log(`McpClient: Sending notification ${method}`, params);
         const notification: JsonRpcRequest = {
@@ -411,7 +416,7 @@ export class McpClient {
             // Start pinging to maintain connection
             this.startPing();
             
-            return result;
+            return result as InitializeResult;
         } catch (error) {
             console.error('MCP initialization failed:', error);
             this.notifyConnectionChange(false);
@@ -421,8 +426,8 @@ export class McpClient {
     }
 
     async listTools(): Promise<Tool[]> {
-        const result = await this.sendRequest('tools/list');
-        return result.tools;
+        const result = await this.sendRequest('tools/list') as { tools: Tool[] };
+        return result.tools || [];
     }
 
     async callTool(name: string, args?: Record<string, unknown>): Promise<CallToolResult> {
@@ -430,21 +435,21 @@ export class McpClient {
             name,
             arguments: args
         };
-        return await this.sendRequest('tools/call', params);
+        return await this.sendRequest('tools/call', params) as CallToolResult;
     }
 
     async listResources(): Promise<Resource[]> {
-        const result = await this.sendRequest('resources/list');
-        return result.resources;
+        const result = await this.sendRequest('resources/list') as { resources: Resource[] };
+        return result.resources || [];
     }
 
     async readResource(uri: string): Promise<ResourceContent> {
-        return await this.sendRequest('resources/read', { uri });
+        return await this.sendRequest('resources/read', { uri }) as ResourceContent;
     }
 
     async listPrompts(): Promise<Prompt[]> {
-        const result = await this.sendRequest('prompts/list');
-        return result.prompts;
+        const result = await this.sendRequest('prompts/list') as { prompts: Prompt[] };
+        return result.prompts || [];
     }
 
     async getPrompt(name: string, args?: Record<string, string>): Promise<GetPromptResult> {
@@ -452,7 +457,7 @@ export class McpClient {
             name,
             arguments: args
         };
-        return await this.sendRequest('prompts/get', params);
+        return await this.sendRequest('prompts/get', params) as GetPromptResult;
     }
 
     async healthCheck(): Promise<unknown> {
@@ -477,6 +482,10 @@ export class McpClient {
         }
     }
     
+    /**
+     * Handle incoming MCP notifications (ready for use - call from message handler)
+     * @param notification The received notification
+     */
     private handleNotification(notification: McpNotification): void {
         console.log('Received MCP notification:', notification);
         const listeners = this.notificationListeners.get(notification.method);
@@ -525,6 +534,10 @@ export class McpClient {
         }
     }
 
+    /**
+     * Start HTTP streaming for real-time MCP updates (ready for use - call when needed)
+     * Implements Server-Sent Events style streaming over HTTP
+     */
     private async startStreaming(): Promise<void> {
         if (this.streamingActive) {
             return;
