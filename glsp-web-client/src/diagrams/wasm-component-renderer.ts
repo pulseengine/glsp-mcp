@@ -4,6 +4,7 @@
  */
 
 import { Bounds, ModelElement } from '../model/diagram.js';
+import { ComponentColors } from '../types/wasm-component.js';
 
 export interface WasmRenderingContext {
     ctx: CanvasRenderingContext2D;
@@ -36,11 +37,11 @@ export class WasmComponentRenderer {
         // Get component properties
         const label = element.properties?.label?.toString() || element.properties?.componentName?.toString() || 'Component';
         const componentType = element.element_type || element.type || 'wasm-component';
-        const interfaces = element.properties?.interfaces as import('../renderer/canvas-renderer.js').ComponentInterface[] || [];
+        const interfaces = element.properties?.interfaces as import('../types/wasm-component.js').ComponentInterface[] || [];
         const description = element.properties?.description?.toString();
         const metadata = element.properties?.metadata || {};
         const filePath = element.properties?.componentPath?.toString();
-        const fileSize = metadata?.file_size;
+        const fileSize = (metadata as any)?.file_size;
         const dependencies = element.properties?.dependencies as string[] || [];
 
         // Choose colors based on component type and missing status
@@ -97,12 +98,20 @@ export class WasmComponentRenderer {
             filePath,
             fileSize,
             dependencies,
-            metadata
+            metadata: metadata as Record<string, unknown>
         }, bounds.x + 12, currentY, bounds.width - 24, colors);
 
         // Draw interface circles with improved positioning
-        const importInterfaces = interfaces.filter(i => i.interface_type === 'import' || i.type === 'import');
-        const exportInterfaces = interfaces.filter(i => i.interface_type === 'export' || i.type === 'export');
+        const importInterfaces = interfaces.filter(i => 
+            i.interface_type === 'import' || 
+            (i as any).type === 'import' ||
+            (i as any).direction === 'import'
+        );
+        const exportInterfaces = interfaces.filter(i => 
+            i.interface_type === 'export' || 
+            (i as any).type === 'export' ||
+            (i as any).direction === 'export'
+        );
 
         // Calculate interface positioning to avoid overlapping with content
         const interfaceStartY = Math.max(currentY + 10, bounds.y + headerHeight + 20);

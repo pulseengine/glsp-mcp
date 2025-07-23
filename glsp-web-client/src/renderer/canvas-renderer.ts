@@ -8,11 +8,25 @@ import { SelectionManager } from '../selection/selection-manager.js';
 import { InteractionMode, InteractionModeManager } from '../interaction/interaction-mode.js';
 import { WasmComponentRendererV2 } from '../diagrams/wasm-component-renderer-v2.js';
 import { getDiagramTypeConfig } from '../diagrams/diagram-type-registry.js';
+import { ComponentInterface } from '../types/wasm-component.js';
+import { WitInterface, WitFunction } from '../diagrams/interface-compatibility.js';
 
-interface ComponentInterface {
-    name: string;
-    interface_type: 'import' | 'export';
-    functions?: Array<{ name: string; parameters?: unknown[]; return_type?: string }>;
+// Convert ComponentInterface to WitInterface for compatibility
+function convertToWitInterface(componentInterface: ComponentInterface): WitInterface {
+    const witFunctions: WitFunction[] = (componentInterface.functions || []).map(func => ({
+        name: func.name,
+        params: (func.parameters as any[])?.map((param: any) => ({
+            name: param.name || 'param',
+            param_type: param.type || 'unknown'
+        })) || [],
+        results: func.return_type ? [{ name: 'result', param_type: func.return_type }] : []
+    }));
+
+    return {
+        name: componentInterface.name,
+        interface_type: componentInterface.interface_type,
+        functions: witFunctions
+    };
 }
 
 interface InterfaceInfo {
@@ -53,9 +67,9 @@ export type InteractionHandler = (event: InteractionEvent) => void;
 
 export class CanvasRenderer {
     private canvas: HTMLCanvasElement;
-    private ctx: CanvasRenderingContext2D;
+    protected ctx: CanvasRenderingContext2D;
     private options: Required<RenderOptions>;
-    private currentDiagram?: DiagramModel;
+    protected currentDiagram?: DiagramModel;
     private selectionManager: SelectionManager;
     private modeManager: InteractionModeManager;
     private interactionHandlers: InteractionHandler[] = [];
@@ -69,7 +83,8 @@ export class CanvasRenderer {
     private selectionRect?: { start: Position; end: Position };
     private isSelectingRect = false;
     private edgeCreationSource?: ModelElement;
-    private edgeCreationType?: string; // Will be used when creating edges
+    // Edge creation type (used in setEdgeCreationType method - planned feature)
+    private edgeCreationType?: string;
     private edgePreviewTarget?: Position;
     // Interface linking properties
     private interfaceLinkingMode = false;
@@ -217,7 +232,7 @@ export class CanvasRenderer {
                           elementType === 'message-flow' ||
                           elementType === 'conditional-flow';
             
-            if (isEdge && this.isPointOnEdge(position, element)) {
+            if (isEdge && this.isPointOnEdge(position, element as Edge)) {
                 return element;
             }
         }
@@ -237,8 +252,8 @@ export class CanvasRenderer {
         const scaledTolerance = tolerance / this.options.scale;
         
         // Get source and target elements
-        const sourceId = edge.sourceId || edge.properties?.sourceId;
-        const targetId = edge.targetId || edge.properties?.targetId;
+        const sourceId = String(edge.sourceId || edge.properties?.sourceId || '');
+        const targetId = String(edge.targetId || edge.properties?.targetId || '');
         
         if (!sourceId || !targetId) return false;
         
@@ -321,7 +336,7 @@ export class CanvasRenderer {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    private handleClick(event: MouseEvent): void {
+    protected handleClick(event: MouseEvent): void {
         console.log('handleClick: Method called');
         // Don't process click if we just finished dragging
         if (this.hasDragged) {
@@ -348,7 +363,7 @@ export class CanvasRenderer {
                     element: interfaceConnector.element,
                     interfaceInfo: {
                         componentId: interfaceConnector.element.id,
-                        interface: interfaceConnector.interface,
+                        interface: convertToWitInterface(interfaceConnector.interface),
                         interfaceType: interfaceConnector.side === 'left' ? 'import' : 'export',
                         connectorPosition: interfaceConnector.connectorPosition
                     },
@@ -938,7 +953,8 @@ export class CanvasRenderer {
             
             // Check if component file is missing or not loaded
             const isMissing = this.isComponentMissingFile(node);
-            const _isLoaded = node.properties?.isLoaded === true;
+            // Component load state (available for future features)
+        // const isLoaded = node.properties?.isLoaded === true;
             
             // Update node properties to include load status
             if (!node.properties) {
@@ -987,7 +1003,7 @@ export class CanvasRenderer {
         }
 
         // Draw label
-        const label = node.label || node.properties?.label;
+        const label = String(node.label || node.properties?.label || '');
         if (label) {
             this.drawLabel(label, node.bounds);
         }
@@ -1199,8 +1215,8 @@ export class CanvasRenderer {
 
     private drawEdge(edge: Edge): void {
         // Handle both direct properties and properties object
-        const sourceId = edge.source || edge.sourceId || edge.properties?.sourceId;
-        const targetId = edge.target || edge.targetId || edge.properties?.targetId;
+        const sourceId = String(edge.source || edge.sourceId || edge.properties?.sourceId || '');
+        const targetId = String(edge.target || edge.targetId || edge.properties?.targetId || '');
         
         if (!sourceId || !targetId) {
             console.warn('Edge missing sourceId or targetId:', edge);
@@ -1312,7 +1328,7 @@ export class CanvasRenderer {
         this.ctx.fillText(text, centerX, centerY);
     }
 
-    private drawEdgeLabel(text: string, position: Position): void {
+    protected drawEdgeLabel(text: string, position: Position): void {
         this.ctx.save();
         
         // Set up font and text properties
@@ -1356,7 +1372,7 @@ export class CanvasRenderer {
         this.ctx.restore();
     }
 
-    private drawArrowhead(to: Position, from: Position): void {
+    protected drawArrowhead(to: Position, from: Position): void {
         const angle = Math.atan2(to.y - from.y, to.x - from.x);
         const arrowLength = 10;
         // const arrowWidth = 6;
@@ -1609,7 +1625,7 @@ export class CanvasRenderer {
 
     private getInterfaceConnectorAt(position: Position): {
         element: ModelElement;
-        interface: { name: string; interface_type?: string; type?: string; direction?: string };
+        interface: ComponentInterface;
         side: 'left' | 'right';
         connectorPosition: Position;
     } | undefined {
@@ -1643,9 +1659,10 @@ export class CanvasRenderer {
                     // If interfaces is a number (count), create placeholder interfaces
                     actualInterfaces = Array.from({ length: interfaces }, (_, i) => ({
                         name: `interface-${i + 1}`,
-                        interface_type: i % 2 === 0 ? 'import' : 'export',
-                        type: i % 2 === 0 ? 'import' : 'export',
-                        direction: i % 2 === 0 ? 'input' : 'output'
+                        interface_type: (i % 2 === 0 ? 'import' : 'export') as 'import' | 'export',
+                        type: (i % 2 === 0 ? 'import' : 'export') as 'import' | 'export',
+                        direction: (i % 2 === 0 ? 'import' : 'export') as 'import' | 'export',
+                        functions: []
                     }));
                 } else if (Array.isArray(interfaces)) {
                     // If interfaces is already an array, use it directly
@@ -1958,7 +1975,7 @@ export class CanvasRenderer {
     }
     
     private getElementType(element: any): string {
-        return element.type || element.element_type || '';
+        return String(element.type || element.element_type || '');
     }
     
     private ensureElementBounds(element: any): void {
@@ -2042,6 +2059,66 @@ export class CanvasRenderer {
                 };
             default:
                 return {};
+        }
+    }
+
+    // Protected methods for subclass access
+    protected drawRoundedRect(x: number, y: number, width: number, height: number, radius: number): void {
+        this.ctx.beginPath();
+        this.ctx.roundRect(x, y, width, height, radius);
+    }
+
+    protected getNodeBounds(node: Node): Bounds {
+        if (node.bounds) {
+            return node.bounds;
+        }
+        // Fallback if no bounds are set
+        return {
+            x: node.position?.x || 0,
+            y: node.position?.y || 0,
+            width: node.size?.width || 100,
+            height: node.size?.height || 60
+        };
+    }
+
+    protected getConnectionPoint(bounds: Bounds, targetPoint: Position): Position {
+        const centerX = bounds.x + bounds.width / 2;
+        const centerY = bounds.y + bounds.height / 2;
+        
+        const dx = targetPoint.x - centerX;
+        const dy = targetPoint.y - centerY;
+        
+        const angle = Math.atan2(dy, dx);
+        
+        // Calculate intersection with rectangle edge
+        const absAngle = Math.abs(angle);
+        const halfWidth = bounds.width / 2;
+        const halfHeight = bounds.height / 2;
+        
+        if (absAngle < Math.atan2(halfHeight, halfWidth)) {
+            // Right edge
+            return {
+                x: bounds.x + bounds.width,
+                y: centerY + halfWidth * Math.tan(angle)
+            };
+        } else if (absAngle > Math.PI - Math.atan2(halfHeight, halfWidth)) {
+            // Left edge
+            return {
+                x: bounds.x,
+                y: centerY - halfWidth * Math.tan(angle)
+            };
+        } else if (angle > 0) {
+            // Bottom edge
+            return {
+                x: centerX + halfHeight / Math.tan(angle),
+                y: bounds.y + bounds.height
+            };
+        } else {
+            // Top edge
+            return {
+                x: centerX - halfHeight / Math.tan(angle),
+                y: bounds.y
+            };
         }
     }
 }
