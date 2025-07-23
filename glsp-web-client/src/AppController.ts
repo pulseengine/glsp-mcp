@@ -11,6 +11,7 @@ import { WitVisualizationPanel } from './wit/WitVisualizationPanel.js';
 import { ViewSwitcher } from './ui/ViewSwitcher.js';
 import { ViewModeManager } from './ui/ViewModeManager.js';
 import { WasmViewTransformer } from './ui/WasmViewTransformer.js';
+import { WasmComponent } from './types/wasm-component.js';
 
 // Debug interface for window properties
 interface WindowDebug {
@@ -203,34 +204,44 @@ export class AppController {
                 
                 if (components.length === 0) {
                     console.warn('Components array is empty!');
-                    this.uiManager.addWasmComponentToLibrary({
+                    const emptyComponentsData: WasmComponent = {
                         id: 'no-components',
                         name: 'No WASM components found',
+                        path: '',
                         description: 'Upload a component or check your backend connection',
-                        interfaces: [],
                         status: 'error',
-                        version: '',
-                        category: 'Status'
-                    });
+                        category: 'Status',
+                        interfaces: [],
+                        dependencies: [],
+                        metadata: {}
+                    };
+                    this.uiManager.addWasmComponentToLibrary(emptyComponentsData);
                     return;
                 }
                 
-                components.forEach((component: import('./wasm/WasmComponentManager.js').WasmComponent, index: number) => {
+                components.forEach((component: any, index: number) => {
                     console.log(`Processing component ${index + 1}:`, JSON.stringify(component, null, 2));
                     
                     // Extract component info from the MCP data
                     const name = component.name || 'Unknown Component';
                     const status = component.status || 'available';
                     
-                    const componentData = {
+                    const componentData: WasmComponent = {
                         id: component.name || name,
                         name: name,
+                        path: component.path || '',
                         description: component.description || `WASM component: ${name}`,
-                        interfaces: component.interfaces || [], // Pass the full interface array from the server
                         status: status,
-                        version: '1.0.0', // Default version as server doesn't provide this yet
                         category: this.categorizeWasmComponent(component),
-                        path: component.path  // Include the path for drag and drop
+                        interfaces: (component.interfaces || []).map((iface: any) => ({
+                            name: iface.name || '',
+                            interface_type: (iface.interface_type === 'import' || iface.interface_type === 'export') 
+                                ? iface.interface_type 
+                                : 'import',
+                            functions: iface.functions || []
+                        })),
+                        dependencies: component.dependencies || [],
+                        metadata: component.metadata || {}
                     };
                     
                     console.log(`Adding component to sidebar:`, componentData);
@@ -247,15 +258,18 @@ export class AppController {
                     hasText: !!(scanResult?.content?.[0]?.text)
                 });
                 
-                this.uiManager.addWasmComponentToLibrary({
+                const noComponentsData: WasmComponent = {
                     id: 'no-components',
                     name: 'No WASM components found',
+                    path: '',
                     description: 'Upload a component or check your backend connection',
-                    interfaces: [],
                     status: 'error',
-                    version: '',
-                    category: 'Status'
-                });
+                    category: 'Status',
+                    interfaces: [],
+                    dependencies: [],
+                    metadata: {}
+                };
+                this.uiManager.addWasmComponentToLibrary(noComponentsData);
             }
         } catch (error) {
             console.error('❌ Failed to load WASM components to sidebar:', error);
@@ -265,19 +279,22 @@ export class AppController {
             });
             
             // Add an error indicator component
-            this.uiManager.addWasmComponentToLibrary({
+            const errorData: WasmComponent = {
                 id: 'error-loading',
                 name: 'Error Loading Components',
+                path: '',
                 description: `Failed to connect to backend: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                interfaces: [],
                 status: 'error',
-                version: '',
-                category: 'Status'
-            });
+                category: 'Status',
+                interfaces: [],
+                dependencies: [],
+                metadata: {}
+            };
+            this.uiManager.addWasmComponentToLibrary(errorData);
         }
     }
     
-    private categorizeWasmComponent(component: import('./wasm/WasmComponentManager.js').WasmComponent): string {
+    private categorizeWasmComponent(component: any): string {
         const name = component.name?.toLowerCase() || '';
         const path = component.path?.toLowerCase() || '';
         
@@ -596,11 +613,11 @@ export class AppController {
             const hasUnsavedChanges = this.diagramService.hasUnsavedChanges();
             
             let confirmMessage = 'This diagram and all its content will be permanently removed.';
-            let _confirmTitle = `Delete "${diagramName}"?`;
+            let confirmTitle = `Delete "${diagramName}"?`;
             
             // Enhanced warning for current diagram
             if (isCurrentDiagram) {
-                _confirmTitle = `⚠️ Delete Current Diagram "${diagramName}"?`;
+                confirmTitle = `⚠️ Delete Current Diagram "${diagramName}"?`;
                 confirmMessage = `You are about to delete the diagram you are currently working on.\n\n`;
                 
                 if (hasUnsavedChanges) {
@@ -612,7 +629,7 @@ export class AppController {
             
             // Show confirmation dialog with enhanced messaging
             const confirmed = await this.uiManager.showDeleteConfirm(
-                diagramName,
+                confirmTitle,
                 confirmMessage
             );
             
@@ -904,7 +921,7 @@ export class AppController {
         }
         
         // Show user confirmation for diagram type change
-        const userConfirmed = await this.confirmDiagramTypeChange(currentType, newType);
+        const userConfirmed = await this.confirmDiagramTypeChange(currentType || 'unknown', newType);
         if (userConfirmed) {
             await this.createNewDiagramOfType(newType);
         }
@@ -919,6 +936,10 @@ export class AppController {
         return true; // Auto-confirm for now
     }
     
+    /**
+     * Legacy method for switching to WIT interface view
+     * @deprecated Use ViewModeManager.switchViewMode('wit-interface') instead
+     */
     private async switchToWitInterfaceView(currentDiagram: any): Promise<void> {
         const currentDiagramType = currentDiagram.diagramType || currentDiagram.diagram_type;
         
@@ -965,18 +986,26 @@ export class AppController {
         ].includes(elementType);
     }
     
-    private async switchToWitDependencyView(currentDiagram: any): Promise<void> {
+    /**
+     * Legacy method for switching to WIT dependency view  
+     * @deprecated Use ViewModeManager.switchViewMode('wit-dependencies') instead
+     */
+    private async switchToWitDependencyView(_currentDiagram: any): Promise<void> {
         this.uiManager.updateStatus('WIT dependency view coming soon...');
         // TODO: Implement dependency graph visualization
     }
     
-    private async createWitInterfaceDiagramFromComponents(componentDiagram: any): Promise<void> {
+    /**
+     * Legacy method for creating WIT interface diagrams from components
+     * @deprecated Use WasmViewTransformer.transformToInterfaceView() instead
+     */
+    private async createWitInterfaceDiagramFromComponents(_componentDiagram: any): Promise<void> {
         try {
-            console.log('createWitInterfaceDiagramFromComponents: Component diagram:', componentDiagram);
-            console.log('Component diagram elements:', componentDiagram.elements);
+            console.log('createWitInterfaceDiagramFromComponents: Component diagram:', _componentDiagram);
+            console.log('Component diagram elements:', _componentDiagram.elements);
             
             // Extract WASM components from the current diagram
-            const allElements = Object.values(componentDiagram.elements || {});
+            const allElements = Object.values(_componentDiagram.elements || {});
             console.log('All elements:', allElements);
             
             const wasmComponents = allElements.filter((element: any) => {
@@ -995,7 +1024,7 @@ export class AppController {
             }
             
             // Create a new WIT interface diagram
-            const witDiagramName = `${componentDiagram.name || 'Diagram'} - WIT Interfaces`;
+            const witDiagramName = `${_componentDiagram.name || 'Diagram'} - WIT Interfaces`;
             console.log('Creating WIT diagram with name:', witDiagramName);
             
             const diagramId = await this.diagramService.createNewDiagram('wit-interface', witDiagramName);
@@ -1186,8 +1215,8 @@ export class AppController {
     public handleWasmComponentDoubleClick(node: import('./model/diagram.js').Node): void {
         if (node.properties?.componentName) {
             this.openWitVisualization(
-                node.properties.componentName,
-                node.properties.componentPath || ''
+                String(node.properties.componentName),
+                String(node.properties.componentPath || '')
             );
         }
     }
@@ -1199,9 +1228,17 @@ export class AppController {
         
         // Test adding another WASM component
         this.uiManager.addWasmComponentToLibrary({
+            id: 'test-component-' + Date.now(),
             name: 'Test Component',
+            path: '/tmp/test-component.wasm',
             description: 'Runtime test component',
-            interfaces: ['test'],
+            interfaces: [{
+                name: 'test',
+                interface_type: 'export',
+                functions: []
+            }],
+            dependencies: [],
+            metadata: {},
             status: 'available',
             category: 'Testing'
         });

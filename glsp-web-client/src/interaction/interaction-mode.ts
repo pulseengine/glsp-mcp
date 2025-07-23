@@ -29,6 +29,7 @@ export interface EdgeTypeConfig {
     type: string;
     label: string;
     style?: 'solid' | 'dashed' | 'dotted';
+    color?: string;
 }
 
 export const DEFAULT_NODE_TYPES: NodeTypeConfig[] = [
