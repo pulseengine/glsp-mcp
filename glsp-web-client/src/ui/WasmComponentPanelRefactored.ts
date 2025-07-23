@@ -1,20 +1,6 @@
 import { FloatingPanel, FloatingPanelConfig, FloatingPanelEvents } from './FloatingPanel.js';
 import { McpClient } from '../mcp/client.js';
-
-export interface WasmComponentInfo {
-    name: string;
-    path: string;
-    description: string;
-    status: 'available' | 'missing' | 'loaded' | 'transpiled';
-    interfaces: number;
-    lastSeen?: string;
-    removedAt?: string;
-    elementId?: string; // ID of the component in the diagram
-    isInDiagram?: boolean;
-    isLoaded?: boolean;
-    isTranspiled?: boolean;
-    transpiledInterfaces?: string[]; // List of transpiled interface names
-}
+import { WasmComponentInfo } from '../types/wasm-component.js';
 
 export interface DragEventData {
     componentName: string;

@@ -6,21 +6,7 @@
  */
 
 import { McpClient } from '../mcp/client.js';
-
-export interface WasmComponent {
-    name: string;
-    path: string;
-    description: string;
-    fileExists: boolean;
-    lastSeen?: string;
-    removedAt?: string;
-    interfaces: WasmInterface[];
-    metadata: Record<string, unknown>;
-    witInterfaces?: string;
-    dependencies: string[];
-    securityAnalysis?: SecurityAnalysis;
-    lastSecurityScan?: string;
-}
+import { WasmComponent, WasmInterface, SecurityAnalysis } from '../types/wasm-component.js';
 
 export interface ExecutionProgress {
     executionId: string;
@@ -39,12 +25,6 @@ export interface ExecutionResult {
     executionTime?: number;
 }
 
-export interface WasmInterface {
-    name: string;
-    interfaceType: string;
-    functions: WasmFunction[];
-}
-
 export interface WasmFunction {
     name: string;
     params: WasmParam[];
@@ -54,13 +34,6 @@ export interface WasmFunction {
 export interface WasmParam {
     name: string;
     paramType: string;
-}
-
-export interface SecurityAnalysis {
-    overallRisk: 'Low' | 'Medium' | 'High' | 'Critical';
-    issues: SecurityIssue[];
-    score: number;
-    isComponentValid: boolean;
 }
 
 export interface SecurityIssue {

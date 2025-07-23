@@ -28,12 +28,12 @@ export interface ToolCall {
 export class DiagramAgent {
     private ollama: OllamaClient;
     private mcpClient: McpClient;
-    private systemPrompt: string;
+    // System prompt for AI responses (initialized dynamically)
 
     constructor(ollamaClient: OllamaClient, mcpClient: McpClient) {
         this.ollama = ollamaClient;
         this.mcpClient = mcpClient;
-        this.systemPrompt = ''; // Will be populated dynamically
+        // System prompt will be generated dynamically based on available tools
     }
 
     private async getSystemPrompt(): Promise<string> {

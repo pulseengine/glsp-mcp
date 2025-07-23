@@ -337,60 +337,59 @@ export class WitInterfaceRenderer extends CanvasRenderer {
     /**
      * Draw an arrowhead at the target point
      */
-    private drawArrowhead(ctx: CanvasRenderingContext2D, to: any, from: any, color: string): void {
+    protected drawArrowhead(to: Position, from: Position): void {
         const headLength = 10;
         const angle = Math.atan2(to.y - from.y, to.x - from.x);
         
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(to.x, to.y);
-        ctx.lineTo(
+        this.ctx.fillStyle = '#654FF0'; // Default WIT color
+        this.ctx.beginPath();
+        this.ctx.moveTo(to.x, to.y);
+        this.ctx.lineTo(
             to.x - headLength * Math.cos(angle - Math.PI / 6),
             to.y - headLength * Math.sin(angle - Math.PI / 6)
         );
-        ctx.lineTo(
+        this.ctx.lineTo(
             to.x - headLength * Math.cos(angle + Math.PI / 6),
             to.y - headLength * Math.sin(angle + Math.PI / 6)
         );
-        ctx.closePath();
-        ctx.fill();
+        this.ctx.closePath();
+        this.ctx.fill();
     }
     
     /**
      * Draw edge label
      */
-    private drawEdgeLabel(edge: Edge, source: any, target: any): void {
-        const ctx = this.ctx;
-        if (!ctx || !edge.label) return;
+    protected drawEdgeLabel(text: string, position: Position): void {
+        if (!this.ctx || !text) return;
         
-        const midX = (source.x + target.x) / 2;
-        const midY = (source.y + target.y) / 2;
-        
-        ctx.save();
+        this.ctx.save();
         
         // Draw label background
         const padding = 4;
-        const metrics = ctx.measureText(edge.label);
+        const metrics = this.ctx.measureText(text);
         const width = metrics.width + padding * 2;
         const height = 16;
         
-        ctx.fillStyle = 'rgba(31, 41, 55, 0.9)';
-        ctx.fillRect(midX - width / 2, midY - height / 2, width, height);
+        this.ctx.fillStyle = 'rgba(31, 41, 55, 0.9)';
+        this.ctx.fillRect(position.x - width / 2, position.y - height / 2, width, height);
         
         // Draw label text
-        ctx.fillStyle = '#E5E7EB';
-        ctx.font = '11px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(edge.label, midX, midY);
+        this.ctx.fillStyle = '#E5E7EB';
+        this.ctx.font = '11px sans-serif';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(text, position.x, position.y);
         
-        ctx.restore();
+        this.ctx.restore();
     }
     
     /**
      * Handle click events for expanding/collapsing nodes
      */
-    public handleClick(x: number, y: number): boolean {
+    protected handleClick(event: MouseEvent): void {
+        const rect = (event.target as HTMLCanvasElement).getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
         const worldPos = this.screenToWorld(x, y);
         const clickedNode = this.getNodeAt(worldPos.x, worldPos.y);
         
@@ -415,11 +414,11 @@ export class WitInterfaceRenderer extends CanvasRenderer {
                 
                 // Trigger re-render
                 this.render();
-                return true;
+                return;
             }
         }
         
-        return super.handleClick(x, y);
+        super.handleClick(event);
     }
     
     /**

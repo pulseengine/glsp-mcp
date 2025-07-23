@@ -9,21 +9,7 @@
 
 import { DiagramModel, ModelElement, Node, Edge } from '../model/diagram.js';
 import { ViewTransformer, ViewTransformationResult } from './ViewModeManager.js';
-
-export interface WasmComponentData {
-    id: string;
-    name: string;
-    interfaces: ComponentInterface[];
-    position: { x: number; y: number };
-    properties: Record<string, unknown>;
-}
-
-export interface ComponentInterface {
-    name: string;
-    type: 'import' | 'export';
-    functions?: InterfaceFunction[];
-    types?: InterfaceType[];
-}
+import { WasmComponentData, ComponentInterface } from '../types/wasm-component.js';
 
 export interface InterfaceFunction {
     name: string;
