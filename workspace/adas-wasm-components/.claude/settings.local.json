@@ -2,35 +2,8 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:github.com)",
-      "Bash(cargo check:*)",
-      "Bash(find:*)",
-      "Bash(for:*)",
-      "Bash(do)",
-      "Bash(sed:*)",
-      "Bash(echo:*)",
-      "Bash(done)",
-      "Bash(mv:*)",
-      "Bash(cargo:*)",
-      "Bash(rg:*)",
-      "Bash(/Users/r/git/glsp-rust/workspace/adas-wasm-components/wit-bindgen-source/target/debug/wit-bindgen scaffold --output components/sensors/camera-front/src --name camera_front wit/adas-components/camera-front.wit)",
-      "Bash(wit-bindgen:*)",
-      "Bash(ls:*)",
-      "Bash(grep:*)",
-      "Bash(ln:*)",
-      "Bash(mkdir:*)",
-      "Bash(cp:*)",
-      "Bash(rm:*)",
-      "Bash(chmod:*)",
-      "Bash(./restore-wit.sh:*)",
-      "Bash(rustc:*)",
-      "Bash(./run-live-demo)",
-      "mcp__sequential-thinking__sequentialthinking",
-      "Bash(./build-composed.sh:*)",
-      "mcp__fetch__imageFetch",
       "Bash(bazel build:*)",
-      "Bash(gh issue view:*)",
-      "Bash(bazel query:*)",
-      "Bash(bazel config:*)"
+      "mcp__sequential-thinking__sequentialthinking"
     ],
     "deny": []
   }
