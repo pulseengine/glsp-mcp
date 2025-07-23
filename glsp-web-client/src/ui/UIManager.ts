@@ -8,20 +8,7 @@ import { PropertiesSection, Property } from './sidebar/sections/PropertiesSectio
 import { ComponentLibrarySection } from './sidebar/sections/ComponentLibrarySection.js';
 import { DiagramControlsSection } from './sidebar/sections/DiagramControlsSection.js';
 import { ThemeController } from './ThemeController.js';
-
-export interface WasmComponent {
-    id: string;
-    name: string;
-    category?: string;
-    description?: string;
-    exports?: unknown[];
-    imports?: unknown[];
-    type?: string;
-    path?: string;
-    interfaces?: unknown;
-    status?: string;
-    version?: string;
-}
+import { WasmComponent } from '../types/wasm-component.js';
 
 interface WitInterfaceInfo {
     imports?: Array<{
@@ -39,6 +26,10 @@ interface WitInterfaceInfo {
             params?: Array<{ name: string; type: string }>;
             results?: Array<{ name: string; type: string }>;
         }>;
+    }>;
+    dependencies?: Array<{
+        package: string;
+        version?: string;
     }>;
 }
 import { HeaderIconManager } from './HeaderIconManager.js';
