@@ -155,4 +155,17 @@ export class McpService {
     public isStreaming(): boolean {
         return this.mcpClient.isStreaming();
     }
+
+    // MCP Notification Support
+    public async sendNotification(method: string, params?: Record<string, unknown>): Promise<void> {
+        return this.mcpClient.sendNotification(method, params);
+    }
+
+    public addNotificationListener(method: string, listener: (notification: import('../mcp/client.js').McpNotification) => void): void {
+        this.mcpClient.addNotificationListener(method, listener);
+    }
+
+    public removeNotificationListener(method: string, listener: (notification: import('../mcp/client.js').McpNotification) => void): void {
+        this.mcpClient.removeNotificationListener(method, listener);
+    }
 }

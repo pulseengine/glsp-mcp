@@ -192,7 +192,7 @@ export class McpClient {
      * @param method The notification method name
      * @param params Optional parameters for the notification
      */
-    private async sendNotification(method: string, params?: Record<string, unknown>): Promise<void> {
+    public async sendNotification(method: string, params?: Record<string, unknown>): Promise<void> {
         console.log(`McpClient: Sending notification ${method}`, params);
         const notification: JsonRpcRequest = {
             jsonrpc: '2.0',

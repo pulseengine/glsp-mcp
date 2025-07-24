@@ -1313,7 +1313,36 @@ export class AppController {
             // This will be used when AI assistant gets streaming responses
         });
 
-        console.log('AppController: MCP streaming setup complete');
+        // Add notification listeners for server-initiated updates
+        this.mcpService.addNotificationListener('server-message', (notification) => {
+            console.log('AppController: Received server message notification:', notification);
+            try {
+                const params = notification.params as { message: string; type: 'info' | 'warning' | 'error' };
+                this.uiManager.updateStatus(params.message);
+                
+                // Show additional UI feedback for important messages
+                if (params.type === 'error') {
+                    console.error('Server error message:', params.message);
+                } else if (params.type === 'warning') {
+                    console.warn('Server warning message:', params.message);
+                }
+            } catch (error) {
+                console.error('Error handling server-message notification:', error);
+            }
+        });
+
+        this.mcpService.addNotificationListener('collaboration-update', (notification) => {
+            console.log('AppController: Received collaboration update notification:', notification);
+            try {
+                const params = notification.params as { userId: string; action: string; diagramId?: string };
+                // This can be used for collaborative editing features
+                console.log(`Collaboration: User ${params.userId} performed ${params.action}`);
+            } catch (error) {
+                console.error('Error handling collaboration-update notification:', error);
+            }
+        });
+
+        console.log('AppController: MCP streaming and notification setup complete');
     }
 
     /**
