@@ -1253,18 +1253,8 @@ export class CanvasRenderer {
             y: targetElement.bounds.y + targetElement.bounds.height / 2
         };
 
-        // Draw line
-        this.ctx.beginPath();
-        this.ctx.moveTo(sourceCenter.x, sourceCenter.y);
-
-        if (edge.routingPoints && edge.routingPoints.length > 0) {
-            edge.routingPoints.forEach(point => {
-                this.ctx.lineTo(point.x, point.y);
-            });
-        }
-
-        this.ctx.lineTo(targetCenter.x, targetCenter.y);
-        this.ctx.stroke();
+        // Draw line based on edge creation type
+        this.drawEdgeByType(sourceCenter, targetCenter, edge.routingPoints, this.edgeCreationType || 'straight');
 
         // Draw arrowhead
         this.drawArrowhead(targetCenter, sourceCenter);
@@ -1277,6 +1267,113 @@ export class CanvasRenderer {
                 y: (sourceCenter.y + targetCenter.y) / 2
             };
             this.drawEdgeLabel(edgeLabel, midPoint);
+        }
+    }
+    
+    private drawEdgeByType(
+        sourceCenter: Position, 
+        targetCenter: Position, 
+        routingPoints?: Position[], 
+        edgeType: string = 'straight'
+    ): void {
+        this.ctx.beginPath();
+        
+        switch (edgeType) {
+            case 'curved':
+                this.drawCurvedEdge(sourceCenter, targetCenter, routingPoints);
+                break;
+            case 'orthogonal':
+                this.drawOrthogonalEdge(sourceCenter, targetCenter, routingPoints);
+                break;
+            case 'bezier':
+                this.drawBezierEdge(sourceCenter, targetCenter, routingPoints);
+                break;
+            case 'straight':
+            default:
+                this.drawStraightEdge(sourceCenter, targetCenter, routingPoints);
+                break;
+        }
+        
+        this.ctx.stroke();
+    }
+    
+    private drawStraightEdge(sourceCenter: Position, targetCenter: Position, routingPoints?: Position[]): void {
+        this.ctx.moveTo(sourceCenter.x, sourceCenter.y);
+        
+        if (routingPoints && routingPoints.length > 0) {
+            routingPoints.forEach(point => {
+                this.ctx.lineTo(point.x, point.y);
+            });
+        }
+        
+        this.ctx.lineTo(targetCenter.x, targetCenter.y);
+    }
+    
+    private drawCurvedEdge(sourceCenter: Position, targetCenter: Position, routingPoints?: Position[]): void {
+        this.ctx.moveTo(sourceCenter.x, sourceCenter.y);
+        
+        if (routingPoints && routingPoints.length > 0) {
+            // Use quadratic curves between points
+            let currentPoint = sourceCenter;
+            routingPoints.forEach(routingPoint => {
+                const controlX = (currentPoint.x + routingPoint.x) / 2;
+                const controlY = currentPoint.y; // Keep control point at source Y level for smooth curve
+                this.ctx.quadraticCurveTo(controlX, controlY, routingPoint.x, routingPoint.y);
+                currentPoint = routingPoint;
+            });
+            
+            // Final curve to target
+            const controlX = (currentPoint.x + targetCenter.x) / 2;
+            const controlY = currentPoint.y;
+            this.ctx.quadraticCurveTo(controlX, controlY, targetCenter.x, targetCenter.y);
+        } else {
+            // Simple curved edge without routing points
+            const controlX = (sourceCenter.x + targetCenter.x) / 2;
+            const controlY = sourceCenter.y - Math.abs(targetCenter.x - sourceCenter.x) * 0.2; // Curve upward
+            this.ctx.quadraticCurveTo(controlX, controlY, targetCenter.x, targetCenter.y);
+        }
+    }
+    
+    private drawOrthogonalEdge(sourceCenter: Position, targetCenter: Position, routingPoints?: Position[]): void {
+        this.ctx.moveTo(sourceCenter.x, sourceCenter.y);
+        
+        if (routingPoints && routingPoints.length > 0) {
+            // Use routing points as-is for orthogonal edges
+            routingPoints.forEach(point => {
+                this.ctx.lineTo(point.x, point.y);
+            });
+            this.ctx.lineTo(targetCenter.x, targetCenter.y);
+        } else {
+            // Create orthogonal routing (L-shaped)
+            const midX = sourceCenter.x + (targetCenter.x - sourceCenter.x) / 2;
+            
+            // Go right/left from source, then up/down to target
+            this.ctx.lineTo(midX, sourceCenter.y);
+            this.ctx.lineTo(midX, targetCenter.y);
+            this.ctx.lineTo(targetCenter.x, targetCenter.y);
+        }
+    }
+    
+    private drawBezierEdge(sourceCenter: Position, targetCenter: Position, routingPoints?: Position[]): void {
+        this.ctx.moveTo(sourceCenter.x, sourceCenter.y);
+        
+        if (routingPoints && routingPoints.length >= 2) {
+            // Use routing points as control points for bezier curve
+            this.ctx.bezierCurveTo(
+                routingPoints[0].x, routingPoints[0].y,
+                routingPoints[1].x, routingPoints[1].y,
+                targetCenter.x, targetCenter.y
+            );
+        } else {
+            // Create default bezier control points
+            const dx = targetCenter.x - sourceCenter.x;
+            
+            const cp1x = sourceCenter.x + dx * 0.25;
+            const cp1y = sourceCenter.y;
+            const cp2x = targetCenter.x - dx * 0.25;
+            const cp2y = targetCenter.y;
+            
+            this.ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, targetCenter.x, targetCenter.y);
         }
     }
 
@@ -1422,10 +1519,8 @@ export class CanvasRenderer {
         this.ctx.lineWidth = 2;
         this.ctx.setLineDash([5, 5]);
         
-        this.ctx.beginPath();
-        this.ctx.moveTo(sourceCenter.x, sourceCenter.y);
-        this.ctx.lineTo(this.edgePreviewTarget.x, this.edgePreviewTarget.y);
-        this.ctx.stroke();
+        // Draw preview edge using the selected creation type
+        this.drawEdgeByType(sourceCenter, this.edgePreviewTarget, undefined, this.edgeCreationType || 'straight');
         
         this.ctx.setLineDash([]);
     }
@@ -1435,6 +1530,12 @@ export class CanvasRenderer {
         this.edgeCreationSource = sourceElement;
         this.edgeCreationType = edgeType;
         console.log('Started edge creation from:', sourceElement.id, 'Type:', edgeType);
+    }
+    
+    // Set edge creation type (shape: straight, curved, orthogonal, bezier)
+    public setEdgeCreationType(creationType: string): void {
+        this.edgeCreationType = creationType;
+        console.log('CanvasRenderer: Edge creation type set to:', creationType);
     }
     
     // Set interaction mode (pan, select, etc.)

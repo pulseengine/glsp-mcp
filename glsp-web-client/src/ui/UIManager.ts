@@ -51,6 +51,7 @@ export class UIManager {
     private currentMode: string = 'select';
     private currentNodeType: string = '';
     private currentEdgeType: string = '';
+    private currentEdgeCreationType: string = 'straight';
     private aiEvents: AIAssistantEvents = {};
     private themeController: ThemeController;
     private headerIconManager: HeaderIconManager;
@@ -216,6 +217,7 @@ export class UIManager {
         const currentMode = this.currentMode;
         const currentNodeType = this.currentNodeType;
         const currentEdgeType = this.currentEdgeType;
+        const currentEdgeCreationType = this.currentEdgeCreationType;
         
         const env = detectEnvironment();
         console.log('UIManager: detectEnvironment result:', env);
@@ -255,6 +257,13 @@ export class UIManager {
                 ${edgeTypes.map(edgeType => 
                     `<button class="edge-type" data-type="${edgeType.type}">${edgeType.label}</button>`
                 ).join('')}
+            </div>
+            <div class="toolbar-group">
+                <label>Edge Shape:</label>
+                <button class="edge-creation-type active" data-creation-type="straight" title="Straight edges">—</button>
+                <button class="edge-creation-type" data-creation-type="curved" title="Curved edges">∿</button>
+                <button class="edge-creation-type" data-creation-type="orthogonal" title="Orthogonal edges">┐</button>
+                <button class="edge-creation-type" data-creation-type="bezier" title="Bezier edges">⤴</button>
             </div>
             <div class="toolbar-group">
                 <button id="apply-layout">Apply Layout</button>
@@ -297,6 +306,7 @@ export class UIManager {
         this.currentMode = currentMode;
         this.currentNodeType = currentNodeType;
         this.currentEdgeType = currentEdgeType;
+        this.currentEdgeCreationType = currentEdgeCreationType;
         
         // Re-setup event handlers for the newly created elements
         console.log('Re-setting up toolbar button handlers after content update');
@@ -344,6 +354,26 @@ export class UIManager {
                     this.currentEdgeType = edgeType;
                     this.updateActiveButton(btn, '.edge-type');
                     console.log('Set mode to create-edge, edgeType:', this.currentEdgeType);
+                }
+            });
+        });
+        
+        // Edge creation type buttons (shape selection)
+        toolbarEl.querySelectorAll('.edge-creation-type').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const btn = e.currentTarget as HTMLButtonElement;
+                const creationType = btn.getAttribute('data-creation-type');
+                console.log('Edge creation type button clicked:', creationType);
+                if (creationType) {
+                    this.currentEdgeCreationType = creationType;
+                    this.updateActiveButton(btn, '.edge-creation-type');
+                    
+                    // Dispatch custom event to notify other components
+                    window.dispatchEvent(new CustomEvent('edge-creation-type-change', { 
+                        detail: { creationType } 
+                    }));
+                    
+                    console.log('Set edge creation type:', this.currentEdgeCreationType);
                 }
             });
         });
@@ -421,6 +451,10 @@ export class UIManager {
     
     public getCurrentEdgeType(): string {
         return this.currentEdgeType;
+    }
+    
+    public getCurrentEdgeCreationType(): string {
+        return this.currentEdgeCreationType;
     }
     
     private onDiagramTypeChangeCallback?: (newType: string) => void;

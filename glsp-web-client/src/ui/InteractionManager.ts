@@ -112,6 +112,15 @@ export class InteractionManager {
             this.deleteSelected().catch(console.error);
         });
         
+        // Listen for edge creation type changes
+        window.addEventListener('edge-creation-type-change', (event: Event & { detail?: { creationType: string } }) => {
+            const creationType = event.detail?.creationType;
+            if (creationType) {
+                console.log('InteractionManager: Edge creation type changed to:', creationType);
+                this.renderer.setEdgeCreationType(creationType);
+            }
+        });
+        
         // Listen for diagram load events to pre-load WIT data
         window.addEventListener('diagram-loaded-preload-wit', () => {
             this.preloadWitDataForDiagram().catch(console.error);

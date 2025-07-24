@@ -394,6 +394,11 @@ export class AppController {
             // Connect header icon manager to WASM runtime manager
             this.wasmRuntimeManager.setHeaderIconManager(this.uiManager.getHeaderIconManager());
             
+            // Initialize edge creation type with default value
+            const initialEdgeCreationType = this.uiManager.getCurrentEdgeCreationType();
+            this.renderer.setEdgeCreationType(initialEdgeCreationType);
+            console.log('AppController: Initialized edge creation type:', initialEdgeCreationType);
+            
             // Load WASM components into the sidebar if modern sidebar is active
             await this.loadWasmComponentsToSidebar();
 
