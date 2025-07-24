@@ -508,11 +508,13 @@ export class McpClient {
         }
         this.streamListeners.get(streamType)!.push(listener);
         
-        // Note: streamable_http transport doesn't use SSE streaming
-        // All communication happens via POST requests to /messages
-        // if (!this.streamingActive) {
-        //     this.startStreaming();
-        // }
+        // Automatically start streaming when first listener is added
+        if (!this.streamingActive && this.connected) {
+            console.log(`McpClient: Starting streaming for ${streamType}`);
+            this.startStreaming().catch(error => {
+                console.error('Failed to start streaming:', error);
+            });
+        }
     }
     
     public removeStreamListener(streamType: string, listener: (data: unknown) => void): void {
