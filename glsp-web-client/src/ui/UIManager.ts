@@ -911,8 +911,17 @@ export class UIManager {
     private updateUnifiedStatus(status: ConnectionStatus): void {
         console.log('UIManager: Updating unified status:', status);
         
-        // Get MCP health metrics
-        const healthMetrics = this.appController.getMcpService().getConnectionHealthMetrics();
+        // Get MCP health metrics (defensive access during initialization)
+        const healthMetrics = (window as any).appController?.getMcpService()?.getConnectionHealthMetrics() || {
+            connected: false,
+            reconnectAttempts: 0,
+            maxReconnectAttempts: 5,
+            lastPingTime: undefined,
+            avgPingTime: undefined,
+            sessionId: undefined,
+            reconnecting: false,
+            nextReconnectIn: undefined
+        };
         
         // Update enhanced header status chip
         this.updateHeaderStatusChip(status, healthMetrics);
