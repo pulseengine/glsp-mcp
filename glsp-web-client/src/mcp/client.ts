@@ -435,38 +435,34 @@ export class McpClient {
 
     async ping(): Promise<unknown> {
         const startTime = Date.now();
+        
+        // Try ping first, fall back to a simpler method if ping isn't supported
+        let result;
         try {
-            // Try ping first, fall back to a simpler method if ping isn't supported
-            let result;
-            try {
-                result = await this.sendRequest('ping', {});
-            } catch (error: unknown) {
-                // If ping method is not supported, try listing tools as a health check
-                if (error instanceof Error && error.message && error.message.includes('Unknown method')) {
-                    console.log('MCP server does not support ping method, using listTools as health check');
-                    result = await this.listTools();
-                } else {
-                    throw error;
-                }
+            result = await this.sendRequest('ping', {});
+        } catch (error: unknown) {
+            // If ping method is not supported, try listing tools as a health check
+            if (error instanceof Error && error.message && error.message.includes('Unknown method')) {
+                console.log('MCP server does not support ping method, using listTools as health check');
+                result = await this.listTools();
+            } else {
+                // Re-throw the error without updating ping metrics
+                throw error;
             }
-            
-            // Record successful ping time
-            const pingTime = Date.now() - startTime;
-            this.lastPingTime = pingTime;
-            this.pingTimes.push(pingTime);
-            
-            // Keep only last 10 ping times for average calculation
-            if (this.pingTimes.length > 10) {
-                this.pingTimes.shift();
-            }
-            
-            this.notifyConnectionHealthChange();
-            return result;
-            
-        } catch (error) {
-            // Don't update ping metrics on failure
-            throw error;
         }
+        
+        // Record successful ping time
+        const pingTime = Date.now() - startTime;
+        this.lastPingTime = pingTime;
+        this.pingTimes.push(pingTime);
+        
+        // Keep only last 10 ping times for average calculation
+        if (this.pingTimes.length > 10) {
+            this.pingTimes.shift();
+        }
+        
+        this.notifyConnectionHealthChange();
+        return result;
     }
 
     async initialize(): Promise<InitializeResult> {

@@ -1290,9 +1290,9 @@ export class AppController {
             
             // Update status manager with enhanced connection info
             if (healthMetrics.reconnecting) {
-                this.statusManager.setMcpStatus(false); // Will trigger UI update
+                statusManager.setMcpStatus(false); // Will trigger UI update
             } else {
-                this.statusManager.setMcpStatus(healthMetrics.connected);
+                statusManager.setMcpStatus(healthMetrics.connected);
             }
             
             // Update UI with detailed health metrics
