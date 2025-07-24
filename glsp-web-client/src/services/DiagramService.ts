@@ -127,14 +127,90 @@ export class DiagramService {
 
     private handleComponentStatusUpdate(data: unknown): void {
         console.log('DiagramService: Received component status update:', data);
-        // This will be used for WASM component status changes
-        // For now, just log the update
+        try {
+            const statusData = data as { 
+                componentId: string; 
+                status: 'loading' | 'ready' | 'error' | 'executing';
+                message?: string;
+                diagramId?: string;
+            };
+            
+            if (statusData.diagramId && statusData.diagramId === this.currentDiagramId) {
+                // Dispatch custom event for UI components to listen to
+                const event = new CustomEvent('wasm-component-status-update', {
+                    detail: {
+                        componentId: statusData.componentId,
+                        status: statusData.status,
+                        message: statusData.message,
+                        timestamp: new Date().toISOString()
+                    }
+                });
+                window.dispatchEvent(event);
+                
+                console.log(`DiagramService: Component ${statusData.componentId} status changed to ${statusData.status}`);
+                
+                // Update status manager if it's an error
+                if (statusData.status === 'error' && statusData.message) {
+                    statusManager.setComponentError(statusData.componentId, statusData.message);
+                }
+            }
+        } catch (error) {
+            console.error('Error handling component status update:', error);
+        }
     }
 
     private handleValidationResult(data: unknown): void {
         console.log('DiagramService: Received validation result:', data);
-        // This will be used for real-time validation feedback
-        // For now, just log the result
+        try {
+            const validationData = data as {
+                diagramId: string;
+                validationId?: string;
+                issues: Array<{
+                    elementId?: string;
+                    severity: 'error' | 'warning' | 'info';
+                    message: string;
+                    category: string;
+                }>;
+                timestamp: string;
+                status: 'in-progress' | 'completed' | 'failed';
+            };
+            
+            if (validationData.diagramId === this.currentDiagramId) {
+                // Dispatch custom event for UI components to display validation results
+                const event = new CustomEvent('diagram-validation-result', {
+                    detail: {
+                        diagramId: validationData.diagramId,
+                        validationId: validationData.validationId,
+                        issues: validationData.issues,
+                        status: validationData.status,
+                        timestamp: validationData.timestamp
+                    }
+                });
+                window.dispatchEvent(event);
+                
+                // Update status manager with validation results
+                const errorCount = validationData.issues.filter(issue => issue.severity === 'error').length;
+                const warningCount = validationData.issues.filter(issue => issue.severity === 'warning').length;
+                
+                if (validationData.status === 'completed') {
+                    if (errorCount > 0) {
+                        statusManager.setValidationStatus('error', `${errorCount} errors, ${warningCount} warnings`);
+                    } else if (warningCount > 0) {
+                        statusManager.setValidationStatus('warning', `${warningCount} warnings`);
+                    } else {
+                        statusManager.setValidationStatus('success', 'No issues found');
+                    }
+                } else if (validationData.status === 'in-progress') {
+                    statusManager.setValidationStatus('loading', 'Validation in progress...');
+                } else if (validationData.status === 'failed') {
+                    statusManager.setValidationStatus('error', 'Validation failed');
+                }
+                
+                console.log(`DiagramService: Validation ${validationData.status} - ${errorCount} errors, ${warningCount} warnings`);
+            }
+        } catch (error) {
+            console.error('Error handling validation result:', error);
+        }
     }
 
     public getDiagramState(): DiagramState {

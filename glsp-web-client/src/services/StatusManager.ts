@@ -186,6 +186,30 @@ export class StatusManager {
     hasUnsavedChanges(): boolean {
         return this.diagramStatus.hasUnsavedChanges;
     }
+
+    // Component and validation status methods for stream listeners
+    setComponentError(componentId: string, message: string): void {
+        console.log(`StatusManager: Component ${componentId} error:`, message);
+        this.diagramStatus.errorMessage = `Component ${componentId}: ${message}`;
+        this.diagramStatus.syncStatus = 'error';
+        this.notifyListeners();
+    }
+
+    setValidationStatus(status: 'loading' | 'success' | 'warning' | 'error', message: string): void {
+        console.log('StatusManager: Setting validation status:', status, message);
+        // Update the connection message to show validation status
+        if (status === 'loading') {
+            this.connectionStatus.message = `Validating diagram... ${message}`;
+        } else if (status === 'success') {
+            this.connectionStatus.message = `Validation passed: ${message}`;
+        } else if (status === 'warning') {
+            this.connectionStatus.message = `Validation warnings: ${message}`;
+        } else if (status === 'error') {
+            this.connectionStatus.message = `Validation failed: ${message}`;
+            this.diagramStatus.syncStatus = 'error';
+        }
+        this.notifyListeners();
+    }
 }
 
 // Global instance
