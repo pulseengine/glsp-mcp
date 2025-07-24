@@ -142,4 +142,17 @@ export class McpService {
     public getClient(): McpClient {
         return this.mcpClient;
     }
+
+    // MCP Streaming Support
+    public addStreamListener(streamType: string, listener: (data: unknown) => void): void {
+        this.mcpClient.addStreamListener(streamType, listener);
+    }
+
+    public removeStreamListener(streamType: string, listener: (data: unknown) => void): void {
+        this.mcpClient.removeStreamListener(streamType, listener);
+    }
+
+    public isStreaming(): boolean {
+        return this.mcpClient.isStreaming();
+    }
 }
