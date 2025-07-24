@@ -339,6 +339,9 @@ export class AppController {
                 statusManager.setMcpStatus(connected);
             });
 
+            // Setup MCP streaming for real-time updates
+            this.setupMcpStreaming();
+
             // Setup AI connection monitoring
             this.aiService.addConnectionListener((connected: boolean) => {
                 statusManager.setAiStatus(connected);
@@ -1271,6 +1274,48 @@ export class AppController {
         return this.viewModeManager.getAvailableViewModes().map(mode => mode.id);
     }
     
+    /**
+     * Setup MCP streaming for real-time updates
+     */
+    private setupMcpStreaming(): void {
+        console.log('AppController: Setting up MCP streaming for real-time updates');
+
+        // Add stream listener for tool execution results
+        this.mcpService.addStreamListener('tool-result', (data) => {
+            console.log('AppController: Received tool execution result:', data);
+            try {
+                const result = data as { toolName: string; result: unknown; diagramId?: string };
+                if (result.diagramId && result.diagramId === this.diagramService.getCurrentDiagramId()) {
+                    // Reload the current diagram if it was affected by the tool execution
+                    this.diagramService.loadDiagram(result.diagramId).then(() => {
+                        console.log('AppController: Diagram reloaded after tool execution');
+                    });
+                }
+            } catch (error) {
+                console.error('Error handling tool result stream:', error);
+            }
+        });
+
+        // Add stream listener for status updates
+        this.mcpService.addStreamListener('status-update', (data) => {
+            console.log('AppController: Received status update:', data);
+            try {
+                const status = data as { message: string; type: 'info' | 'warning' | 'error' };
+                this.uiManager.updateStatus(status.message);
+            } catch (error) {
+                console.error('Error handling status update stream:', error);
+            }
+        });
+
+        // Add stream listener for AI assistant updates
+        this.mcpService.addStreamListener('ai-response', (data) => {
+            console.log('AppController: Received AI response stream:', data);
+            // This will be used when AI assistant gets streaming responses
+        });
+
+        console.log('AppController: MCP streaming setup complete');
+    }
+
     /**
      * Log environment information for debugging
      */
