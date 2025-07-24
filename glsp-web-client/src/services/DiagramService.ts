@@ -30,6 +30,49 @@ export class DiagramService {
     constructor(mcpService: McpService) {
         this.mcpService = mcpService;
         this.diagramState = new DiagramState();
+        this.initializeStreaming();
+    }
+
+    private initializeStreaming(): void {
+        // Add stream listeners for real-time diagram updates
+        this.mcpService.addStreamListener('diagram-update', (data) => {
+            this.handleDiagramUpdate(data);
+        });
+
+        this.mcpService.addStreamListener('component-status', (data) => {
+            this.handleComponentStatusUpdate(data);
+        });
+
+        this.mcpService.addStreamListener('validation-result', (data) => {
+            this.handleValidationResult(data);
+        });
+
+        console.log('DiagramService: Streaming listeners initialized');
+    }
+
+    private handleDiagramUpdate(data: unknown): void {
+        console.log('DiagramService: Received diagram update:', data);
+        try {
+            const updateData = data as { diagramId: string; changes: unknown };
+            if (updateData.diagramId && this.currentDiagramId === updateData.diagramId) {
+                // Reload the current diagram to get latest changes
+                this.loadDiagram(updateData.diagramId);
+            }
+        } catch (error) {
+            console.error('Error handling diagram update:', error);
+        }
+    }
+
+    private handleComponentStatusUpdate(data: unknown): void {
+        console.log('DiagramService: Received component status update:', data);
+        // This will be used for WASM component status changes
+        // For now, just log the update
+    }
+
+    private handleValidationResult(data: unknown): void {
+        console.log('DiagramService: Received validation result:', data);
+        // This will be used for real-time validation feedback
+        // For now, just log the result
     }
 
     public getDiagramState(): DiagramState {
