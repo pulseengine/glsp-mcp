@@ -372,16 +372,22 @@ export class AppController {
             // Show the AI panel
             this.uiManager.showAIPanel();
 
-            const connections = await this.aiService.checkConnections();
+            // Check connections to initialize connection monitoring
+            await this.aiService.checkConnections();
             // AI status will be set automatically by the connection listener
 
-            if (connections.ollama) {
-                const models = await this.aiService.getAvailableModels();
-                const currentModel = this.aiService.getCurrentModel();
-                this.uiManager.updateAIModelSelect(models, currentModel, (modelName) => {
-                    this.aiService.setCurrentModel(modelName);
-                });
-            }
+            // Always attempt to load models and set up the model selection, regardless of current connection status
+            await this.setupAIModelSelection();
+
+            // Set up a listener for when AI connection status changes to retry model loading
+            this.aiService.addConnectionListener((connected: boolean) => {
+                if (connected) {
+                    console.log('AI service connected, reloading models...');
+                    this.setupAIModelSelection().catch(error => {
+                        console.error('Failed to reload AI models after connection:', error);
+                    });
+                }
+            });
 
             await this.wasmRuntimeManager.initializeEnhancedWasmComponents();
             
@@ -539,6 +545,35 @@ export class AppController {
         }
     }
 
+    private async setupAIModelSelection(): Promise<void> {
+        try {
+            console.log('AppController: Setting up AI model selection...');
+            
+            // Try to get available models
+            const models = await this.aiService.getAvailableModels();
+            const currentModel = this.aiService.getCurrentModel();
+            
+            console.log('AppController: Available models:', models);
+            console.log('AppController: Current model:', currentModel);
+            
+            // Set up the model selection dropdown with change handler
+            this.uiManager.updateAIModelSelect(models, currentModel, (modelName) => {
+                console.log('AppController: Model changed to:', modelName);
+                this.aiService.setCurrentModel(modelName);
+                this.uiManager.addAIMessage('AI', `🤖 Switched to model: ${modelName}`);
+            });
+            
+        } catch (error) {
+            console.warn('AppController: Failed to load AI models (Ollama may be offline):', error);
+            
+            // Set up dropdown with offline state but keep the change handler for when it comes online
+            this.uiManager.updateAIModelSelect([], '', (modelName) => {
+                console.log('AppController: Model changed to:', modelName);
+                this.aiService.setCurrentModel(modelName);
+                this.uiManager.addAIMessage('AI', `🤖 Switched to model: ${modelName}`);
+            });
+        }
+    }
 
     private async createNewDiagramOfType(diagramType: string): Promise<void> {
         try {
@@ -1276,6 +1311,10 @@ export class AppController {
 
     public getMcpService(): McpService {
         return this.mcpService;
+    }
+
+    public getAIService(): AIService {
+        return this.aiService;
     }
     
     /**
