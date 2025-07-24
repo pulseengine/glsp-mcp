@@ -1273,12 +1273,31 @@ export class AppController {
     public getAvailableViewModes(): string[] {
         return this.viewModeManager.getAvailableViewModes().map(mode => mode.id);
     }
+
+    public getMcpService(): McpService {
+        return this.mcpService;
+    }
     
     /**
-     * Setup MCP streaming for real-time updates
+     * Setup MCP streaming for real-time updates and connection health monitoring
      */
     private setupMcpStreaming(): void {
         console.log('AppController: Setting up MCP streaming for real-time updates');
+
+        // Add connection health monitoring
+        this.mcpService.addConnectionHealthListener((healthMetrics) => {
+            console.log('AppController: Connection health update:', healthMetrics);
+            
+            // Update status manager with enhanced connection info
+            if (healthMetrics.reconnecting) {
+                this.statusManager.setMcpStatus(false); // Will trigger UI update
+            } else {
+                this.statusManager.setMcpStatus(healthMetrics.connected);
+            }
+            
+            // Update UI with detailed health metrics
+            // The UIManager will automatically get the health metrics when updating status
+        });
 
         // Add stream listener for tool execution results
         this.mcpService.addStreamListener('tool-result', (data) => {

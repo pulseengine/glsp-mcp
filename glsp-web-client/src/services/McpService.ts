@@ -168,4 +168,21 @@ export class McpService {
     public removeNotificationListener(method: string, listener: (notification: import('../mcp/client.js').McpNotification) => void): void {
         this.mcpClient.removeNotificationListener(method, listener);
     }
+
+    // Connection Health Monitoring
+    public addConnectionHealthListener(listener: import('../mcp/client.js').ConnectionHealthListener): void {
+        this.mcpClient.addConnectionHealthListener(listener);
+    }
+
+    public removeConnectionHealthListener(listener: import('../mcp/client.js').ConnectionHealthListener): void {
+        this.mcpClient.removeConnectionHealthListener(listener);
+    }
+
+    public getConnectionHealthMetrics(): import('../mcp/client.js').ConnectionHealthMetrics {
+        return this.mcpClient.getConnectionHealthMetrics();
+    }
+
+    public async manualReconnect(): Promise<void> {
+        return this.mcpClient.manualReconnect();
+    }
 }

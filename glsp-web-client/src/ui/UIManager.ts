@@ -911,14 +911,11 @@ export class UIManager {
     private updateUnifiedStatus(status: ConnectionStatus): void {
         console.log('UIManager: Updating unified status:', status);
         
-        // Update header status
-        const headerIndicator = document.querySelector('#connection-indicator');
-        const headerSpan = headerIndicator?.parentElement?.querySelector('span');
-        console.log('UIManager: Header indicator found:', !!headerIndicator, !!headerSpan);
-        if (headerIndicator && headerSpan) {
-            headerIndicator.className = `status-indicator ${status.mcp ? '' : 'disconnected'}`;
-            headerSpan.textContent = status.mcp ? 'MCP Connected' : 'MCP Disconnected';
-        }
+        // Get MCP health metrics
+        const healthMetrics = this.appController.getMcpService().getConnectionHealthMetrics();
+        
+        // Update enhanced header status chip
+        this.updateHeaderStatusChip(status, healthMetrics);
 
         // Update footer status  
         const footerIndicator = document.querySelector('#connection-indicator-status');
@@ -948,6 +945,132 @@ export class UIManager {
         // if (diagramControlsSection) {
         //     console.log('UIManager: Updating sidebar diagram controls status');
         // }
+    }
+
+    private updateHeaderStatusChip(status: ConnectionStatus, healthMetrics: import('../mcp/client.js').ConnectionHealthMetrics): void {
+        const statusChip = document.querySelector('.status-chip');
+        if (!statusChip) return;
+
+        // Create enhanced status chip HTML
+        const isConnected = healthMetrics.connected;
+        const isReconnecting = healthMetrics.reconnecting;
+        
+        let statusText = 'MCP Connected';
+        let statusClass = '';
+        let detailsText = '';
+        
+        if (isReconnecting) {
+            statusText = 'MCP Reconnecting';
+            statusClass = 'connecting';
+            const nextReconnect = healthMetrics.nextReconnectIn;
+            if (nextReconnect && nextReconnect > 0) {
+                detailsText = `Retry in ${Math.ceil(nextReconnect / 1000)}s (${healthMetrics.reconnectAttempts}/${healthMetrics.maxReconnectAttempts})`;
+            } else {
+                detailsText = `Attempt ${healthMetrics.reconnectAttempts}/${healthMetrics.maxReconnectAttempts}`;
+            }
+        } else if (!isConnected) {
+            statusText = 'MCP Disconnected';
+            statusClass = 'disconnected';
+            if (healthMetrics.reconnectAttempts >= healthMetrics.maxReconnectAttempts) {
+                detailsText = 'Max retries reached';
+            } else {
+                detailsText = 'Connection failed';
+            }
+        } else {
+            statusText = 'MCP Connected';
+            statusClass = '';
+            if (healthMetrics.lastPingTime !== undefined) {
+                detailsText = `${healthMetrics.lastPingTime}ms`;
+                if (healthMetrics.avgPingTime !== undefined) {
+                    detailsText += ` (avg: ${Math.round(healthMetrics.avgPingTime)}ms)`;
+                }
+            }
+        }
+
+        // Update status chip with enhanced information
+        statusChip.innerHTML = `
+            <div class="status-indicator ${statusClass}" id="connection-indicator"></div>
+            <div class="connection-details">
+                <span class="connection-main-status">${statusText}</span>
+                ${detailsText ? `<span class="connection-sub-status">${detailsText}</span>` : ''}
+            </div>
+            ${!isConnected && healthMetrics.reconnectAttempts < healthMetrics.maxReconnectAttempts ? 
+                `<button class="reconnect-btn" onclick="window.appController.getMcpService().manualReconnect().catch(console.error)" title="Manual Reconnect">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                        <path d="M21 3v5h-5"/>
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                        <path d="M3 21v-5h5"/>
+                    </svg>
+                </button>` : ''
+            }
+        `;
+
+        // Add enhanced CSS if not already added
+        if (!document.querySelector('#enhanced-status-styles')) {
+            const style = document.createElement('style');
+            style.id = 'enhanced-status-styles';
+            style.textContent = `
+                .status-chip {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px 12px;
+                    background: var(--bg-tertiary);
+                    border: 1px solid var(--border);
+                    border-radius: var(--radius-sm);
+                    font-size: 13px;
+                    min-width: 180px;
+                }
+                
+                .connection-details {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                    flex: 1;
+                }
+                
+                .connection-main-status {
+                    font-weight: 600;
+                    color: var(--text-primary);
+                    font-size: 13px;
+                }
+                
+                .connection-sub-status {
+                    font-size: 11px;
+                    color: var(--text-secondary);
+                    font-family: var(--font-mono);
+                }
+                
+                .reconnect-btn {
+                    background: transparent;
+                    border: 1px solid var(--border);
+                    color: var(--text-secondary);
+                    padding: 4px;
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s ease;
+                    width: 24px;
+                    height: 24px;
+                }
+                
+                .reconnect-btn:hover {
+                    background: var(--accent-wasm);
+                    border-color: var(--accent-wasm);
+                    color: white;
+                    transform: rotate(90deg);
+                }
+                
+                .status-indicator.connecting {
+                    background: var(--accent-warning);
+                    animation: pulse-glow 1.5s ease-in-out infinite;
+                }
+            `;
+            document.head.appendChild(style);
+        }
     }
 
     public updateStatus(message: string): void {

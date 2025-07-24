@@ -131,6 +131,19 @@ export interface PromptMessage {
     content: TextContent;
 }
 
+export interface ConnectionHealthMetrics {
+    connected: boolean;
+    reconnectAttempts: number;
+    maxReconnectAttempts: number;
+    lastPingTime?: number;
+    avgPingTime?: number;
+    sessionId?: string;
+    reconnecting: boolean;
+    nextReconnectIn?: number;
+}
+
+export type ConnectionHealthListener = (metrics: ConnectionHealthMetrics) => void;
+
 export class McpClient {
     private baseUrl: string;
     private requestId: number = 0;
@@ -140,11 +153,16 @@ export class McpClient {
     private reconnectAttempts: number = 0;
     private maxReconnectAttempts: number = 5;
     private connectionListeners: ((connected: boolean) => void)[] = [];
+    private connectionHealthListeners: ConnectionHealthListener[] = [];
     private sessionId: string | null = null;
     private notificationListeners: Map<string, ((notification: McpNotification) => void)[]> = new Map();
     private streamingController?: AbortController;
     private streamingActive: boolean = false;
     private streamListeners: Map<string, ((data: unknown) => void)[]> = new Map();
+    private lastPingTime?: number;
+    private pingTimes: number[] = [];
+    private reconnecting: boolean = false;
+    private reconnectStartTime?: number;
 
     constructor(baseUrl?: string) {
         // Use environment-appropriate base URL if not provided
@@ -175,11 +193,45 @@ export class McpClient {
         }
     }
 
+    public addConnectionHealthListener(listener: ConnectionHealthListener): void {
+        this.connectionHealthListeners.push(listener);
+        // Immediately call with current health metrics
+        listener(this.getConnectionHealthMetrics());
+    }
+
+    public removeConnectionHealthListener(listener: ConnectionHealthListener): void {
+        const index = this.connectionHealthListeners.indexOf(listener);
+        if (index > -1) {
+            this.connectionHealthListeners.splice(index, 1);
+        }
+    }
+
+    public getConnectionHealthMetrics(): ConnectionHealthMetrics {
+        return {
+            connected: this.connected,
+            reconnectAttempts: this.reconnectAttempts,
+            maxReconnectAttempts: this.maxReconnectAttempts,
+            lastPingTime: this.lastPingTime,
+            avgPingTime: this.pingTimes.length > 0 ? 
+                this.pingTimes.reduce((a, b) => a + b, 0) / this.pingTimes.length : undefined,
+            sessionId: this.sessionId || undefined,
+            reconnecting: this.reconnecting,
+            nextReconnectIn: this.reconnectTimeout ? 
+                Math.max(0, (this.reconnectStartTime || 0) + (1000 * Math.pow(2, this.reconnectAttempts - 1)) - Date.now()) : undefined
+        };
+    }
+
+    private notifyConnectionHealthChange(): void {
+        const metrics = this.getConnectionHealthMetrics();
+        this.connectionHealthListeners.forEach(listener => listener(metrics));
+    }
+
     private notifyConnectionChange(connected: boolean): void {
         if (this.connected !== connected) {
             this.connected = connected;
             console.log(`MCP connection status changed: ${connected ? 'Connected' : 'Disconnected'}`);
             this.connectionListeners.forEach(listener => listener(connected));
+            this.notifyConnectionHealthChange();
         }
     }
 
@@ -323,18 +375,27 @@ export class McpClient {
 
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             console.log('Max reconnection attempts reached');
+            this.reconnecting = false;
+            this.notifyConnectionHealthChange();
             return;
         }
 
         const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000); // Exponential backoff, max 30s
         this.reconnectAttempts++;
+        this.reconnecting = true;
+        this.reconnectStartTime = Date.now();
 
         console.log(`Scheduling reconnection attempt ${this.reconnectAttempts} in ${delay}ms`);
+        this.notifyConnectionHealthChange();
+        
         this.reconnectTimeout = window.setTimeout(async () => {
             try {
                 await this.initialize();
+                this.reconnecting = false;
+                this.notifyConnectionHealthChange();
             } catch (error) {
                 console.error('Reconnection attempt failed:', error);
+                this.scheduleReconnect(); // Continue trying
             }
         }, delay);
     }
@@ -373,15 +434,37 @@ export class McpClient {
     }
 
     async ping(): Promise<unknown> {
-        // Try ping first, fall back to a simpler method if ping isn't supported
+        const startTime = Date.now();
         try {
-            return await this.sendRequest('ping', {});
-        } catch (error: unknown) {
-            // If ping method is not supported, try listing tools as a health check
-            if (error instanceof Error && error.message && error.message.includes('Unknown method')) {
-                console.log('MCP server does not support ping method, using listTools as health check');
-                return await this.listTools();
+            // Try ping first, fall back to a simpler method if ping isn't supported
+            let result;
+            try {
+                result = await this.sendRequest('ping', {});
+            } catch (error: unknown) {
+                // If ping method is not supported, try listing tools as a health check
+                if (error instanceof Error && error.message && error.message.includes('Unknown method')) {
+                    console.log('MCP server does not support ping method, using listTools as health check');
+                    result = await this.listTools();
+                } else {
+                    throw error;
+                }
             }
+            
+            // Record successful ping time
+            const pingTime = Date.now() - startTime;
+            this.lastPingTime = pingTime;
+            this.pingTimes.push(pingTime);
+            
+            // Keep only last 10 ping times for average calculation
+            if (this.pingTimes.length > 10) {
+                this.pingTimes.shift();
+            }
+            
+            this.notifyConnectionHealthChange();
+            return result;
+            
+        } catch (error) {
+            // Don't update ping metrics on failure
             throw error;
         }
     }
@@ -411,6 +494,8 @@ export class McpClient {
             
             // Explicitly set connection to true after successful initialization
             console.log('MCP client successfully initialized and connected');
+            this.reconnectAttempts = 0; // Reset on successful connection
+            this.reconnecting = false;
             this.notifyConnectionChange(true);
             
             // Start pinging to maintain connection
@@ -660,5 +745,33 @@ export class McpClient {
 
     public isStreaming(): boolean {
         return this.streamingActive;
+    }
+
+    /**
+     * Manually trigger reconnection (for user-initiated reconnect button)
+     */
+    public async manualReconnect(): Promise<void> {
+        console.log('McpClient: Manual reconnect triggered');
+        
+        // Clear any existing reconnection timers
+        if (this.reconnectTimeout) {
+            clearTimeout(this.reconnectTimeout);
+            this.reconnectTimeout = undefined;
+        }
+        
+        // Reset reconnect attempts for manual retry
+        this.reconnectAttempts = 0;
+        this.reconnecting = true;
+        this.notifyConnectionHealthChange();
+        
+        try {
+            await this.initialize();
+        } catch (error) {
+            console.error('Manual reconnection failed:', error);
+            // Don't automatically schedule another reconnect for manual attempts
+            this.reconnecting = false;
+            this.notifyConnectionHealthChange();
+            throw error;
+        }
     }
 }
