@@ -124,12 +124,11 @@ export class AppController {
             );
             console.log('AppController: Modern sidebar initialized');
             
-            // Mount toolbar in modern UI - insert before canvas
-            const canvasContainer = document.querySelector('.canvas-container');
-            if (canvasContainer && canvasContainer.parentElement) {
-                const toolbarElement = this.uiManager.getToolbarElement();
-                canvasContainer.parentElement.insertBefore(toolbarElement, canvasContainer);
-                console.log('AppController: Toolbar mounted in modern UI');
+            // Mount toolbar in sidebar for modern UI
+            const toolbarContainer = document.getElementById('toolbar-container');
+            if (toolbarContainer) {
+                toolbarContainer.appendChild(this.uiManager.getToolbarElement());
+                console.log('AppController: Toolbar mounted in modern UI sidebar');
             }
         } else {
             // Fallback to old UI
