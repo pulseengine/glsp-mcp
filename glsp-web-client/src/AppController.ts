@@ -123,6 +123,14 @@ export class AppController {
                 async (newType: string) => await this.handleDiagramTypeChange(newType)
             );
             console.log('AppController: Modern sidebar initialized');
+            
+            // Mount toolbar in modern UI - insert before canvas
+            const canvasContainer = document.querySelector('.canvas-container');
+            if (canvasContainer && canvasContainer.parentElement) {
+                const toolbarElement = this.uiManager.getToolbarElement();
+                canvasContainer.parentElement.insertBefore(toolbarElement, canvasContainer);
+                console.log('AppController: Toolbar mounted in modern UI');
+            }
         } else {
             // Fallback to old UI
             console.log('AppController: Using legacy UI (sidebar not found)');

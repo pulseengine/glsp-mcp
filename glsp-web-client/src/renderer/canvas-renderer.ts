@@ -1981,33 +1981,6 @@ export class CanvasRenderer {
         }
     }
     
-    private getConnectionPoint(bounds: Bounds, targetCenter: Position): Position {
-        const centerX = bounds.x + bounds.width / 2;
-        const centerY = bounds.y + bounds.height / 2;
-        
-        const dx = targetCenter.x - centerX;
-        const dy = targetCenter.y - centerY;
-        
-        // Calculate intersection with rectangle edges
-        const hw = bounds.width / 2;
-        const hh = bounds.height / 2;
-        
-        if (Math.abs(dx) / hw > Math.abs(dy) / hh) {
-            // Intersect with left or right edge
-            const t = hw / Math.abs(dx);
-            return {
-                x: centerX + Math.sign(dx) * hw,
-                y: centerY + dy * t
-            };
-        } else {
-            // Intersect with top or bottom edge
-            const t = hh / Math.abs(dy);
-            return {
-                x: centerX + dx * t,
-                y: centerY + Math.sign(dy) * hh
-            };
-        }
-    }
     
     private drawWitArrowhead(start: Position, end: Position, color: string, isSelected: boolean, isHovered: boolean): void {
         const angle = Math.atan2(end.y - start.y, end.x - start.x);

@@ -89,6 +89,9 @@ export class UIManager {
         // Initialize header icon manager
         this.headerIconManager = new HeaderIconManager();
         
+        // Setup responsive header coordination
+        this.setupResponsiveHeaderCoordination();
+        
         // Set up diagram status listener for header icons
         this.statusListener = (status: CombinedStatus) => {
             this.updateDiagramHeaderIcon(status);
@@ -1922,9 +1925,263 @@ export class UIManager {
         console.log('UIManager: Workspace UI refresh completed');
     }
 
+    private setupResponsiveHeaderCoordination(): void {
+        console.log('UIManager: Setting up responsive header coordination');
+        
+        // Setup mobile menu button handler
+        this.setupMobileMenuButton();
+        
+        // Setup responsive layout monitoring
+        this.setupResponsiveLayoutMonitoring();
+        
+        // Setup mobile-specific UI adaptations
+        this.setupMobileUIAdaptations();
+        
+        console.log('UIManager: Responsive header coordination setup complete');
+    }
+    
+    private setupMobileMenuButton(): void {
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        if (mobileMenuBtn) {
+            console.log('UIManager: Setting up mobile menu button handler');
+            
+            mobileMenuBtn.addEventListener('click', () => {
+                console.log('UIManager: Mobile menu button clicked');
+                this.toggleMobileMenu();
+            });
+            
+            // Add visual feedback
+            mobileMenuBtn.addEventListener('touchstart', () => {
+                mobileMenuBtn.style.transform = 'scale(0.95)';
+            });
+            
+            mobileMenuBtn.addEventListener('touchend', () => {
+                setTimeout(() => {
+                    mobileMenuBtn.style.transform = 'scale(1)';
+                }, 100);
+            });
+        } else {
+            console.warn('UIManager: Mobile menu button not found in DOM');
+        }
+    }
+    
+    private setupResponsiveLayoutMonitoring(): void {
+        // Monitor viewport changes for responsive layout coordination
+        const handleViewportChange = () => {
+            const isMobile = window.innerWidth <= 768;
+            const isTablet = window.innerWidth > 768 && window.innerWidth <= 1199;
+            
+            console.log('UIManager: Viewport changed - Mobile:', isMobile, 'Tablet:', isTablet);
+            
+            // Coordinate sidebar behavior with header responsive state
+            if (this.sidebar) {
+                if (isMobile) {
+                    // On mobile, ensure sidebar is collapsed by default
+                    if (!this.sidebar.isCollapsed()) {
+                        console.log('UIManager: Auto-collapsing sidebar for mobile');
+                        this.sidebar.collapse();
+                    }
+                }
+            }
+            
+            // Update AI panel behavior for mobile
+            if (isMobile && this.aiAssistantPanel) {
+                // Ensure AI panel is positioned appropriately for mobile
+                this.adaptAIPanelForMobile();
+            }
+        };
+        
+        // Use ResizeObserver if available, otherwise fallback to resize event
+        if (typeof ResizeObserver !== 'undefined') {
+            const resizeObserver = new ResizeObserver(handleViewportChange);
+            resizeObserver.observe(document.body);
+        } else {
+            window.addEventListener('resize', () => {
+                setTimeout(handleViewportChange, 100);
+            });
+        }
+        
+        // Initial check
+        setTimeout(handleViewportChange, 100);
+    }
+    
+    private setupMobileUIAdaptations(): void {
+        // Setup touch-friendly interactions and mobile-specific UI behavior
+        const setupTouchFriendlyInteractions = () => {
+            // Make toolbar buttons more touch-friendly on mobile
+            const toolbarButtons = this.toolbarElement.querySelectorAll('button');
+            toolbarButtons.forEach(button => {
+                button.addEventListener('touchstart', () => {
+                    button.style.transform = 'scale(0.95)';
+                });
+                
+                button.addEventListener('touchend', () => {
+                    setTimeout(() => {
+                        button.style.transform = 'scale(1)';
+                    }, 100);
+                });
+            });
+        };
+        
+        // Setup when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupTouchFriendlyInteractions);
+        } else {
+            setupTouchFriendlyInteractions();
+        }
+    }
+    
+    private toggleMobileMenu(): void {
+        console.log('UIManager: Toggling mobile menu');
+        
+        if (this.sidebar) {
+            const isCollapsed = this.sidebar.isCollapsed();
+            
+            if (isCollapsed) {
+                console.log('UIManager: Expanding sidebar for mobile menu');
+                this.sidebar.expand();
+                // On mobile, add overlay to close sidebar when clicking outside
+                this.addMobileMenuOverlay();
+            } else {
+                console.log('UIManager: Collapsing sidebar for mobile menu');
+                this.sidebar.collapse();
+                this.removeMobileMenuOverlay();
+            }
+        } else {
+            console.warn('UIManager: Cannot toggle mobile menu - sidebar not initialized');
+        }
+    }
+    
+    private addMobileMenuOverlay(): void {
+        // Only add overlay on mobile/tablet
+        if (window.innerWidth > 768) return;
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'mobile-menu-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            backdrop-filter: blur(2px);
+            animation: fadeIn 0.2s ease;
+        `;
+        
+        // Close menu when overlay is clicked
+        overlay.addEventListener('click', () => {
+            this.toggleMobileMenu();
+        });
+        
+        document.body.appendChild(overlay);
+        
+        // Prevent body scroll when menu is open
+        document.body.style.overflow = 'hidden';
+    }
+    
+    private removeMobileMenuOverlay(): void {
+        const overlay = document.getElementById('mobile-menu-overlay');
+        if (overlay) {
+            overlay.remove();
+            document.body.style.overflow = '';
+        }
+    }
+    
+    private adaptAIPanelForMobile(): void {
+        if (!this.aiAssistantPanel || window.innerWidth > 768) return;
+        
+        const panelElement = this.aiAssistantPanel.getElement();
+        if (panelElement) {
+            // Ensure AI panel takes appropriate mobile dimensions
+            panelElement.style.cssText += `
+                position: fixed;
+                top: 60px;
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+                width: auto;
+                height: auto;
+                max-width: none;
+                max-height: none;
+                border-radius: 12px;
+            `;
+        }
+    }
+    
+    // Public methods for responsive header coordination
+    
+    /**
+     * Check if the current viewport is in mobile mode
+     */
+    public isMobileViewport(): boolean {
+        return window.innerWidth <= 768;
+    }
+    
+    /**
+     * Check if the current viewport is in tablet mode
+     */
+    public isTabletViewport(): boolean {
+        return window.innerWidth > 768 && window.innerWidth <= 1199;
+    }
+    
+    /**
+     * Get the current responsive breakpoint
+     */
+    public getCurrentBreakpoint(): string {
+        const width = window.innerWidth;
+        if (width <= 480) return 'mobile';
+        if (width <= 768) return 'tablet';
+        if (width <= 1199) return 'desktop-small';
+        return 'desktop';
+    }
+    
+    /**
+     * Force close mobile menu (useful for navigation actions)
+     */
+    public closeMobileMenu(): void {
+        if (this.isMobileViewport() && this.sidebar && !this.sidebar.isCollapsed()) {
+            console.log('UIManager: Force closing mobile menu');
+            this.sidebar.collapse();
+            this.removeMobileMenuOverlay();
+        }
+    }
+    
+    /**
+     * Coordinate responsive behavior between UI components
+     */
+    public coordinateResponsiveBehavior(): void {
+        const breakpoint = this.getCurrentBreakpoint();
+        console.log('UIManager: Coordinating responsive behavior for breakpoint:', breakpoint);
+        
+        // Update header icon manager about current breakpoint
+        // The HeaderIconManager handles its own responsive behavior,
+        // but we can trigger updates if needed
+        
+        // Coordinate AI panel responsive behavior
+        if (breakpoint === 'mobile') {
+            this.adaptAIPanelForMobile();
+        }
+        
+        // Coordinate sidebar responsive behavior
+        if (this.sidebar) {
+            if (breakpoint === 'mobile' && !this.sidebar.isCollapsed()) {
+                // Auto-collapse on mobile unless explicitly opened via menu
+                const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+                if (!mobileMenuOverlay) {
+                    this.sidebar.collapse();
+                }
+            }
+        }
+    }
+    
     public destroy(): void {
         if (this.statusListener) {
             statusManager.removeListener(this.statusListener);
         }
+        
+        // Clean up mobile menu overlay if it exists
+        this.removeMobileMenuOverlay();
     }
 }

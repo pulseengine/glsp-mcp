@@ -133,6 +133,332 @@
                 opacity: 1;
             }
         }
+
+        /* =============================================
+         * RESPONSIVE HEADER SYSTEM
+         * ============================================= */
+        
+        /* Mobile Menu Button */
+        .mobile-menu-btn {
+            display: none;
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+        }
+        
+        .mobile-menu-btn:hover {
+            background: var(--bg-tertiary);
+            transform: scale(1.05);
+        }
+        
+        /* Overflow Menu for Header Actions */
+        .header-overflow-menu {
+            position: relative;
+            display: none;
+        }
+        
+        .header-overflow-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .header-overflow-btn:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .header-overflow-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            min-width: 200px;
+            z-index: 1001;
+            padding: 8px 0;
+            opacity: 0;
+            transform: translateY(-10px);
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+        
+        .header-overflow-dropdown.open {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: all;
+        }
+        
+        .header-overflow-item {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        
+        .header-overflow-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        /* =============================================
+         * RESPONSIVE BREAKPOINTS
+         * ============================================= */
+
+        /* Large Desktop (1200px+) */
+        @media (min-width: 1200px) {
+            .header {
+                padding: 0 32px;
+                height: 64px;
+            }
+            
+            .brand-name {
+                font-size: 20px;
+            }
+            
+            .header-actions {
+                gap: 20px;
+            }
+        }
+
+        /* Desktop/Tablet (769px - 1199px) */
+        @media (max-width: 1199px) and (min-width: 769px) {
+            .header {
+                padding: 0 24px;
+                height: 60px;
+            }
+            
+            .header-actions {
+                gap: 16px;
+            }
+        }
+
+        /* Tablet Portrait (481px - 768px) */
+        @media (max-width: 768px) {
+            .header {
+                padding: 0 16px;
+                height: 56px;
+            }
+            
+            /* Hide brand name on tablet */
+            .brand-name {
+                display: none;
+            }
+            
+            /* Compact brand icon */
+            .brand-icon {
+                width: 28px;
+                height: 28px;
+                font-size: 14px;
+            }
+            
+            /* Reduce header actions gap */
+            .header-actions {
+                gap: 12px;
+            }
+            
+            /* Show overflow menu */
+            .header-overflow-menu {
+                display: block;
+            }
+            
+            /* Hide theme control in overflow menu */
+            .theme-control {
+                display: none;
+            }
+            
+            /* Compact status chip */
+            .status-chip {
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+            
+            .status-chip span {
+                display: none;
+            }
+            
+            .status-indicator {
+                margin-right: 0;
+            }
+        }
+
+        /* Mobile Landscape (481px - 640px) */
+        @media (max-width: 640px) and (min-width: 481px) {
+            .header {
+                padding: 0 12px;
+                height: 52px;
+            }
+            
+            /* Further compact brand */
+            .brand-icon {
+                width: 24px;
+                height: 24px;
+                font-size: 12px;
+            }
+            
+            /* Smaller actions gap */
+            .header-actions {
+                gap: 8px;
+            }
+        }
+
+        /* Mobile Portrait (320px - 480px) */
+        @media (max-width: 480px) {
+            .header {
+                padding: 0 12px;
+                height: 48px;
+                position: relative;
+            }
+            
+            /* Show mobile menu button */
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            /* Ultra-compact brand */
+            .brand {
+                gap: 8px;
+            }
+            
+            .brand-icon {
+                width: 24px;
+                height: 24px;
+                font-size: 12px;
+            }
+            
+            /* Priority-based hiding */
+            .header-actions {
+                gap: 6px;
+                flex: 1;
+                justify-content: flex-end;
+                max-width: 60%;
+            }
+            
+            /* Hide view switcher on very small screens */
+            #view-switcher-container {
+                display: none;
+            }
+            
+            /* Only show essential items */
+            .status-chip {
+                font-size: 11px;
+                padding: 4px 8px;
+                min-width: 24px;
+                justify-content: center;
+            }
+            
+            .status-chip span {
+                display: none;
+            }
+            
+            /* Header icons management */
+            .header-icon {
+                font-size: 14px !important;
+                padding: 6px !important;
+                min-width: 32px !important;
+                height: 32px !important;
+            }
+            
+            .header-icon-text {
+                display: none !important;
+            }
+        }
+
+        /* Ultra-small screens (below 320px) */
+        @media (max-width: 320px) {
+            .header {
+                padding: 0 8px;
+                height: 44px;
+            }
+            
+            .brand-icon {
+                width: 20px;
+                height: 20px;
+                font-size: 10px;
+            }
+            
+            .header-actions {
+                gap: 4px;
+                max-width: 50%;
+            }
+            
+            .status-chip {
+                padding: 2px 6px;
+                font-size: 10px;
+            }
+        }
+
+        /* Touch-friendly adjustments */
+        @media (hover: none) and (pointer: coarse) {
+            /* Increase touch targets on touch devices */
+            .mobile-menu-btn,
+            .header-overflow-btn,
+            .theme-control,
+            .status-chip {
+                min-height: 44px;
+                min-width: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .header-icon {
+                min-height: 44px !important;
+                min-width: 44px !important;
+            }
+            
+            /* Larger spacing for touch */
+            .header-actions {
+                gap: 8px;
+            }
+            
+            /* Better tap feedback */
+            .mobile-menu-btn:active,
+            .header-overflow-btn:active,
+            .header-overflow-item:active {
+                background: var(--bg-tertiary);
+                transform: scale(0.95);
+            }
+        }
+
+        /* Landscape orientation specific adjustments */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .header {
+                height: 44px;
+                padding: 0 12px;
+            }
+            
+            .brand-icon {
+                width: 20px;
+                height: 20px;
+                font-size: 10px;
+            }
+            
+            .header-actions {
+                gap: 6px;
+            }
+        }
         
         /* Header icons animations */
         @keyframes slideInFromTop {
@@ -1646,6 +1972,7 @@
 <body>
     <div class="header">
         <div class="brand">
+            <button class="mobile-menu-btn" id="mobile-menu-btn" title="Menu">☰</button>
             <div class="brand-icon">W</div>
             <div class="brand-name">WASM Component Designer</div>
         </div>
@@ -1655,6 +1982,17 @@
                 <div class="theme-icon">☀️</div>
                 <input type="range" class="theme-slider" id="theme-slider" min="0" max="6" value="6" step="1">
                 <div class="theme-icon">🌙</div>
+            </div>
+            <div class="header-overflow-menu">
+                <button class="header-overflow-btn" id="header-overflow-btn" title="More options">
+                    ⋯
+                </button>
+                <div class="header-overflow-dropdown" id="header-overflow-dropdown">
+                    <button class="header-overflow-item" id="overflow-theme-control" title="Change theme">
+                        <span>🎨</span>
+                        <span>Theme</span>
+                    </button>
+                </div>
             </div>
             <div class="status-chip">
                 <div class="status-indicator" id="connection-indicator"></div>
