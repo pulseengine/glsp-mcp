@@ -7,6 +7,7 @@ import { DiagramModel, ModelElement, Node, Edge, Bounds, Position } from '../mod
 import { SelectionManager } from '../selection/selection-manager.js';
 import { InteractionMode, InteractionModeManager } from '../interaction/interaction-mode.js';
 import { WasmComponentRendererV2 } from '../diagrams/wasm-component-renderer-v2.js';
+import { UMLComponentRenderer, UMLRenderingContext } from '../diagrams/uml-component-renderer.js';
 import { getDiagramTypeConfig } from '../diagrams/diagram-type-registry.js';
 import { ComponentInterface } from '../types/wasm-component.js';
 import { WitInterface, WitFunction } from '../diagrams/interface-compatibility.js';
@@ -155,6 +156,7 @@ export class CanvasRenderer {
             this.showInterfaceNames = customEvent.detail.show;
             this.render(); // Re-render to show/hide interface names
         });
+
         
         // Initialize from localStorage
         this.showInterfaceNames = localStorage.getItem('showInterfaceNames') === 'true';
@@ -949,6 +951,51 @@ export class CanvasRenderer {
 
         // Check if this is a WASM component type
         if (this.isWasmComponentType(nodeType)) {
+            // Use UML rendering if in UML interface view mode
+            if (this.currentViewMode === 'uml-interface') {
+                const umlContext: UMLRenderingContext = {
+                    ctx: this.ctx,
+                    scale: this.options.scale,
+                    isSelected,
+                    isHovered,
+                    style: {
+                        primaryColor: '#2D3748',
+                        backgroundColor: '#FFFFFF',
+                        borderColor: '#4A5568',
+                        textColor: '#1A202C',
+                        secondaryTextColor: '#4A5568',
+                        compartmentLineColor: '#CBD5E0',
+                        interfaceColor: '#3182CE',
+                        selectedColor: '#3182CE',
+                        fontFamily: 'Arial, sans-serif',
+                        fontSize: 12,
+                        headerFontSize: 14,
+                        lineHeight: 1.4,
+                        padding: 12,
+                        compartmentPadding: 8,
+                        borderWidth: 1,
+                        cornerRadius: 4
+                    },
+                    renderMode: 'component',
+                    showStereotypes: true,
+                    showVisibility: true,
+                    showMethodSignatures: true
+                };
+
+                // Calculate optimal size for UML component to accommodate interface data
+                const optimalSize = UMLComponentRenderer.calculateOptimalSize(node, umlContext.style, umlContext);
+                const umlBounds = {
+                    x: node.bounds.x,
+                    y: node.bounds.y,
+                    width: Math.max(node.bounds.width, optimalSize.width),
+                    height: Math.max(node.bounds.height, optimalSize.height)
+                };
+                
+                UMLComponentRenderer.renderUMLComponent(node, umlBounds, umlContext);
+                return;
+            }
+
+            // Default WASM component rendering
             const colors = WasmComponentRendererV2.getDefaultColors();
             
             // Check if component file is missing or not loaded
@@ -1015,7 +1062,9 @@ export class CanvasRenderer {
             'host-component',
             'import-interface',
             'export-interface',
-            'composition-root'
+            'composition-root',
+            'uml-component',
+            'uml-interface'
         ].includes(nodeType);
     }
     
@@ -1236,6 +1285,12 @@ export class CanvasRenderer {
         // Check if this is a WIT interface edge type
         if (this.isWitEdgeType(edgeType)) {
             this.drawWitEdge(edge, sourceElement, targetElement, isSelected, isHovered);
+            return;
+        }
+        
+        // Check if this is a UML edge type
+        if (this.isUMLEdgeType(edgeType)) {
+            this.drawUMLEdge(edge, sourceElement, targetElement, isSelected, isHovered);
             return;
         }
 
@@ -1903,6 +1958,149 @@ export class CanvasRenderer {
             'wit-contains',
             'wit-type-ref'
         ].includes(edgeType);
+    }
+
+    private isUMLEdgeType(edgeType: string): boolean {
+        return [
+            'uml-dependency',
+            'uml-realization',
+            'uml-association',
+            'uml-aggregation',
+            'uml-composition'
+        ].includes(edgeType);
+    }
+
+    private drawUMLEdge(edge: Edge, sourceElement: ModelElement, targetElement: ModelElement, isSelected: boolean, isHovered: boolean): void {
+        const edgeType = edge.type || edge.element_type || '';
+        
+        // Set styling based on UML edge type
+        if (edgeType === 'uml-dependency') {
+            this.ctx.strokeStyle = isSelected ? '#E53E3E' : '#DD6B20';
+            this.ctx.lineWidth = isSelected ? 3 : 2;
+            this.ctx.setLineDash([8, 4]); // Dashed line for dependencies
+        } else if (edgeType === 'uml-realization') {
+            this.ctx.strokeStyle = isSelected ? '#2B6CB0' : '#3182CE';
+            this.ctx.lineWidth = isSelected ? 3 : 2;
+            this.ctx.setLineDash([]); // Solid line for realizations
+        } else {
+            this.ctx.strokeStyle = isSelected ? this.options.selectedColor : this.options.edgeColor;
+            this.ctx.lineWidth = isSelected ? 3 : 2;
+            this.ctx.setLineDash([]);
+        }
+
+        // Calculate connection points based on interface type
+        let sourceCenter, targetCenter;
+        
+        if (edgeType === 'uml-dependency') {
+            // From interface (right edge) to component (left edge) 
+            sourceCenter = {
+                x: sourceElement.bounds.x + sourceElement.bounds.width,
+                y: sourceElement.bounds.y + sourceElement.bounds.height / 2
+            };
+            targetCenter = {
+                x: targetElement.bounds.x,
+                y: targetElement.bounds.y + targetElement.bounds.height / 2
+            };
+        } else if (edgeType === 'uml-realization') {
+            // From component (right edge) to interface (left edge)
+            sourceCenter = {
+                x: sourceElement.bounds.x + sourceElement.bounds.width,
+                y: sourceElement.bounds.y + sourceElement.bounds.height / 2
+            };
+            targetCenter = {
+                x: targetElement.bounds.x,
+                y: targetElement.bounds.y + targetElement.bounds.height / 2
+            };
+        } else {
+            // Default center-to-center connection
+            sourceCenter = {
+                x: sourceElement.bounds.x + sourceElement.bounds.width / 2,
+                y: sourceElement.bounds.y + sourceElement.bounds.height / 2
+            };
+            targetCenter = {
+                x: targetElement.bounds.x + targetElement.bounds.width / 2,
+                y: targetElement.bounds.y + targetElement.bounds.height / 2
+            };
+        }
+
+        // Draw orthogonal line with corners
+        this.drawOrthogonalConnection(sourceCenter, targetCenter);
+
+        // Draw appropriate arrowhead based on UML edge type
+        if (edgeType === 'uml-dependency') {
+            this.drawUMLDependencyArrow(targetCenter, sourceCenter);
+        } else if (edgeType === 'uml-realization') {
+            this.drawUMLRealizationArrow(targetCenter, sourceCenter);
+        }
+
+        // Reset line dash
+        this.ctx.setLineDash([]);
+
+        // Draw edge label if present
+        const edgeLabel = edge.label || edge.properties?.label;
+        if (edgeLabel) {
+            const midPoint = {
+                x: (sourceCenter.x + targetCenter.x) / 2,
+                y: (sourceCenter.y + targetCenter.y) / 2 - 12
+            };
+            this.drawEdgeLabel(edgeLabel, midPoint);
+        }
+    }
+
+    private drawOrthogonalConnection(source: Position, target: Position): void {
+        this.ctx.beginPath();
+        this.ctx.moveTo(source.x, source.y);
+        
+        // Calculate midpoint for orthogonal routing
+        const midX = source.x + (target.x - source.x) / 2;
+        
+        // Draw L-shaped connection with corners
+        this.ctx.lineTo(midX, source.y);  // Horizontal from source
+        this.ctx.lineTo(midX, target.y);  // Vertical to target level
+        this.ctx.lineTo(target.x, target.y);  // Horizontal to target
+        
+        this.ctx.stroke();
+    }
+
+    private drawUMLDependencyArrow(target: Position, source: Position): void {
+        const angle = Math.atan2(target.y - source.y, target.x - source.x);
+        const arrowLength = 12;
+        const arrowAngle = Math.PI / 6;
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(
+            target.x - arrowLength * Math.cos(angle - arrowAngle),
+            target.y - arrowLength * Math.sin(angle - arrowAngle)
+        );
+        this.ctx.lineTo(target.x, target.y);
+        this.ctx.lineTo(
+            target.x - arrowLength * Math.cos(angle + arrowAngle),
+            target.y - arrowLength * Math.sin(angle + arrowAngle)
+        );
+        this.ctx.stroke();
+    }
+
+    private drawUMLRealizationArrow(target: Position, source: Position): void {
+        const angle = Math.atan2(target.y - source.y, target.x - source.x);
+        const arrowLength = 12;
+        const arrowAngle = Math.PI / 6;
+
+        // Draw hollow triangle
+        this.ctx.beginPath();
+        this.ctx.moveTo(target.x, target.y);
+        this.ctx.lineTo(
+            target.x - arrowLength * Math.cos(angle - arrowAngle),
+            target.y - arrowLength * Math.sin(angle - arrowAngle)
+        );
+        this.ctx.lineTo(
+            target.x - arrowLength * Math.cos(angle + arrowAngle),
+            target.y - arrowLength * Math.sin(angle + arrowAngle)
+        );
+        this.ctx.closePath();
+        
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.fill();
+        this.ctx.stroke();
     }
     
     private drawWitEdge(edge: Edge, sourceElement: ModelElement, targetElement: ModelElement, isSelected: boolean, isHovered: boolean): void {

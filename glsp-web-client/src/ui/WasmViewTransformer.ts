@@ -39,7 +39,7 @@ export class WasmViewTransformer implements ViewTransformer {
      * Check if transformation between view modes is supported
      */
     public canTransform(fromView: string, toView: string, diagram: DiagramModel): boolean {
-        const supportedViews = ['component', 'wit-interface', 'wit-dependencies'];
+        const supportedViews = ['component', 'uml-interface', 'wit-dependencies'];
         
         if (!supportedViews.includes(fromView) || !supportedViews.includes(toView)) {
             return false;
@@ -62,8 +62,8 @@ export class WasmViewTransformer implements ViewTransformer {
             switch (targetView) {
                 case 'component':
                     return this.transformToComponentView(diagram);
-                case 'wit-interface':
-                    return this.transformToInterfaceView(diagram);
+                case 'uml-interface':
+                    return this.transformToUMLView(diagram);
                 case 'wit-dependencies':
                     return this.transformToDependencyView(diagram);
                 default:
@@ -104,6 +104,150 @@ export class WasmViewTransformer implements ViewTransformer {
                     showComponents: true,
                     showInterfaces: true,
                     showConnections: true
+                }
+            }
+        };
+    }
+
+    /**
+     * Transform to UML view (UML-style class diagram rendering with separate interface components)
+     */
+    private transformToUMLView(diagram: DiagramModel): ViewTransformationResult {
+        const elements = Object.values(diagram.elements);
+        const wasmComponents = this.extractWasmComponents(elements);
+        const umlElements: ModelElement[] = [];
+        
+        let nodeIdCounter = 1;
+        let edgeIdCounter = 1;
+        
+        // Base positioning
+        let currentX = 50;
+        let currentY = 50;
+        const componentSpacing = 400;
+        const interfaceSpacing = 200;
+        
+        wasmComponents.forEach((component, componentIndex) => {
+            // Create main component (simplified - just core component info)
+            const mainComponent: ModelElement = {
+                id: `uml-component-${nodeIdCounter++}`,
+                type: 'uml-component',
+                element_type: 'uml-component',
+                label: component.name,
+                bounds: {
+                    x: currentX,
+                    y: currentY,
+                    width: 200,
+                    height: 100
+                },
+                properties: {
+                    originalId: component.id,
+                    componentType: 'main',
+                    category: component.properties?.category,
+                    status: component.properties?.status,
+                    componentPath: component.properties?.componentPath
+                }
+            };
+            umlElements.push(mainComponent);
+            
+            // Create separate interface components
+            let interfaceY = currentY;
+            const interfaces = component.interfaces || [];
+            
+            // Group interfaces by type for better layout
+            const importInterfaces = interfaces.filter(iface => iface.type === 'import');
+            const exportInterfaces = interfaces.filter(iface => iface.type === 'export');
+            
+            // Create import interface components (left side)
+            let leftX = currentX - interfaceSpacing;
+            importInterfaces.forEach((iface, index) => {
+                const interfaceComponent: ModelElement = {
+                    id: `uml-interface-${nodeIdCounter++}`,
+                    type: 'uml-interface',
+                    element_type: 'uml-interface',
+                    label: iface.name,
+                    bounds: {
+                        x: leftX,
+                        y: interfaceY + (index * 120),
+                        width: 180,
+                        height: Math.max(80, (iface.functions?.length || 0) * 20 + 60)
+                    },
+                    properties: {
+                        interfaceType: 'import',
+                        parentComponent: component.id,
+                        functions: iface.functions || [],
+                        types: iface.types || []
+                    }
+                };
+                umlElements.push(interfaceComponent);
+                
+                // Create connection edge from interface to component
+                const edge: ModelElement = {
+                    id: `uml-edge-${edgeIdCounter++}`,
+                    type: 'uml-dependency',
+                    element_type: 'uml-dependency',
+                    sourceId: interfaceComponent.id,
+                    targetId: mainComponent.id,
+                    label: 'requires',
+                    properties: {
+                        edgeType: 'import'
+                    }
+                };
+                umlElements.push(edge);
+            });
+            
+            // Create export interface components (right side)
+            let rightX = currentX + 220;
+            exportInterfaces.forEach((iface, index) => {
+                const interfaceComponent: ModelElement = {
+                    id: `uml-interface-${nodeIdCounter++}`,
+                    type: 'uml-interface',
+                    element_type: 'uml-interface',
+                    label: iface.name,
+                    bounds: {
+                        x: rightX,
+                        y: interfaceY + (index * 120),
+                        width: 180,
+                        height: Math.max(80, (iface.functions?.length || 0) * 20 + 60)
+                    },
+                    properties: {
+                        interfaceType: 'export',
+                        parentComponent: component.id,
+                        functions: iface.functions || [],
+                        types: iface.types || []
+                    }
+                };
+                umlElements.push(interfaceComponent);
+                
+                // Create connection edge from component to interface
+                const edge: ModelElement = {
+                    id: `uml-edge-${edgeIdCounter++}`,
+                    type: 'uml-realization',
+                    element_type: 'uml-realization',
+                    sourceId: mainComponent.id,
+                    targetId: interfaceComponent.id,
+                    label: 'provides',
+                    properties: {
+                        edgeType: 'export'
+                    }
+                };
+                umlElements.push(edge);
+            });
+            
+            // Move to next component position
+            currentY += Math.max(200, Math.max(importInterfaces.length, exportInterfaces.length) * 120 + 100);
+        });
+        
+        return {
+            success: true,
+            transformedElements: umlElements,
+            additionalData: {
+                viewMode: 'uml-interface',
+                renderingHints: {
+                    showUMLStyle: true,
+                    showStereotypes: true,
+                    showVisibility: true,
+                    showMethodSignatures: true,
+                    showSeparateInterfaces: true
                 }
             }
         };

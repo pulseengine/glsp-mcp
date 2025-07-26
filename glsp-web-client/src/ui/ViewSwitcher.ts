@@ -23,10 +23,10 @@ export class ViewSwitcher {
             tooltip: 'View WASM components and their connections'
         },
         {
-            id: 'wit-interface',
-            label: 'Interface View',
-            icon: '🔷',
-            tooltip: 'View WebAssembly Interface Types structure'
+            id: 'uml-interface',
+            label: 'UML View',
+            icon: '📐',
+            tooltip: 'View components in UML-style class diagram format'
         },
         {
             id: 'wit-dependencies',
