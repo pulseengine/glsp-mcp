@@ -5,15 +5,20 @@ export interface HeaderIcon {
     color?: string;
     onClick: () => void;
     onClose?: () => void;
+    priority?: number; // 1 = high (always visible), 2 = medium, 3 = low (first to overflow)
 }
 
 export class HeaderIconManager {
     private container: HTMLElement;
     private icons: Map<string, HeaderIcon> = new Map();
+    private overflowItems: HTMLElement[] = [];
+    private resizeObserver?: ResizeObserver;
+    private currentBreakpoint: string = 'desktop';
     
     constructor() {
         this.container = this.createContainer();
         this.insertIntoHeader();
+        this.setupResponsiveBehavior();
     }
     
     private createContainer(): HTMLElement {
@@ -113,6 +118,7 @@ export class HeaderIconManager {
         
         // Title
         const titleSpan = document.createElement('span');
+        titleSpan.className = 'header-icon-text';
         titleSpan.textContent = icon.title;
         titleSpan.style.cssText = `
             font-weight: 500;
@@ -288,6 +294,308 @@ export class HeaderIconManager {
         elements.forEach((element, index) => {
             console.log(`HeaderIconManager: Force removing element ${index + 1}`);
             element.remove();
+        });
+    }
+
+    private setupResponsiveBehavior(): void {
+        // Set up resize observer for responsive handling
+        if (typeof ResizeObserver !== 'undefined') {
+            this.resizeObserver = new ResizeObserver(() => {
+                this.handleResponsiveLayout();
+            });
+            this.resizeObserver.observe(document.querySelector('.header-actions') || document.body);
+        }
+
+        // Listen for window resize as fallback
+        window.addEventListener('resize', () => {
+            setTimeout(() => this.handleResponsiveLayout(), 100);
+        });
+
+        // Setup overflow menu interactions
+        this.setupOverflowMenu();
+
+        // Initial layout check
+        setTimeout(() => this.handleResponsiveLayout(), 100);
+    }
+
+    private setupOverflowMenu(): void {
+        const overflowBtn = document.getElementById('header-overflow-btn');
+        const overflowDropdown = document.getElementById('header-overflow-dropdown');
+
+        if (overflowBtn && overflowDropdown) {
+            overflowBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = overflowDropdown.classList.contains('open');
+                
+                if (isOpen) {
+                    this.closeOverflowMenu();
+                } else {
+                    this.openOverflowMenu();
+                }
+            });
+
+            // Close overflow menu when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!overflowDropdown.contains(e.target as Node) && !overflowBtn.contains(e.target as Node)) {
+                    this.closeOverflowMenu();
+                }
+            });
+
+            // Handle theme control in overflow menu
+            const overflowThemeControl = document.getElementById('overflow-theme-control');
+            if (overflowThemeControl) {
+                overflowThemeControl.addEventListener('click', () => {
+                    this.showThemeSliderPopup();
+                    this.closeOverflowMenu();
+                });
+            }
+        }
+    }
+
+    private openOverflowMenu(): void {
+        const dropdown = document.getElementById('header-overflow-dropdown');
+        if (dropdown) {
+            dropdown.classList.add('open');
+            // Update overflow menu content
+            this.updateOverflowMenuContent();
+        }
+    }
+
+    private closeOverflowMenu(): void {
+        const dropdown = document.getElementById('header-overflow-dropdown');
+        if (dropdown) {
+            dropdown.classList.remove('open');
+        }
+    }
+
+    private updateOverflowMenuContent(): void {
+        const dropdown = document.getElementById('header-overflow-dropdown');
+        if (!dropdown) return;
+
+        // Clear existing content except theme control
+        const existingItems = dropdown.querySelectorAll('.header-overflow-item:not(#overflow-theme-control)');
+        existingItems.forEach(item => item.remove());
+
+        // Add overflow icons
+        this.overflowItems.forEach(iconData => {
+            const iconElement = iconData.cloneNode(true) as HTMLElement;
+            iconElement.className = 'header-overflow-item';
+            iconElement.style.cssText = `
+                padding: 12px 16px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                cursor: pointer;
+                transition: background-color 0.2s ease;
+                border: none;
+                background: transparent;
+                width: 100%;
+                text-align: left;
+                color: var(--text-primary);
+                font-size: 14px;
+            `;
+            
+            // Get original icon data
+            const iconId = iconData.dataset.iconId;
+            const originalIcon = iconId ? this.icons.get(iconId) : null;
+            
+            if (originalIcon) {
+                iconElement.addEventListener('click', () => {
+                    originalIcon.onClick();
+                    this.closeOverflowMenu();
+                });
+                
+                iconElement.addEventListener('mouseenter', () => {
+                    iconElement.style.background = 'var(--bg-tertiary)';
+                });
+                
+                iconElement.addEventListener('mouseleave', () => {
+                    iconElement.style.background = 'transparent';
+                });
+            }
+
+            dropdown.appendChild(iconElement);
+        });
+    }
+
+    private showThemeSliderPopup(): void {
+        // Create a popup theme selector for mobile
+        const popup = document.createElement('div');
+        popup.className = 'theme-slider-popup';
+        popup.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            min-width: 250px;
+        `;
+
+        const title = document.createElement('h3');
+        title.textContent = 'Select Theme';
+        title.style.cssText = `
+            margin: 0 0 16px 0;
+            color: var(--text-primary);
+            font-size: 16px;
+        `;
+
+        const themeSlider = document.querySelector('#theme-slider')?.cloneNode(true) as HTMLInputElement;
+        if (themeSlider) {
+            themeSlider.style.cssText = `
+                width: 100%;
+                margin: 16px 0;
+            `;
+            
+            // Copy event handlers
+            const originalSlider = document.querySelector('#theme-slider') as HTMLInputElement;
+            if (originalSlider) {
+                themeSlider.addEventListener('input', (e) => {
+                    originalSlider.value = themeSlider.value;
+                    originalSlider.dispatchEvent(new Event('input'));
+                });
+            }
+        }
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'Close';
+        closeBtn.style.cssText = `
+            background: var(--accent-wasm);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            width: 100%;
+            margin-top: 16px;
+        `;
+
+        closeBtn.addEventListener('click', () => {
+            popup.remove();
+        });
+
+        popup.appendChild(title);
+        if (themeSlider) {
+            popup.appendChild(themeSlider);
+        }
+        popup.appendChild(closeBtn);
+
+        document.body.appendChild(popup);
+
+        // Close on backdrop click
+        popup.addEventListener('click', (e) => {
+            if (e.target === popup) {
+                popup.remove();
+            }
+        });
+    }
+
+    private handleResponsiveLayout(): void {
+        const windowWidth = window.innerWidth;
+        let newBreakpoint = 'desktop';
+
+        if (windowWidth <= 480) {
+            newBreakpoint = 'mobile';
+        } else if (windowWidth <= 768) {
+            newBreakpoint = 'tablet';
+        } else if (windowWidth <= 1199) {
+            newBreakpoint = 'desktop-small';
+        }
+
+        if (newBreakpoint !== this.currentBreakpoint) {
+            this.currentBreakpoint = newBreakpoint;
+            this.updateIconsForBreakpoint();
+        }
+
+        // Check for overflow
+        this.handleIconOverflow();
+    }
+
+    private updateIconsForBreakpoint(): void {
+        const iconElements = this.container.querySelectorAll('.header-icon') as NodeListOf<HTMLElement>;
+        
+        iconElements.forEach(iconElement => {
+            const iconId = iconElement.dataset.iconId;
+            if (!iconId) return;
+
+            const titleSpan = iconElement.querySelector('.header-icon-text') as HTMLElement;
+            
+            switch (this.currentBreakpoint) {
+                case 'mobile':
+                    // Hide text on mobile, make icons compact
+                    if (titleSpan) titleSpan.style.display = 'none';
+                    iconElement.style.padding = '6px';
+                    iconElement.style.minWidth = '32px';
+                    iconElement.style.height = '32px';
+                    break;
+                    
+                case 'tablet':
+                    // Show icons but compact text
+                    if (titleSpan) {
+                        titleSpan.style.display = 'block';
+                        titleSpan.style.maxWidth = '60px';
+                    }
+                    iconElement.style.padding = '6px 8px';
+                    break;
+                    
+                default:
+                    // Full desktop layout
+                    if (titleSpan) {
+                        titleSpan.style.display = 'block';
+                        titleSpan.style.maxWidth = '80px';
+                    }
+                    iconElement.style.padding = '8px 12px';
+                    break;
+            }
+        });
+    }
+
+    private handleIconOverflow(): void {
+        if (this.currentBreakpoint === 'desktop') {
+            // No overflow handling needed on desktop
+            this.overflowItems = [];
+            return;
+        }
+
+        const headerActions = document.querySelector('.header-actions') as HTMLElement;
+        if (!headerActions) return;
+
+        const availableWidth = headerActions.offsetWidth;
+        const statusChip = headerActions.querySelector('.status-chip') as HTMLElement;
+        const overflowMenu = headerActions.querySelector('.header-overflow-menu') as HTMLElement;
+        
+        let usedWidth = (statusChip?.offsetWidth || 0) + (overflowMenu?.offsetWidth || 0);
+        const iconElements = Array.from(this.container.querySelectorAll('.header-icon')) as HTMLElement[];
+        
+        // Sort icons by priority (lower number = higher priority)
+        const sortedIconElements = iconElements.sort((a, b) => {
+            const iconIdA = a.dataset.iconId;
+            const iconIdB = b.dataset.iconId;
+            const iconA = iconIdA ? this.icons.get(iconIdA) : null;
+            const iconB = iconIdB ? this.icons.get(iconIdB) : null;
+            const priorityA = iconA?.priority || 2;
+            const priorityB = iconB?.priority || 2;
+            return priorityA - priorityB;
+        });
+
+        this.overflowItems = [];
+        
+        sortedIconElements.forEach(iconElement => {
+            const iconWidth = iconElement.offsetWidth + 8; // Include gap
+            
+            if (usedWidth + iconWidth > availableWidth * 0.6) { // Use 60% of available width
+                // Move to overflow
+                iconElement.style.display = 'none';
+                this.overflowItems.push(iconElement);
+            } else {
+                // Keep visible
+                iconElement.style.display = 'flex';
+                usedWidth += iconWidth;
+            }
         });
     }
 }

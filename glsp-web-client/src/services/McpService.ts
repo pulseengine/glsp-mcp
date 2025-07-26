@@ -142,4 +142,47 @@ export class McpService {
     public getClient(): McpClient {
         return this.mcpClient;
     }
+
+    // MCP Streaming Support
+    public addStreamListener(streamType: string, listener: (data: unknown) => void): void {
+        this.mcpClient.addStreamListener(streamType, listener);
+    }
+
+    public removeStreamListener(streamType: string, listener: (data: unknown) => void): void {
+        this.mcpClient.removeStreamListener(streamType, listener);
+    }
+
+    public isStreaming(): boolean {
+        return this.mcpClient.isStreaming();
+    }
+
+    // MCP Notification Support
+    public async sendNotification(method: string, params?: Record<string, unknown>): Promise<void> {
+        return this.mcpClient.sendNotification(method, params);
+    }
+
+    public addNotificationListener(method: string, listener: (notification: import('../mcp/client.js').McpNotification) => void): void {
+        this.mcpClient.addNotificationListener(method, listener);
+    }
+
+    public removeNotificationListener(method: string, listener: (notification: import('../mcp/client.js').McpNotification) => void): void {
+        this.mcpClient.removeNotificationListener(method, listener);
+    }
+
+    // Connection Health Monitoring
+    public addConnectionHealthListener(listener: import('../mcp/client.js').ConnectionHealthListener): void {
+        this.mcpClient.addConnectionHealthListener(listener);
+    }
+
+    public removeConnectionHealthListener(listener: import('../mcp/client.js').ConnectionHealthListener): void {
+        this.mcpClient.removeConnectionHealthListener(listener);
+    }
+
+    public getConnectionHealthMetrics(): import('../mcp/client.js').ConnectionHealthMetrics {
+        return this.mcpClient.getConnectionHealthMetrics();
+    }
+
+    public async manualReconnect(): Promise<void> {
+        return this.mcpClient.manualReconnect();
+    }
 }

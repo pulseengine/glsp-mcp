@@ -2,7 +2,7 @@
   "id": "63c02063-8b46-4cd6-a8eb-abbe28f0950c",
   "name": "New WASM 2025-06-28",
   "diagram_type": "wasm-component",
-  "revision": 274,
+  "revision": 279,
   "created_at": "2025-06-28T12:07:26.320304Z",
   "updated_at": "2025-06-28T12:07:26.320307Z",
   "nodes": [
@@ -11,6 +11,10 @@
       "node_type": "wasm-component",
       "label": "adas_camera_front_ecu",
       "properties": {
+        "status": "unloaded",
+        "componentPath": "../workspace/adas-wasm-components/target/wasm32-wasip2/release/adas_camera_front_ecu.wasm",
+        "label": "adas_camera_front_ecu",
+        "category": "Vision",
         "interfaces": [
           {
             "functions": [
@@ -315,10 +319,6 @@
             "name": "process-frame"
           }
         ],
-        "componentPath": "../workspace/adas-wasm-components/target/wasm32-wasip2/release/adas_camera_front_ecu.wasm",
-        "label": "adas_camera_front_ecu",
-        "status": "unloaded",
-        "category": "Vision",
         "componentName": "adas_camera_front_ecu"
       }
     },
@@ -327,9 +327,7 @@
       "node_type": "wasm-component",
       "label": "adas_planning_decision",
       "properties": {
-        "componentPath": "../workspace/adas-wasm-components/target/wasm32-wasip2/release/adas_planning_decision.wasm",
         "label": "adas_planning_decision",
-        "componentName": "adas_planning_decision",
         "interfaces": [
           {
             "functions": [],
@@ -707,6 +705,512 @@
           }
         ],
         "category": "Automotive",
+        "status": "unloaded",
+        "componentName": "adas_planning_decision",
+        "componentPath": "../workspace/adas-wasm-components/target/wasm32-wasip2/release/adas_planning_decision.wasm"
+      }
+    },
+    {
+      "id": "544fa4e1-c701-4a34-8f4a-7a2de83d0e9b",
+      "node_type": "wasm-component",
+      "label": "wasi-cli@0.2.0",
+      "properties": {
+        "label": "wasi-cli@0.2.0",
+        "category": "Automotive",
+        "componentName": "wasi-cli@0.2.0",
+        "interfaces": [
+          {
+            "functions": [
+              {
+                "name": "get-environment",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "get-arguments",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "initial-cwd",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "export",
+            "name": "environment"
+          },
+          {
+            "functions": [
+              {
+                "name": "exit",
+                "params": [
+                  {
+                    "name": "status",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": []
+              }
+            ],
+            "interface_type": "export",
+            "name": "exit"
+          },
+          {
+            "functions": [
+              {
+                "name": "run",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "export",
+            "name": "run"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-stdin",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "export",
+            "name": "stdin"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-stdout",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "export",
+            "name": "stdout"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-stderr",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "export",
+            "name": "stderr"
+          },
+          {
+            "functions": [],
+            "interface_type": "export",
+            "name": "terminal-input"
+          },
+          {
+            "functions": [],
+            "interface_type": "export",
+            "name": "terminal-output"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-terminal-stdin",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "export",
+            "name": "terminal-stdin"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-terminal-stdout",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "export",
+            "name": "terminal-stdout"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-terminal-stderr",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "export",
+            "name": "terminal-stderr"
+          }
+        ],
+        "status": "unloaded",
+        "componentPath": "../workspace/adas-wasm-components/bazel-adas-wasm-components/external/rules_wasm_component++wasm_toolchain+adas_tools_toolchains/wit-bindgen-src/crates/guest-rust/wasi-cli@0.2.0.wasm"
+      }
+    },
+    {
+      "id": "198410f9-187f-4eb8-b8b3-dac8a7abd151",
+      "node_type": "wasm-component",
+      "label": "adas_camera_front_ecu-component",
+      "properties": {
+        "componentPath": "../workspace/adas-wasm-components/target/wac-temp/adas_camera_front_ecu-component.wasm",
+        "category": "Vision",
+        "componentName": "adas_camera_front_ecu-component",
+        "interfaces": [
+          {
+            "functions": [
+              {
+                "name": "get-environment",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "environment"
+          },
+          {
+            "functions": [
+              {
+                "name": "exit",
+                "params": [
+                  {
+                    "name": "status",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": []
+              }
+            ],
+            "interface_type": "import",
+            "name": "exit"
+          },
+          {
+            "functions": [],
+            "interface_type": "import",
+            "name": "error"
+          },
+          {
+            "functions": [
+              {
+                "name": "[method]output-stream.check-write",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "[method]output-stream.write",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  },
+                  {
+                    "name": "contents",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "[method]output-stream.blocking-write-and-flush",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  },
+                  {
+                    "name": "contents",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "[method]output-stream.blocking-flush",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "streams"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-stdin",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "stdin"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-stdout",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "stdout"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-stderr",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "stderr"
+          },
+          {
+            "functions": [],
+            "interface_type": "import",
+            "name": "wall-clock"
+          },
+          {
+            "functions": [
+              {
+                "name": "[method]descriptor.write-via-stream",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  },
+                  {
+                    "name": "offset",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "[method]descriptor.append-via-stream",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "[method]descriptor.get-type",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "[method]descriptor.stat",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "filesystem-error-code",
+                "params": [
+                  {
+                    "name": "err",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "types"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-directories",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "preopens"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-random-bytes",
+                "params": [
+                  {
+                    "name": "len",
+                    "param_type": "u64"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "random"
+          },
+          {
+            "functions": [
+              {
+                "name": "process-frame",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "string"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "export",
+            "name": "process-frame"
+          }
+        ],
+        "label": "adas_camera_front_ecu-component",
         "status": "unloaded"
       }
     },
@@ -1087,326 +1591,10 @@
             "name": "performance-monitoring"
           }
         ],
-        "category": "Automotive",
         "componentName": "adas_can_gateway",
         "componentPath": "../workspace/adas-wasm-components/target/wasm32-wasip2/release/deps/adas_can_gateway.wasm",
-        "label": "adas_can_gateway"
-      }
-    },
-    {
-      "id": "198410f9-187f-4eb8-b8b3-dac8a7abd151",
-      "node_type": "wasm-component",
-      "label": "adas_camera_front_ecu-component",
-      "properties": {
-        "label": "adas_camera_front_ecu-component",
-        "componentName": "adas_camera_front_ecu-component",
-        "status": "unloaded",
-        "category": "Vision",
-        "interfaces": [
-          {
-            "functions": [
-              {
-                "name": "get-environment",
-                "params": [],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              }
-            ],
-            "interface_type": "import",
-            "name": "environment"
-          },
-          {
-            "functions": [
-              {
-                "name": "exit",
-                "params": [
-                  {
-                    "name": "status",
-                    "param_type": "custom"
-                  }
-                ],
-                "returns": []
-              }
-            ],
-            "interface_type": "import",
-            "name": "exit"
-          },
-          {
-            "functions": [],
-            "interface_type": "import",
-            "name": "error"
-          },
-          {
-            "functions": [
-              {
-                "name": "[method]output-stream.check-write",
-                "params": [
-                  {
-                    "name": "self",
-                    "param_type": "custom"
-                  }
-                ],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              },
-              {
-                "name": "[method]output-stream.write",
-                "params": [
-                  {
-                    "name": "self",
-                    "param_type": "custom"
-                  },
-                  {
-                    "name": "contents",
-                    "param_type": "custom"
-                  }
-                ],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              },
-              {
-                "name": "[method]output-stream.blocking-write-and-flush",
-                "params": [
-                  {
-                    "name": "self",
-                    "param_type": "custom"
-                  },
-                  {
-                    "name": "contents",
-                    "param_type": "custom"
-                  }
-                ],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              },
-              {
-                "name": "[method]output-stream.blocking-flush",
-                "params": [
-                  {
-                    "name": "self",
-                    "param_type": "custom"
-                  }
-                ],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              }
-            ],
-            "interface_type": "import",
-            "name": "streams"
-          },
-          {
-            "functions": [
-              {
-                "name": "get-stdin",
-                "params": [],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              }
-            ],
-            "interface_type": "import",
-            "name": "stdin"
-          },
-          {
-            "functions": [
-              {
-                "name": "get-stdout",
-                "params": [],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              }
-            ],
-            "interface_type": "import",
-            "name": "stdout"
-          },
-          {
-            "functions": [
-              {
-                "name": "get-stderr",
-                "params": [],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              }
-            ],
-            "interface_type": "import",
-            "name": "stderr"
-          },
-          {
-            "functions": [],
-            "interface_type": "import",
-            "name": "wall-clock"
-          },
-          {
-            "functions": [
-              {
-                "name": "[method]descriptor.write-via-stream",
-                "params": [
-                  {
-                    "name": "self",
-                    "param_type": "custom"
-                  },
-                  {
-                    "name": "offset",
-                    "param_type": "custom"
-                  }
-                ],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              },
-              {
-                "name": "[method]descriptor.append-via-stream",
-                "params": [
-                  {
-                    "name": "self",
-                    "param_type": "custom"
-                  }
-                ],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              },
-              {
-                "name": "[method]descriptor.get-type",
-                "params": [
-                  {
-                    "name": "self",
-                    "param_type": "custom"
-                  }
-                ],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              },
-              {
-                "name": "[method]descriptor.stat",
-                "params": [
-                  {
-                    "name": "self",
-                    "param_type": "custom"
-                  }
-                ],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              },
-              {
-                "name": "filesystem-error-code",
-                "params": [
-                  {
-                    "name": "err",
-                    "param_type": "custom"
-                  }
-                ],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              }
-            ],
-            "interface_type": "import",
-            "name": "types"
-          },
-          {
-            "functions": [
-              {
-                "name": "get-directories",
-                "params": [],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              }
-            ],
-            "interface_type": "import",
-            "name": "preopens"
-          },
-          {
-            "functions": [
-              {
-                "name": "get-random-bytes",
-                "params": [
-                  {
-                    "name": "len",
-                    "param_type": "u64"
-                  }
-                ],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "custom"
-                  }
-                ]
-              }
-            ],
-            "interface_type": "import",
-            "name": "random"
-          },
-          {
-            "functions": [
-              {
-                "name": "process-frame",
-                "params": [],
-                "returns": [
-                  {
-                    "name": "result",
-                    "param_type": "string"
-                  }
-                ]
-              }
-            ],
-            "interface_type": "export",
-            "name": "process-frame"
-          }
-        ],
-        "componentPath": "../workspace/adas-wasm-components/target/wac-temp/adas_camera_front_ecu-component.wasm"
+        "label": "adas_can_gateway",
+        "category": "Automotive"
       }
     }
   ],

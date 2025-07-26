@@ -123,6 +123,13 @@ export class AppController {
                 async (newType: string) => await this.handleDiagramTypeChange(newType)
             );
             console.log('AppController: Modern sidebar initialized');
+            
+            // Mount toolbar in sidebar for modern UI
+            const toolbarContainer = document.getElementById('toolbar-container');
+            if (toolbarContainer) {
+                toolbarContainer.appendChild(this.uiManager.getToolbarElement());
+                console.log('AppController: Toolbar mounted in modern UI sidebar');
+            }
         } else {
             // Fallback to old UI
             console.log('AppController: Using legacy UI (sidebar not found)');
@@ -339,6 +346,9 @@ export class AppController {
                 statusManager.setMcpStatus(connected);
             });
 
+            // Setup MCP streaming for real-time updates
+            this.setupMcpStreaming();
+
             // Setup AI connection monitoring
             this.aiService.addConnectionListener((connected: boolean) => {
                 statusManager.setAiStatus(connected);
@@ -369,21 +379,32 @@ export class AppController {
             // Show the AI panel
             this.uiManager.showAIPanel();
 
-            const connections = await this.aiService.checkConnections();
+            // Check connections to initialize connection monitoring
+            await this.aiService.checkConnections();
             // AI status will be set automatically by the connection listener
 
-            if (connections.ollama) {
-                const models = await this.aiService.getAvailableModels();
-                const currentModel = this.aiService.getCurrentModel();
-                this.uiManager.updateAIModelSelect(models, currentModel, (modelName) => {
-                    this.aiService.setCurrentModel(modelName);
-                });
-            }
+            // Always attempt to load models and set up the model selection, regardless of current connection status
+            await this.setupAIModelSelection();
+
+            // Set up a listener for when AI connection status changes to retry model loading
+            this.aiService.addConnectionListener((connected: boolean) => {
+                if (connected) {
+                    console.log('AI service connected, reloading models...');
+                    this.setupAIModelSelection().catch(error => {
+                        console.error('Failed to reload AI models after connection:', error);
+                    });
+                }
+            });
 
             await this.wasmRuntimeManager.initializeEnhancedWasmComponents();
             
             // Connect header icon manager to WASM runtime manager
             this.wasmRuntimeManager.setHeaderIconManager(this.uiManager.getHeaderIconManager());
+            
+            // Initialize edge creation type with default value
+            const initialEdgeCreationType = this.uiManager.getCurrentEdgeCreationType();
+            this.renderer.setEdgeCreationType(initialEdgeCreationType);
+            console.log('AppController: Initialized edge creation type:', initialEdgeCreationType);
             
             // Load WASM components into the sidebar if modern sidebar is active
             await this.loadWasmComponentsToSidebar();
@@ -536,6 +557,35 @@ export class AppController {
         }
     }
 
+    private async setupAIModelSelection(): Promise<void> {
+        try {
+            console.log('AppController: Setting up AI model selection...');
+            
+            // Try to get available models
+            const models = await this.aiService.getAvailableModels();
+            const currentModel = this.aiService.getCurrentModel();
+            
+            console.log('AppController: Available models:', models);
+            console.log('AppController: Current model:', currentModel);
+            
+            // Set up the model selection dropdown with change handler
+            this.uiManager.updateAIModelSelect(models, currentModel, (modelName) => {
+                console.log('AppController: Model changed to:', modelName);
+                this.aiService.setCurrentModel(modelName);
+                this.uiManager.addAIMessage('AI', `🤖 Switched to model: ${modelName}`);
+            });
+            
+        } catch (error) {
+            console.warn('AppController: Failed to load AI models (Ollama may be offline):', error);
+            
+            // Set up dropdown with offline state but keep the change handler for when it comes online
+            this.uiManager.updateAIModelSelect([], '', (modelName) => {
+                console.log('AppController: Model changed to:', modelName);
+                this.aiService.setCurrentModel(modelName);
+                this.uiManager.addAIMessage('AI', `🤖 Switched to model: ${modelName}`);
+            });
+        }
+    }
 
     private async createNewDiagramOfType(diagramType: string): Promise<void> {
         try {
@@ -1270,7 +1320,101 @@ export class AppController {
     public getAvailableViewModes(): string[] {
         return this.viewModeManager.getAvailableViewModes().map(mode => mode.id);
     }
+
+    public getMcpService(): McpService {
+        return this.mcpService;
+    }
+
+    public getAIService(): AIService {
+        return this.aiService;
+    }
     
+    /**
+     * Setup MCP streaming for real-time updates and connection health monitoring
+     */
+    private setupMcpStreaming(): void {
+        console.log('AppController: Setting up MCP streaming for real-time updates');
+
+        // Add connection health monitoring
+        this.mcpService.addConnectionHealthListener((healthMetrics) => {
+            console.log('AppController: Connection health update:', healthMetrics);
+            
+            // Update status manager with enhanced connection info
+            if (healthMetrics.reconnecting) {
+                statusManager.setMcpStatus(false); // Will trigger UI update
+            } else {
+                statusManager.setMcpStatus(healthMetrics.connected);
+            }
+            
+            // Update UI with detailed health metrics
+            // The UIManager will automatically get the health metrics when updating status
+        });
+
+        // Add stream listener for tool execution results
+        this.mcpService.addStreamListener('tool-result', (data) => {
+            console.log('AppController: Received tool execution result:', data);
+            try {
+                const result = data as { toolName: string; result: unknown; diagramId?: string };
+                if (result.diagramId && result.diagramId === this.diagramService.getCurrentDiagramId()) {
+                    // Reload the current diagram if it was affected by the tool execution
+                    this.diagramService.loadDiagram(result.diagramId).then(() => {
+                        console.log('AppController: Diagram reloaded after tool execution');
+                    });
+                }
+            } catch (error) {
+                console.error('Error handling tool result stream:', error);
+            }
+        });
+
+        // Add stream listener for status updates
+        this.mcpService.addStreamListener('status-update', (data) => {
+            console.log('AppController: Received status update:', data);
+            try {
+                const status = data as { message: string; type: 'info' | 'warning' | 'error' };
+                this.uiManager.updateStatus(status.message);
+            } catch (error) {
+                console.error('Error handling status update stream:', error);
+            }
+        });
+
+        // Add stream listener for AI assistant updates
+        this.mcpService.addStreamListener('ai-response', (data) => {
+            console.log('AppController: Received AI response stream:', data);
+            // This will be used when AI assistant gets streaming responses
+        });
+
+        // Add notification listeners for server-initiated updates
+        this.mcpService.addNotificationListener('server-message', (notification) => {
+            console.log('AppController: Received server message notification:', notification);
+            try {
+                const params = notification.params as { message: string; type: 'info' | 'warning' | 'error' };
+                this.uiManager.updateStatus(params.message);
+                
+                // Show additional UI feedback for important messages
+                if (params.type === 'error') {
+                    console.error('Server error message:', params.message);
+                } else if (params.type === 'warning') {
+                    console.warn('Server warning message:', params.message);
+                }
+            } catch (error) {
+                console.error('Error handling server-message notification:', error);
+            }
+        });
+
+        this.mcpService.addNotificationListener('collaboration-update', (notification) => {
+            console.log('AppController: Received collaboration update notification:', notification);
+            try {
+                const params = notification.params as { userId: string; action: string; diagramId?: string };
+                // This can be used for collaborative editing features
+                console.log(`Collaboration: User ${params.userId} performed ${params.action}`);
+            } catch (error) {
+                console.error('Error handling collaboration-update notification:', error);
+            }
+        });
+
+        console.log('AppController: MCP streaming and notification setup complete');
+    }
+
     /**
      * Log environment information for debugging
      */

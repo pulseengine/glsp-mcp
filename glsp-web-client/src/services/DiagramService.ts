@@ -30,6 +30,187 @@ export class DiagramService {
     constructor(mcpService: McpService) {
         this.mcpService = mcpService;
         this.diagramState = new DiagramState();
+        this.initializeStreaming();
+    }
+
+    private initializeStreaming(): void {
+        // Add stream listeners for real-time diagram updates
+        this.mcpService.addStreamListener('diagram-update', (data) => {
+            this.handleDiagramUpdate(data);
+        });
+
+        this.mcpService.addStreamListener('component-status', (data) => {
+            this.handleComponentStatusUpdate(data);
+        });
+
+        this.mcpService.addStreamListener('validation-result', (data) => {
+            this.handleValidationResult(data);
+        });
+
+        // Add notification listeners for bidirectional communication
+        this.mcpService.addNotificationListener('diagram-changed', (notification) => {
+            this.handleDiagramChangedNotification(notification);
+        });
+
+        this.mcpService.addNotificationListener('diagram-deleted', (notification) => {
+            this.handleDiagramDeletedNotification(notification);
+        });
+
+        this.mcpService.addNotificationListener('validation-complete', (notification) => {
+            this.handleValidationCompleteNotification(notification);
+        });
+
+        console.log('DiagramService: Streaming and notification listeners initialized');
+    }
+
+    private handleDiagramChangedNotification(notification: import('../mcp/client.js').McpNotification): void {
+        console.log('DiagramService: Received diagram-changed notification:', notification);
+        try {
+            const params = notification.params as { diagramId: string; changeType: string };
+            if (params.diagramId === this.currentDiagramId) {
+                // Reload the current diagram to reflect changes
+                console.log(`DiagramService: Reloading diagram ${params.diagramId} due to ${params.changeType} notification`);
+                this.loadDiagram(params.diagramId);
+            }
+        } catch (error) {
+            console.error('Error handling diagram-changed notification:', error);
+        }
+    }
+
+    private handleDiagramDeletedNotification(notification: import('../mcp/client.js').McpNotification): void {
+        console.log('DiagramService: Received diagram-deleted notification:', notification);
+        try {
+            const params = notification.params as { diagramId: string };
+            if (params.diagramId === this.currentDiagramId) {
+                // Clear the current diagram if it was deleted
+                console.log(`DiagramService: Current diagram ${params.diagramId} was deleted`);
+                this.setCurrentDiagramId(undefined);
+                // Notify UI components that diagram was deleted
+                this.notifyDiagramDeleted(params.diagramId);
+            }
+        } catch (error) {
+            console.error('Error handling diagram-deleted notification:', error);
+        }
+    }
+
+    private handleValidationCompleteNotification(notification: import('../mcp/client.js').McpNotification): void {
+        console.log('DiagramService: Received validation-complete notification:', notification);
+        try {
+            const params = notification.params as { diagramId: string; validationResults: unknown };
+            // This can be used to update UI with validation results
+            console.log(`DiagramService: Validation completed for diagram ${params.diagramId}`);
+        } catch (error) {
+            console.error('Error handling validation-complete notification:', error);
+        }
+    }
+
+    private notifyDiagramDeleted(diagramId: string): void {
+        // Dispatch a custom event that UI components can listen to
+        const event = new CustomEvent('diagram-deleted', { 
+            detail: { diagramId } 
+        });
+        window.dispatchEvent(event);
+    }
+
+    private handleDiagramUpdate(data: unknown): void {
+        console.log('DiagramService: Received diagram update:', data);
+        try {
+            const updateData = data as { diagramId: string; changes: unknown };
+            if (updateData.diagramId && this.currentDiagramId === updateData.diagramId) {
+                // Reload the current diagram to get latest changes
+                this.loadDiagram(updateData.diagramId);
+            }
+        } catch (error) {
+            console.error('Error handling diagram update:', error);
+        }
+    }
+
+    private handleComponentStatusUpdate(data: unknown): void {
+        console.log('DiagramService: Received component status update:', data);
+        try {
+            const statusData = data as { 
+                componentId: string; 
+                status: 'loading' | 'ready' | 'error' | 'executing';
+                message?: string;
+                diagramId?: string;
+            };
+            
+            if (statusData.diagramId && statusData.diagramId === this.currentDiagramId) {
+                // Dispatch custom event for UI components to listen to
+                const event = new CustomEvent('wasm-component-status-update', {
+                    detail: {
+                        componentId: statusData.componentId,
+                        status: statusData.status,
+                        message: statusData.message,
+                        timestamp: new Date().toISOString()
+                    }
+                });
+                window.dispatchEvent(event);
+                
+                console.log(`DiagramService: Component ${statusData.componentId} status changed to ${statusData.status}`);
+                
+                // Update status manager if it's an error
+                if (statusData.status === 'error' && statusData.message) {
+                    statusManager.setComponentError(statusData.componentId, statusData.message);
+                }
+            }
+        } catch (error) {
+            console.error('Error handling component status update:', error);
+        }
+    }
+
+    private handleValidationResult(data: unknown): void {
+        console.log('DiagramService: Received validation result:', data);
+        try {
+            const validationData = data as {
+                diagramId: string;
+                validationId?: string;
+                issues: Array<{
+                    elementId?: string;
+                    severity: 'error' | 'warning' | 'info';
+                    message: string;
+                    category: string;
+                }>;
+                timestamp: string;
+                status: 'in-progress' | 'completed' | 'failed';
+            };
+            
+            if (validationData.diagramId === this.currentDiagramId) {
+                // Dispatch custom event for UI components to display validation results
+                const event = new CustomEvent('diagram-validation-result', {
+                    detail: {
+                        diagramId: validationData.diagramId,
+                        validationId: validationData.validationId,
+                        issues: validationData.issues,
+                        status: validationData.status,
+                        timestamp: validationData.timestamp
+                    }
+                });
+                window.dispatchEvent(event);
+                
+                // Update status manager with validation results
+                const errorCount = validationData.issues.filter(issue => issue.severity === 'error').length;
+                const warningCount = validationData.issues.filter(issue => issue.severity === 'warning').length;
+                
+                if (validationData.status === 'completed') {
+                    if (errorCount > 0) {
+                        statusManager.setValidationStatus('error', `${errorCount} errors, ${warningCount} warnings`);
+                    } else if (warningCount > 0) {
+                        statusManager.setValidationStatus('warning', `${warningCount} warnings`);
+                    } else {
+                        statusManager.setValidationStatus('success', 'No issues found');
+                    }
+                } else if (validationData.status === 'in-progress') {
+                    statusManager.setValidationStatus('loading', 'Validation in progress...');
+                } else if (validationData.status === 'failed') {
+                    statusManager.setValidationStatus('error', 'Validation failed');
+                }
+                
+                console.log(`DiagramService: Validation ${validationData.status} - ${errorCount} errors, ${warningCount} warnings`);
+            }
+        } catch (error) {
+            console.error('Error handling validation result:', error);
+        }
     }
 
     public getDiagramState(): DiagramState {
@@ -79,6 +260,10 @@ export class DiagramService {
                     }, 100);
                 }
                 console.log('DiagramService: Diagram load completed successfully, returning diagram');
+                
+                // Send notification that diagram was opened
+                await this.notifyDiagramOpened(diagramId);
+                
                 return diagram;
             } else {
                 console.warn('DiagramService: getDiagramModel returned null/undefined for:', diagramId);
@@ -234,6 +419,15 @@ export class DiagramService {
             statusManager.setDiagramSyncStatus('saving');
             await this.mcpService.createNode(diagramId, nodeType, position, label, properties);
             await this.loadDiagram(diagramId);
+            
+            // Send notification about diagram modification
+            await this.notifyDiagramModified(diagramId, 'node-created', {
+                nodeType,
+                position,
+                label,
+                properties
+            });
+            
             // Node creation IS a save operation to the server
             statusManager.setDiagramSaved();
         } catch (error) {
@@ -249,6 +443,15 @@ export class DiagramService {
             statusManager.setDiagramSyncStatus('saving');
             await this.mcpService.createEdge(diagramId, edgeType, sourceId, targetId, label);
             await this.loadDiagram(diagramId);
+            
+            // Send notification about diagram modification
+            await this.notifyDiagramModified(diagramId, 'edge-created', {
+                edgeType,
+                sourceId,
+                targetId,
+                label
+            });
+            
             // Edge creation IS a save operation to the server
             statusManager.setDiagramSaved();
         } catch (error) {
@@ -368,6 +571,62 @@ export class DiagramService {
             console.error('DiagramService: Failed to update element positions:', error);
             statusManager.setDiagramSyncStatus('error', error instanceof Error ? error.message : 'Unknown error');
             throw error;
+        }
+    }
+
+    // Notification methods for user actions that need server awareness
+    public async notifyDiagramOpened(diagramId: string): Promise<void> {
+        try {
+            await this.mcpService.sendNotification('diagram-opened', {
+                diagramId,
+                timestamp: new Date().toISOString(),
+                userId: 'current-user' // This could come from auth system
+            });
+            console.log(`DiagramService: Sent diagram-opened notification for ${diagramId}`);
+        } catch (error) {
+            console.error('Failed to send diagram-opened notification:', error);
+        }
+    }
+
+    public async notifyDiagramModified(diagramId: string, modificationType: string, details?: Record<string, unknown>): Promise<void> {
+        try {
+            await this.mcpService.sendNotification('diagram-modified', {
+                diagramId,
+                modificationType,
+                details,
+                timestamp: new Date().toISOString(),
+                userId: 'current-user'
+            });
+            console.log(`DiagramService: Sent diagram-modified notification for ${diagramId} (${modificationType})`);
+        } catch (error) {
+            console.error('Failed to send diagram-modified notification:', error);
+        }
+    }
+
+    public async notifyElementSelected(diagramId: string, elementIds: string[]): Promise<void> {
+        try {
+            await this.mcpService.sendNotification('elements-selected', {
+                diagramId,
+                elementIds,
+                timestamp: new Date().toISOString(),
+                userId: 'current-user'
+            });
+            console.log(`DiagramService: Sent elements-selected notification for ${elementIds.length} elements`);
+        } catch (error) {
+            console.error('Failed to send elements-selected notification:', error);
+        }
+    }
+
+    public async notifyValidationRequested(diagramId: string): Promise<void> {
+        try {
+            await this.mcpService.sendNotification('validation-requested', {
+                diagramId,
+                timestamp: new Date().toISOString(),
+                userId: 'current-user'
+            });
+            console.log(`DiagramService: Sent validation-requested notification for ${diagramId}`);
+        } catch (error) {
+            console.error('Failed to send validation-requested notification:', error);
         }
     }
 }

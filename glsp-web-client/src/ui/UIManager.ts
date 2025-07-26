@@ -51,6 +51,7 @@ export class UIManager {
     private currentMode: string = 'select';
     private currentNodeType: string = '';
     private currentEdgeType: string = '';
+    private currentEdgeCreationType: string = 'straight';
     private aiEvents: AIAssistantEvents = {};
     private themeController: ThemeController;
     private headerIconManager: HeaderIconManager;
@@ -87,6 +88,9 @@ export class UIManager {
         
         // Initialize header icon manager
         this.headerIconManager = new HeaderIconManager();
+        
+        // Setup responsive header coordination
+        this.setupResponsiveHeaderCoordination();
         
         // Set up diagram status listener for header icons
         this.statusListener = (status: CombinedStatus) => {
@@ -216,6 +220,7 @@ export class UIManager {
         const currentMode = this.currentMode;
         const currentNodeType = this.currentNodeType;
         const currentEdgeType = this.currentEdgeType;
+        const currentEdgeCreationType = this.currentEdgeCreationType;
         
         const env = detectEnvironment();
         console.log('UIManager: detectEnvironment result:', env);
@@ -255,6 +260,13 @@ export class UIManager {
                 ${edgeTypes.map(edgeType => 
                     `<button class="edge-type" data-type="${edgeType.type}">${edgeType.label}</button>`
                 ).join('')}
+            </div>
+            <div class="toolbar-group">
+                <label>Edge Shape:</label>
+                <button class="edge-creation-type active" data-creation-type="straight" title="Straight edges">—</button>
+                <button class="edge-creation-type" data-creation-type="curved" title="Curved edges">∿</button>
+                <button class="edge-creation-type" data-creation-type="orthogonal" title="Orthogonal edges">┐</button>
+                <button class="edge-creation-type" data-creation-type="bezier" title="Bezier edges">⤴</button>
             </div>
             <div class="toolbar-group">
                 <button id="apply-layout">Apply Layout</button>
@@ -297,6 +309,7 @@ export class UIManager {
         this.currentMode = currentMode;
         this.currentNodeType = currentNodeType;
         this.currentEdgeType = currentEdgeType;
+        this.currentEdgeCreationType = currentEdgeCreationType;
         
         // Re-setup event handlers for the newly created elements
         console.log('Re-setting up toolbar button handlers after content update');
@@ -344,6 +357,26 @@ export class UIManager {
                     this.currentEdgeType = edgeType;
                     this.updateActiveButton(btn, '.edge-type');
                     console.log('Set mode to create-edge, edgeType:', this.currentEdgeType);
+                }
+            });
+        });
+        
+        // Edge creation type buttons (shape selection)
+        toolbarEl.querySelectorAll('.edge-creation-type').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const btn = e.currentTarget as HTMLButtonElement;
+                const creationType = btn.getAttribute('data-creation-type');
+                console.log('Edge creation type button clicked:', creationType);
+                if (creationType) {
+                    this.currentEdgeCreationType = creationType;
+                    this.updateActiveButton(btn, '.edge-creation-type');
+                    
+                    // Dispatch custom event to notify other components
+                    window.dispatchEvent(new CustomEvent('edge-creation-type-change', { 
+                        detail: { creationType } 
+                    }));
+                    
+                    console.log('Set edge creation type:', this.currentEdgeCreationType);
                 }
             });
         });
@@ -421,6 +454,10 @@ export class UIManager {
     
     public getCurrentEdgeType(): string {
         return this.currentEdgeType;
+    }
+    
+    public getCurrentEdgeCreationType(): string {
+        return this.currentEdgeCreationType;
     }
     
     private onDiagramTypeChangeCallback?: (newType: string) => void;
@@ -911,14 +948,20 @@ export class UIManager {
     private updateUnifiedStatus(status: ConnectionStatus): void {
         console.log('UIManager: Updating unified status:', status);
         
-        // Update header status
-        const headerIndicator = document.querySelector('#connection-indicator');
-        const headerSpan = headerIndicator?.parentElement?.querySelector('span');
-        console.log('UIManager: Header indicator found:', !!headerIndicator, !!headerSpan);
-        if (headerIndicator && headerSpan) {
-            headerIndicator.className = `status-indicator ${status.mcp ? '' : 'disconnected'}`;
-            headerSpan.textContent = status.mcp ? 'MCP Connected' : 'MCP Disconnected';
-        }
+        // Get MCP health metrics (defensive access during initialization)
+        const healthMetrics = (window as any).appController?.getMcpService()?.getConnectionHealthMetrics() || {
+            connected: false,
+            reconnectAttempts: 0,
+            maxReconnectAttempts: 5,
+            lastPingTime: undefined,
+            avgPingTime: undefined,
+            sessionId: undefined,
+            reconnecting: false,
+            nextReconnectIn: undefined
+        };
+        
+        // Update enhanced header status chip
+        this.updateHeaderStatusChip(status, healthMetrics);
 
         // Update footer status  
         const footerIndicator = document.querySelector('#connection-indicator-status');
@@ -948,6 +991,132 @@ export class UIManager {
         // if (diagramControlsSection) {
         //     console.log('UIManager: Updating sidebar diagram controls status');
         // }
+    }
+
+    private updateHeaderStatusChip(status: ConnectionStatus, healthMetrics: import('../mcp/client.js').ConnectionHealthMetrics): void {
+        const statusChip = document.querySelector('.status-chip');
+        if (!statusChip) return;
+
+        // Create enhanced status chip HTML
+        const isConnected = healthMetrics.connected;
+        const isReconnecting = healthMetrics.reconnecting;
+        
+        let statusText = 'MCP Connected';
+        let statusClass = '';
+        let detailsText = '';
+        
+        if (isReconnecting) {
+            statusText = 'MCP Reconnecting';
+            statusClass = 'connecting';
+            const nextReconnect = healthMetrics.nextReconnectIn;
+            if (nextReconnect && nextReconnect > 0) {
+                detailsText = `Retry in ${Math.ceil(nextReconnect / 1000)}s (${healthMetrics.reconnectAttempts}/${healthMetrics.maxReconnectAttempts})`;
+            } else {
+                detailsText = `Attempt ${healthMetrics.reconnectAttempts}/${healthMetrics.maxReconnectAttempts}`;
+            }
+        } else if (!isConnected) {
+            statusText = 'MCP Disconnected';
+            statusClass = 'disconnected';
+            if (healthMetrics.reconnectAttempts >= healthMetrics.maxReconnectAttempts) {
+                detailsText = 'Max retries reached';
+            } else {
+                detailsText = 'Connection failed';
+            }
+        } else {
+            statusText = 'MCP Connected';
+            statusClass = '';
+            if (healthMetrics.lastPingTime !== undefined) {
+                detailsText = `${healthMetrics.lastPingTime}ms`;
+                if (healthMetrics.avgPingTime !== undefined) {
+                    detailsText += ` (avg: ${Math.round(healthMetrics.avgPingTime)}ms)`;
+                }
+            }
+        }
+
+        // Update status chip with enhanced information
+        statusChip.innerHTML = `
+            <div class="status-indicator ${statusClass}" id="connection-indicator"></div>
+            <div class="connection-details">
+                <span class="connection-main-status">${statusText}</span>
+                ${detailsText ? `<span class="connection-sub-status">${detailsText}</span>` : ''}
+            </div>
+            ${!isConnected && healthMetrics.reconnectAttempts < healthMetrics.maxReconnectAttempts ? 
+                `<button class="reconnect-btn" onclick="window.appController.getMcpService().manualReconnect().catch(console.error)" title="Manual Reconnect">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                        <path d="M21 3v5h-5"/>
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                        <path d="M3 21v-5h5"/>
+                    </svg>
+                </button>` : ''
+            }
+        `;
+
+        // Add enhanced CSS if not already added
+        if (!document.querySelector('#enhanced-status-styles')) {
+            const style = document.createElement('style');
+            style.id = 'enhanced-status-styles';
+            style.textContent = `
+                .status-chip {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px 12px;
+                    background: var(--bg-tertiary);
+                    border: 1px solid var(--border);
+                    border-radius: var(--radius-sm);
+                    font-size: 13px;
+                    min-width: 180px;
+                }
+                
+                .connection-details {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                    flex: 1;
+                }
+                
+                .connection-main-status {
+                    font-weight: 600;
+                    color: var(--text-primary);
+                    font-size: 13px;
+                }
+                
+                .connection-sub-status {
+                    font-size: 11px;
+                    color: var(--text-secondary);
+                    font-family: var(--font-mono);
+                }
+                
+                .reconnect-btn {
+                    background: transparent;
+                    border: 1px solid var(--border);
+                    color: var(--text-secondary);
+                    padding: 4px;
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s ease;
+                    width: 24px;
+                    height: 24px;
+                }
+                
+                .reconnect-btn:hover {
+                    background: var(--accent-wasm);
+                    border-color: var(--accent-wasm);
+                    color: white;
+                    transform: rotate(90deg);
+                }
+                
+                .status-indicator.connecting {
+                    background: var(--accent-warning);
+                    animation: pulse-glow 1.5s ease-in-out infinite;
+                }
+            `;
+            document.head.appendChild(style);
+        }
     }
 
     public updateStatus(message: string): void {
@@ -1756,9 +1925,263 @@ export class UIManager {
         console.log('UIManager: Workspace UI refresh completed');
     }
 
+    private setupResponsiveHeaderCoordination(): void {
+        console.log('UIManager: Setting up responsive header coordination');
+        
+        // Setup mobile menu button handler
+        this.setupMobileMenuButton();
+        
+        // Setup responsive layout monitoring
+        this.setupResponsiveLayoutMonitoring();
+        
+        // Setup mobile-specific UI adaptations
+        this.setupMobileUIAdaptations();
+        
+        console.log('UIManager: Responsive header coordination setup complete');
+    }
+    
+    private setupMobileMenuButton(): void {
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        if (mobileMenuBtn) {
+            console.log('UIManager: Setting up mobile menu button handler');
+            
+            mobileMenuBtn.addEventListener('click', () => {
+                console.log('UIManager: Mobile menu button clicked');
+                this.toggleMobileMenu();
+            });
+            
+            // Add visual feedback
+            mobileMenuBtn.addEventListener('touchstart', () => {
+                mobileMenuBtn.style.transform = 'scale(0.95)';
+            });
+            
+            mobileMenuBtn.addEventListener('touchend', () => {
+                setTimeout(() => {
+                    mobileMenuBtn.style.transform = 'scale(1)';
+                }, 100);
+            });
+        } else {
+            console.warn('UIManager: Mobile menu button not found in DOM');
+        }
+    }
+    
+    private setupResponsiveLayoutMonitoring(): void {
+        // Monitor viewport changes for responsive layout coordination
+        const handleViewportChange = () => {
+            const isMobile = window.innerWidth <= 768;
+            const isTablet = window.innerWidth > 768 && window.innerWidth <= 1199;
+            
+            console.log('UIManager: Viewport changed - Mobile:', isMobile, 'Tablet:', isTablet);
+            
+            // Coordinate sidebar behavior with header responsive state
+            if (this.sidebar) {
+                if (isMobile) {
+                    // On mobile, ensure sidebar is collapsed by default
+                    if (!this.sidebar.isCollapsed()) {
+                        console.log('UIManager: Auto-collapsing sidebar for mobile');
+                        this.sidebar.collapse();
+                    }
+                }
+            }
+            
+            // Update AI panel behavior for mobile
+            if (isMobile && this.aiAssistantPanel) {
+                // Ensure AI panel is positioned appropriately for mobile
+                this.adaptAIPanelForMobile();
+            }
+        };
+        
+        // Use ResizeObserver if available, otherwise fallback to resize event
+        if (typeof ResizeObserver !== 'undefined') {
+            const resizeObserver = new ResizeObserver(handleViewportChange);
+            resizeObserver.observe(document.body);
+        } else {
+            window.addEventListener('resize', () => {
+                setTimeout(handleViewportChange, 100);
+            });
+        }
+        
+        // Initial check
+        setTimeout(handleViewportChange, 100);
+    }
+    
+    private setupMobileUIAdaptations(): void {
+        // Setup touch-friendly interactions and mobile-specific UI behavior
+        const setupTouchFriendlyInteractions = () => {
+            // Make toolbar buttons more touch-friendly on mobile
+            const toolbarButtons = this.toolbarElement.querySelectorAll('button');
+            toolbarButtons.forEach(button => {
+                button.addEventListener('touchstart', () => {
+                    button.style.transform = 'scale(0.95)';
+                });
+                
+                button.addEventListener('touchend', () => {
+                    setTimeout(() => {
+                        button.style.transform = 'scale(1)';
+                    }, 100);
+                });
+            });
+        };
+        
+        // Setup when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupTouchFriendlyInteractions);
+        } else {
+            setupTouchFriendlyInteractions();
+        }
+    }
+    
+    private toggleMobileMenu(): void {
+        console.log('UIManager: Toggling mobile menu');
+        
+        if (this.sidebar) {
+            const isCollapsed = this.sidebar.isCollapsed();
+            
+            if (isCollapsed) {
+                console.log('UIManager: Expanding sidebar for mobile menu');
+                this.sidebar.expand();
+                // On mobile, add overlay to close sidebar when clicking outside
+                this.addMobileMenuOverlay();
+            } else {
+                console.log('UIManager: Collapsing sidebar for mobile menu');
+                this.sidebar.collapse();
+                this.removeMobileMenuOverlay();
+            }
+        } else {
+            console.warn('UIManager: Cannot toggle mobile menu - sidebar not initialized');
+        }
+    }
+    
+    private addMobileMenuOverlay(): void {
+        // Only add overlay on mobile/tablet
+        if (window.innerWidth > 768) return;
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'mobile-menu-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            backdrop-filter: blur(2px);
+            animation: fadeIn 0.2s ease;
+        `;
+        
+        // Close menu when overlay is clicked
+        overlay.addEventListener('click', () => {
+            this.toggleMobileMenu();
+        });
+        
+        document.body.appendChild(overlay);
+        
+        // Prevent body scroll when menu is open
+        document.body.style.overflow = 'hidden';
+    }
+    
+    private removeMobileMenuOverlay(): void {
+        const overlay = document.getElementById('mobile-menu-overlay');
+        if (overlay) {
+            overlay.remove();
+            document.body.style.overflow = '';
+        }
+    }
+    
+    private adaptAIPanelForMobile(): void {
+        if (!this.aiAssistantPanel || window.innerWidth > 768) return;
+        
+        const panelElement = this.aiAssistantPanel.getElement();
+        if (panelElement) {
+            // Ensure AI panel takes appropriate mobile dimensions
+            panelElement.style.cssText += `
+                position: fixed;
+                top: 60px;
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+                width: auto;
+                height: auto;
+                max-width: none;
+                max-height: none;
+                border-radius: 12px;
+            `;
+        }
+    }
+    
+    // Public methods for responsive header coordination
+    
+    /**
+     * Check if the current viewport is in mobile mode
+     */
+    public isMobileViewport(): boolean {
+        return window.innerWidth <= 768;
+    }
+    
+    /**
+     * Check if the current viewport is in tablet mode
+     */
+    public isTabletViewport(): boolean {
+        return window.innerWidth > 768 && window.innerWidth <= 1199;
+    }
+    
+    /**
+     * Get the current responsive breakpoint
+     */
+    public getCurrentBreakpoint(): string {
+        const width = window.innerWidth;
+        if (width <= 480) return 'mobile';
+        if (width <= 768) return 'tablet';
+        if (width <= 1199) return 'desktop-small';
+        return 'desktop';
+    }
+    
+    /**
+     * Force close mobile menu (useful for navigation actions)
+     */
+    public closeMobileMenu(): void {
+        if (this.isMobileViewport() && this.sidebar && !this.sidebar.isCollapsed()) {
+            console.log('UIManager: Force closing mobile menu');
+            this.sidebar.collapse();
+            this.removeMobileMenuOverlay();
+        }
+    }
+    
+    /**
+     * Coordinate responsive behavior between UI components
+     */
+    public coordinateResponsiveBehavior(): void {
+        const breakpoint = this.getCurrentBreakpoint();
+        console.log('UIManager: Coordinating responsive behavior for breakpoint:', breakpoint);
+        
+        // Update header icon manager about current breakpoint
+        // The HeaderIconManager handles its own responsive behavior,
+        // but we can trigger updates if needed
+        
+        // Coordinate AI panel responsive behavior
+        if (breakpoint === 'mobile') {
+            this.adaptAIPanelForMobile();
+        }
+        
+        // Coordinate sidebar responsive behavior
+        if (this.sidebar) {
+            if (breakpoint === 'mobile' && !this.sidebar.isCollapsed()) {
+                // Auto-collapse on mobile unless explicitly opened via menu
+                const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+                if (!mobileMenuOverlay) {
+                    this.sidebar.collapse();
+                }
+            }
+        }
+    }
+    
     public destroy(): void {
         if (this.statusListener) {
             statusManager.removeListener(this.statusListener);
         }
+        
+        // Clean up mobile menu overlay if it exists
+        this.removeMobileMenuOverlay();
     }
 }
