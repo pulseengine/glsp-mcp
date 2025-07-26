@@ -1,3 +1,5 @@
+import { TooltipManager } from './TooltipManager.js';
+
 export interface HeaderIcon {
     id: string;
     title: string;
@@ -6,6 +8,22 @@ export interface HeaderIcon {
     onClick: () => void;
     onClose?: () => void;
     priority?: number; // 1 = high (always visible), 2 = medium, 3 = low (first to overflow)
+    tooltip?: {
+        content: string;
+        position?: 'top' | 'bottom' | 'left' | 'right' | 'auto';
+        delay?: number;
+        hideDelay?: number;
+        theme?: 'dark' | 'light' | 'info' | 'warning' | 'error';
+        interactive?: boolean;
+        maxWidth?: number;
+    };
+    badge?: {
+        count?: number;
+        text?: string;
+        type?: 'count' | 'dot' | 'text';
+        color?: string;
+        pulse?: boolean;
+    };
 }
 
 export class HeaderIconManager {
@@ -14,8 +32,10 @@ export class HeaderIconManager {
     private overflowItems: HTMLElement[] = [];
     private resizeObserver?: ResizeObserver;
     private currentBreakpoint: string = 'desktop';
+    private tooltipManager: TooltipManager;
     
     constructor() {
+        this.tooltipManager = TooltipManager.getInstance();
         this.container = this.createContainer();
         this.insertIntoHeader();
         this.setupResponsiveBehavior();
@@ -128,6 +148,12 @@ export class HeaderIconManager {
             white-space: nowrap;
         `;
         iconElement.appendChild(titleSpan);
+
+        // Badge (notification badge)
+        if (icon.badge) {
+            const badge = this.createBadge(icon.badge);
+            iconElement.appendChild(badge);
+        }
         
         // Close button (optional)
         if (icon.onClose) {
@@ -210,6 +236,11 @@ export class HeaderIconManager {
                 iconElement.style.transform = 'scale(1)';
             }, 150);
         });
+
+        // Tooltip support
+        if (icon.tooltip) {
+            this.setupTooltip(iconElement, icon.tooltip);
+        }
         
         // Hover effects
         iconElement.addEventListener('mouseenter', () => {
@@ -242,7 +273,7 @@ export class HeaderIconManager {
             if (iconElement) {
                 // Update only the visual parts without recreating the entire element
                 const iconSpan = iconElement.querySelector('span:first-child') as HTMLElement;
-                const titleSpan = iconElement.querySelector('span:last-of-type') as HTMLElement;
+                const titleSpan = iconElement.querySelector('.header-icon-text') as HTMLElement;
                 
                 if (iconSpan && updates.icon) {
                     iconSpan.textContent = updates.icon;
@@ -253,6 +284,26 @@ export class HeaderIconManager {
                 
                 if (titleSpan && updates.title) {
                     titleSpan.textContent = updates.title;
+                }
+
+                // Update badge if changed
+                if (updates.badge !== undefined) {
+                    const existingBadge = iconElement.querySelector('.header-icon-badge');
+                    if (existingBadge) {
+                        existingBadge.remove();
+                    }
+                    if (updates.badge) {
+                        const newBadge = this.createBadge(updates.badge);
+                        iconElement.appendChild(newBadge);
+                    }
+                }
+
+                // Update tooltip if changed
+                if (updates.tooltip !== undefined) {
+                    // Remove existing tooltip listeners by re-setting up
+                    if (updates.tooltip) {
+                        this.setupTooltip(iconElement, updates.tooltip);
+                    }
                 }
                 
                 // Update hover colors if color changed
@@ -294,6 +345,103 @@ export class HeaderIconManager {
         elements.forEach((element, index) => {
             console.log(`HeaderIconManager: Force removing element ${index + 1}`);
             element.remove();
+        });
+    }
+
+    private createBadge(badgeConfig: NonNullable<HeaderIcon['badge']>): HTMLElement {
+        const badge = document.createElement('div');
+        badge.className = 'header-icon-badge';
+        
+        // Base badge styles
+        badge.style.cssText = `
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            min-width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: white;
+            border-radius: 9px;
+            z-index: 10;
+            pointer-events: none;
+            transition: all 0.2s ease;
+        `;
+
+        // Badge type and content
+        switch (badgeConfig.type || 'count') {
+            case 'dot':
+                badge.style.cssText += `
+                    width: 8px;
+                    height: 8px;
+                    min-width: 8px;
+                    background: ${badgeConfig.color || 'var(--accent-error, #F85149)'};
+                    border-radius: 50%;
+                `;
+                break;
+
+            case 'text':
+                badge.textContent = badgeConfig.text || '';
+                badge.style.cssText += `
+                    background: ${badgeConfig.color || 'var(--accent-info, #4A9EFF)'};
+                    padding: 0 6px;
+                    border-radius: 10px;
+                    white-space: nowrap;
+                    max-width: 60px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                `;
+                break;
+
+            case 'count':
+            default: {
+                const count = badgeConfig.count || 0;
+                badge.textContent = count > 99 ? '99+' : count.toString();
+                badge.style.cssText += `
+                    background: ${badgeConfig.color || 'var(--accent-error, #F85149)'};
+                `;
+                if (count === 0) {
+                    badge.style.display = 'none';
+                }
+                break;
+            }
+        }
+
+        // Pulse animation
+        if (badgeConfig.pulse) {
+            badge.style.animation = 'header-badge-pulse 2s infinite';
+        }
+
+        return badge;
+    }
+
+    private setupTooltip(element: HTMLElement, tooltipConfig: NonNullable<HeaderIcon['tooltip']>): void {
+        // Get responsive tooltip configuration
+        const responsiveConfig = this.tooltipManager.getResponsiveTooltipConfig(tooltipConfig);
+
+        element.addEventListener('mouseenter', () => {
+            this.tooltipManager.showTooltip(element, responsiveConfig);
+        });
+
+        element.addEventListener('mouseleave', () => {
+            this.tooltipManager.hideTooltip();
+        });
+
+        // Touch support for mobile devices
+        element.addEventListener('touchstart', (_e) => {
+            _e.preventDefault();
+            this.tooltipManager.showTooltip(element, {
+                ...responsiveConfig,
+                delay: 0 // Show immediately on touch
+            });
+            
+            // Hide after 3 seconds on touch
+            setTimeout(() => {
+                this.tooltipManager.hideTooltip();
+            }, 3000);
         });
     }
 
@@ -454,7 +602,7 @@ export class HeaderIconManager {
             // Copy event handlers
             const originalSlider = document.querySelector('#theme-slider') as HTMLInputElement;
             if (originalSlider) {
-                themeSlider.addEventListener('input', (e) => {
+                themeSlider.addEventListener('input', () => {
                     originalSlider.value = themeSlider.value;
                     originalSlider.dispatchEvent(new Event('input'));
                 });
