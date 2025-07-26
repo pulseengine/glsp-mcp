@@ -2,7 +2,7 @@
   "id": "86ab1162-00e5-4fd9-889d-41cbea3cef2f",
   "name": "New wasm-component Diagram",
   "diagram_type": "wasm-component",
-  "revision": 10,
+  "revision": 11,
   "created_at": "2025-07-08T20:40:26.533418Z",
   "updated_at": "2025-07-08T20:40:26.533422Z",
   "nodes": [
