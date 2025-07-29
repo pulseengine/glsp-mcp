@@ -1255,6 +1255,51 @@ impl GlspBackend {
             });
         }
 
+        // Add resources for individual WASM components
+        let wasm_watcher = self.wasm_watcher.lock().await;
+        let wasm_components = wasm_watcher.get_components();
+        for component in wasm_components {
+            resources.push(Resource {
+                uri: format!("wasm://component/{}", component.name),
+                name: format!("WASM Component: {}", component.name),
+                description: Some(format!("Details for {} component", component.name)),
+                mime_type: Some("application/json".to_string()),
+                annotations: None,
+                raw: None,
+            });
+
+            // Add WIT-specific resources for each component
+            resources.push(Resource {
+                uri: format!("wasm://component/{}/wit", component.name),
+                name: format!("WIT Analysis: {}", component.name),
+                description: Some(format!(
+                    "WIT interface analysis for {} component",
+                    component.name
+                )),
+                mime_type: Some("application/json".to_string()),
+                annotations: None,
+                raw: None,
+            });
+
+            resources.push(Resource {
+                uri: format!("wasm://component/{}/wit/raw", component.name),
+                name: format!("Raw WIT: {}", component.name),
+                description: Some(format!("Raw WIT content for {} component", component.name)),
+                mime_type: Some("text/plain".to_string()),
+                annotations: None,
+                raw: None,
+            });
+
+            resources.push(Resource {
+                uri: format!("wasm://component/{}/interfaces", component.name),
+                name: format!("Interfaces: {}", component.name),
+                description: Some(format!("All interfaces for {} component", component.name)),
+                mime_type: Some("application/json".to_string()),
+                annotations: None,
+                raw: None,
+            });
+        }
+
         Ok(ListResourcesResult {
             resources,
             next_cursor: None,
@@ -1336,33 +1381,32 @@ impl GlspBackend {
                 }],
             })
         } else if request.uri == "wasm://components/list" {
-            // Get WASM files from the filesystem watcher
-            let filesystem_watcher = self.filesystem_watcher.read().await;
-            let known_files = filesystem_watcher.get_known_files().await;
+            // Get WASM components from the wasm watcher (with analyzed data)
+            let wasm_watcher = self.wasm_watcher.lock().await;
+            let wasm_components = wasm_watcher.get_components();
 
-            let component_list: Vec<serde_json::Value> = known_files
+            let component_list: Vec<serde_json::Value> = wasm_components
                 .iter()
-                .filter_map(|path| {
-                    // Extract component name from file path
-                    let file_name = path.file_stem()?.to_str()?;
-                    let component_name = file_name.replace('-', "_");
-
-                    Some(json!({
-                        "name": component_name,
-                        "path": path.to_string_lossy(),
-                        "description": format!("WASM component: {component_name}"),
-                        "status": "available",
-                        "interfaces": 2, // Default interface count
-                        "uri": format!("wasm://component/{component_name}")
-                    }))
+                .map(|component| {
+                    json!({
+                        "name": component.name,
+                        "path": component.path,
+                        "description": format!("WASM component: {}", component.name),
+                        "status": if component.file_exists { "available" } else { "missing" },
+                        "interfaces": component.interfaces.len(),
+                        "uri": format!("wasm://component/{}", component.name)
+                    })
                 })
                 .collect();
+
+            let available_count = wasm_components.iter().filter(|c| c.file_exists).count();
+            let missing_count = wasm_components.len() - available_count;
 
             let wasm_list = json!({
                 "components": component_list,
                 "total": component_list.len(),
-                "available": component_list.len(),
-                "missing": 0
+                "available": available_count,
+                "missing": missing_count
             });
 
             Ok(ReadResourceResult {
@@ -1373,12 +1417,181 @@ impl GlspBackend {
                     blob: None,
                 }],
             })
+        } else if request.uri.starts_with("wasm://component/") {
+            let path = request
+                .uri
+                .strip_prefix("wasm://component/")
+                .ok_or_else(|| {
+                    GlspError::NotImplemented(format!(
+                        "Invalid WASM component URI: {}",
+                        request.uri
+                    ))
+                })?;
+
+            if let Some((component_name, suffix)) = path.split_once('/') {
+                match suffix {
+                    "wit" => self.get_component_wit_analysis(component_name).await,
+                    "wit/raw" => self.get_component_raw_wit(component_name).await,
+                    "interfaces" => self.get_component_interfaces(component_name).await,
+                    _ => Err(GlspError::NotImplemented(format!(
+                        "Unknown component resource: {}",
+                        request.uri
+                    ))),
+                }
+            } else {
+                self.get_wasm_component_details(path).await
+            }
         } else {
             Err(GlspError::NotImplemented(format!(
                 "Resource type not supported: {}",
                 request.uri
             )))
         }
+    }
+
+    // Helper methods for component-specific resources
+    async fn get_wasm_component_details(
+        &self,
+        component_name: &str,
+    ) -> std::result::Result<ReadResourceResult, GlspError> {
+        let wasm_watcher = self.wasm_watcher.lock().await;
+        let component = wasm_watcher.get_component(component_name).ok_or_else(|| {
+            GlspError::NotImplemented(format!("WASM component not found: {component_name}"))
+        })?;
+
+        let content = json!({
+            "name": component.name,
+            "path": component.path,
+            "description": component.description,
+            "fileExists": component.file_exists,
+            "lastSeen": component.last_seen,
+            "removedAt": component.removed_at,
+            "interfaces": component.interfaces,
+            "metadata": component.metadata,
+            "witInterfaces": component.wit_interfaces,
+            "dependencies": component.dependencies
+        });
+
+        Ok(ReadResourceResult {
+            contents: vec![ResourceContents {
+                uri: format!("wasm://component/{component_name}"),
+                mime_type: Some("application/json".to_string()),
+                text: Some(content.to_string()),
+                blob: None,
+            }],
+        })
+    }
+
+    async fn get_component_interfaces(
+        &self,
+        component_name: &str,
+    ) -> std::result::Result<ReadResourceResult, GlspError> {
+        let wasm_watcher = self.wasm_watcher.lock().await;
+        let component = wasm_watcher.get_component(component_name).ok_or_else(|| {
+            GlspError::NotImplemented(format!("WASM component not found: {component_name}"))
+        })?;
+
+        let content = json!({
+            "componentName": component.name,
+            "interfaces": component.interfaces,
+            "totalInterfaces": component.interfaces.len()
+        });
+
+        Ok(ReadResourceResult {
+            contents: vec![ResourceContents {
+                uri: format!("wasm://component/{component_name}/interfaces"),
+                mime_type: Some("application/json".to_string()),
+                text: Some(content.to_string()),
+                blob: None,
+            }],
+        })
+    }
+
+    async fn get_component_wit_analysis(
+        &self,
+        component_name: &str,
+    ) -> std::result::Result<ReadResourceResult, GlspError> {
+        let wasm_watcher = self.wasm_watcher.lock().await;
+        let component = wasm_watcher.get_component(component_name).ok_or_else(|| {
+            GlspError::NotImplemented(format!("WASM component not found: {component_name}"))
+        })?;
+
+        // Analyze WIT interfaces specifically
+        let mut imports = Vec::new();
+        let mut exports = Vec::new();
+
+        for interface in &component.interfaces {
+            let interface_data = json!({
+                "name": interface.name,
+                "functions": interface.functions.iter().map(|f| json!({
+                    "name": f.name,
+                    "parameters": f.params.iter().map(|p| json!({
+                        "name": p.name,
+                        "type": p.param_type
+                    })).collect::<Vec<_>>(),
+                    "returns": f.returns.iter().map(|r| json!({
+                        "name": r.name,
+                        "type": r.param_type
+                    })).collect::<Vec<_>>()
+                })).collect::<Vec<_>>()
+            });
+
+            match interface.interface_type.as_str() {
+                "import" => imports.push(interface_data),
+                "export" => exports.push(interface_data),
+                _ => {}
+            }
+        }
+
+        let content = json!({
+            "componentName": component.name,
+            "witAnalysis": {
+                "imports": imports,
+                "exports": exports,
+                "summary": {
+                    "totalImports": imports.len(),
+                    "totalExports": exports.len(),
+                    "totalFunctions": component.interfaces.iter()
+                        .map(|i| i.functions.len())
+                        .sum::<usize>()
+                }
+            },
+            "metadata": component.metadata,
+            "dependencies": component.dependencies
+        });
+
+        Ok(ReadResourceResult {
+            contents: vec![ResourceContents {
+                uri: format!("wasm://component/{component_name}/wit"),
+                mime_type: Some("application/json".to_string()),
+                text: Some(content.to_string()),
+                blob: None,
+            }],
+        })
+    }
+
+    async fn get_component_raw_wit(
+        &self,
+        component_name: &str,
+    ) -> std::result::Result<ReadResourceResult, GlspError> {
+        let wasm_watcher = self.wasm_watcher.lock().await;
+        let component = wasm_watcher.get_component(component_name).ok_or_else(|| {
+            GlspError::NotImplemented(format!("WASM component not found: {component_name}"))
+        })?;
+
+        let wit_content = component
+            .wit_interfaces
+            .clone()
+            .unwrap_or_else(|| "// No WIT content available for this component".to_string());
+
+        Ok(ReadResourceResult {
+            contents: vec![ResourceContents {
+                uri: format!("wasm://component/{component_name}/wit/raw"),
+                mime_type: Some("text/plain".to_string()),
+                text: Some(wit_content),
+                blob: None,
+            }],
+        })
     }
 
     pub async fn list_prompts(
