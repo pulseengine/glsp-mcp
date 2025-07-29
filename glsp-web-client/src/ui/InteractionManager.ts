@@ -121,6 +121,15 @@ export class InteractionManager {
             }
         });
         
+        // Listen for toolbar edge type changes
+        window.addEventListener('toolbar-edge-type-change', (event: Event & { detail?: { edgeType: string } }) => {
+            const edgeType = event.detail?.edgeType;
+            if (edgeType) {
+                console.log('InteractionManager: Toolbar edge type changed to:', edgeType);
+                this.renderer.setEdgeCreationType(edgeType);
+            }
+        });
+        
         // Listen for diagram load events to pre-load WIT data
         window.addEventListener('diagram-loaded-preload-wit', () => {
             this.preloadWitDataForDiagram().catch(console.error);
@@ -171,6 +180,9 @@ export class InteractionManager {
                 break;
             case 'interface-click':
                 await this.handleInterfaceClick(event);
+                break;
+            case 'double-click':
+                await this.handleComponentDoubleClick(event);
                 break;
         }
     }
@@ -484,11 +496,66 @@ export class InteractionManager {
                     <button class="close-btn" onclick="this.closest('.execution-view-modal').remove()">✖</button>
                 </div>
                 <div class="execution-view-body">
+                    <!-- Component Information Section -->
                     <div class="component-info">
-                        <p><strong>Component:</strong> ${loadedComponent.name}</p>
-                        <p><strong>Loaded:</strong> ${loadedComponent.loadedAt}</p>
-                        <p><strong>Path:</strong> ${loadedComponent.path}</p>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <strong>Component:</strong> ${loadedComponent.name}
+                            </div>
+                            <div class="info-item">
+                                <strong>Status:</strong> <span class="status-badge status-ready">Ready</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Loaded:</strong> ${loadedComponent.loadedAt}
+                            </div>
+                            <div class="info-item">
+                                <strong>Path:</strong> <span class="component-path">${loadedComponent.path}</span>
+                            </div>
+                        </div>
                     </div>
+                    
+                    <!-- Execution Metrics Dashboard -->
+                    <div class="execution-metrics">
+                        <h3>📊 Execution Metrics</h3>
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <div class="metric-label">Memory Usage</div>
+                                <div class="metric-value" id="memory-usage-${elementId}">0 KB</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Execution Time</div>
+                                <div class="metric-value" id="execution-time-${elementId}">0ms</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Function Calls</div>
+                                <div class="metric-value" id="function-calls-${elementId}">0</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Last Execution</div>
+                                <div class="metric-value" id="last-execution-${elementId}">Never</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Execution Controls -->
+                    <div class="execution-controls">
+                        <h3>🎮 Execution Controls</h3>
+                        <div class="controls-grid">
+                            <button class="control-btn primary" onclick="window.startComponentExecution('${elementId}')">
+                                ▶️ Start Execution
+                            </button>
+                            <button class="control-btn secondary" onclick="window.stopComponentExecution('${elementId}')">
+                                ⏹️ Stop Execution
+                            </button>
+                            <button class="control-btn secondary" onclick="window.resetComponentState('${elementId}')">
+                                🔄 Reset State
+                            </button>
+                            <button class="control-btn secondary" onclick="window.inspectComponentState('${elementId}')">
+                                🔍 Inspect State
+                            </button>
+                        </div>
+                    </div>
+                    
                     <div class="javascript-examples">
                         <h3>📝 JavaScript Examples</h3>
                         <div class="code-examples" id="code-examples-${elementId}">
@@ -502,9 +569,12 @@ export class InteractionManager {
                             </div>
                         </div>
                     </div>
+                    
                     <div class="execution-console">
-                        <h3>💻 Console</h3>
-                        <div class="console-output" id="console-${elementId}"></div>
+                        <h3>💻 Interactive Console</h3>
+                        <div class="console-output" id="console-${elementId}">
+                            <div class="console-welcome">🚀 Component execution console ready. Type JavaScript commands to interact with the component.</div>
+                        </div>
                         <div class="console-input">
                             <input type="text" placeholder="Enter JavaScript to execute..." id="console-input-${elementId}">
                             <button onclick="window.executeWasmCode('${elementId}')">Run</button>
@@ -576,6 +646,97 @@ export class InteractionManager {
                 border-radius: 8px;
                 margin-bottom: 20px;
             }
+            .info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+            }
+            .info-item {
+                padding: 8px 0;
+            }
+            .status-badge {
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+            }
+            .status-ready {
+                background: #d4edda;
+                color: #155724;
+            }
+            .component-path {
+                font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                font-size: 11px;
+                background: #e9ecef;
+                padding: 2px 6px;
+                border-radius: 4px;
+            }
+            .execution-metrics {
+                margin-bottom: 20px;
+            }
+            .metrics-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 12px;
+                margin-top: 12px;
+            }
+            .metric-card {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 16px;
+                border-radius: 8px;
+                text-align: center;
+            }
+            .metric-label {
+                font-size: 11px;
+                text-transform: uppercase;
+                opacity: 0.8;
+                margin-bottom: 8px;
+            }
+            .metric-value {
+                font-size: 18px;
+                font-weight: 600;
+            }
+            .execution-controls {
+                margin-bottom: 20px;
+            }
+            .controls-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                gap: 12px;
+                margin-top: 12px;
+            }
+            .control-btn {
+                padding: 12px 16px;
+                border: none;
+                border-radius: 6px;
+                font-size: 13px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+            .control-btn.primary {
+                background: #28a745;
+                color: white;
+            }
+            .control-btn.primary:hover {
+                background: #218838;
+            }
+            .control-btn.secondary {
+                background: #6c757d;
+                color: white;
+            }
+            .control-btn.secondary:hover {
+                background: #5a6268;
+            }
+            .console-welcome {
+                color: #0ff;
+                font-style: italic;
+                padding: 5px 0;
+                border-bottom: 1px solid #333;
+                margin-bottom: 10px;
+            }
             .javascript-examples {
                 margin-bottom: 20px;
             }
@@ -634,6 +795,12 @@ export class InteractionManager {
 
         // Set up console execution
         this.setupConsoleExecution(elementId, loadedComponent);
+        
+        // Set up execution monitoring
+        this.setupExecutionMonitoring(elementId, loadedComponent);
+        
+        // Set up execution controls
+        this.setupExecutionControls(elementId, loadedComponent);
     }
 
     private generateJavaScriptExamples(elementId: string, loadedComponent: import('../wasm/WasmComponentManager.js').WasmComponent): void {
@@ -1115,22 +1282,66 @@ function sleep(ms) {
 
         // Handle connection creation
         dialog.onConnection(async (selectedOption) => {
-            await this.createInterfaceConnection(
-                interfaceInfo.componentId,
-                sourceInterface,
-                selectedOption.componentId,
-                selectedOption.interface
-            );
+            // Validate connection before creating
+            if (this.validateInterfaceConnection(sourceInterface, selectedOption.interface)) {
+                await this.createInterfaceConnection(
+                    interfaceInfo.componentId,
+                    sourceInterface,
+                    selectedOption.componentId,
+                    selectedOption.interface,
+                    selectedOption.compatibility
+                );
+            }
         });
         
         dialog.show();
+    }
+
+    private async handleComponentDoubleClick(event: InteractionEvent): Promise<void> {
+        if (!event.element) return;
+
+        console.log('handleComponentDoubleClick: Processing double-click for element:', event.element.id);
+
+        // Check if this is a WASM component
+        const isWasmComponent = event.element.type === 'wasm-component' || 
+                               event.element.element_type === 'wasm-component' ||
+                               event.element.properties?.componentType === 'wasm-component';
+
+        if (isWasmComponent) {
+            console.log('handleComponentDoubleClick: Opening execution view for WASM component:', event.element.id);
+            await this.openComponentExecutionView(event.element.id);
+        } else {
+            console.log('handleComponentDoubleClick: Element is not a WASM component, ignoring');
+        }
+    }
+
+    private validateInterfaceConnection(
+        sourceInterface: WitInterface,
+        targetInterface: WitInterface
+    ): boolean {
+        // Check basic connectivity rules
+        if (!InterfaceCompatibilityChecker.canConnect(sourceInterface, targetInterface)) {
+            this.showConnectionError('Connection not allowed: Export interfaces can only connect to Import interfaces');
+            return false;
+        }
+
+        // Check compatibility score
+        const compatibility = InterfaceCompatibilityChecker.checkCompatibility(sourceInterface, targetInterface);
+        if (!compatibility.isValid) {
+            const issues = compatibility.issues.join(', ');
+            this.showConnectionError(`Interface compatibility issues: ${issues}`);
+            return false;
+        }
+
+        return true;
     }
 
     private async createInterfaceConnection(
         sourceComponentId: string,
         sourceInterface: WitInterface,
         targetComponentId: string,
-        targetInterface: WitInterface
+        targetInterface: WitInterface,
+        compatibility?: import('../diagrams/interface-compatibility.js').InterfaceCompatibility
     ): Promise<void> {
         const diagramId = this.diagramService.getCurrentDiagramId();
         if (!diagramId) return;
@@ -1157,9 +1368,237 @@ function sleep(ms) {
             await this.diagramService.loadDiagram(diagramId);
             statusManager.setDiagramSaved();
 
+            // Show success notification
+            this.showConnectionSuccess(sourceInterface, targetInterface, compatibility);
+
         } catch (error) {
             console.error('Failed to create interface connection:', error);
             statusManager.setDiagramSyncStatus('error', error instanceof Error ? error.message : 'Unknown error');
+            this.showConnectionError(`Failed to create connection: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
+    }
+
+    private showConnectionSuccess(
+        sourceInterface: WitInterface,
+        targetInterface: WitInterface,
+        compatibility?: import('../diagrams/interface-compatibility.js').InterfaceCompatibility
+    ): void {
+        const compatibilityScore = compatibility ? ` (${compatibility.score}% compatible)` : '';
+        const message = `✅ Connected "${sourceInterface.name}" → "${targetInterface.name}"${compatibilityScore}`;
+        
+        // Show temporary success notification
+        this.showNotification(message, 'success');
+        console.log('Interface connection created successfully:', {
+            source: sourceInterface.name,
+            target: targetInterface.name,
+            compatibility: compatibility
+        });
+    }
+
+    private showConnectionError(message: string): void {
+        // Show temporary error notification
+        this.showNotification(`❌ ${message}`, 'error');
+        console.error('Interface connection error:', message);
+    }
+
+    private showNotification(message: string, type: 'success' | 'error'): void {
+        // Create temporary notification element
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 10000;
+            max-width: 400px;
+            animation: slideInRight 0.3s ease-out;
+            background: ${type === 'success' ? '#28a745' : '#dc3545'};
+        `;
+        
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        // Add animation keyframes
+        if (!document.getElementById('notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = `
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOutRight {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Auto-remove after 4 seconds
+        setTimeout(() => {
+            notification.style.animation = 'slideOutRight 0.3s ease-in forwards';
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 300);
+        }, 4000);
+    }
+
+    private setupExecutionMonitoring(elementId: string, loadedComponent: import('../wasm/WasmComponentManager.js').WasmComponent): void {
+        // Initialize metrics tracking
+        const componentMetrics = {
+            memoryUsage: 0,
+            executionTime: 0,
+            functionCalls: 0,
+            lastExecution: null as Date | null,
+            isRunning: false
+        };
+
+        // Store metrics globally for access by control functions
+        (window as any)[`componentMetrics_${elementId}`] = componentMetrics;
+
+        // Start monitoring loop
+        const updateMetrics = () => {
+            if (componentMetrics.isRunning) {
+                // Simulate metric updates (in real implementation, get from WASM runtime)
+                componentMetrics.memoryUsage += Math.random() * 10;
+                componentMetrics.executionTime += 16; // Assume 16ms per frame
+                
+                // Update UI
+                const memoryElement = document.getElementById(`memory-usage-${elementId}`);
+                const timeElement = document.getElementById(`execution-time-${elementId}`);
+                const callsElement = document.getElementById(`function-calls-${elementId}`);
+                const lastExecElement = document.getElementById(`last-execution-${elementId}`);
+
+                if (memoryElement) memoryElement.textContent = `${Math.round(componentMetrics.memoryUsage)} KB`;
+                if (timeElement) timeElement.textContent = `${componentMetrics.executionTime}ms`;
+                if (callsElement) callsElement.textContent = componentMetrics.functionCalls.toString();
+                if (lastExecElement && componentMetrics.lastExecution) {
+                    lastExecElement.textContent = componentMetrics.lastExecution.toLocaleTimeString();
+                }
+            }
+            
+            // Continue monitoring if component is still loaded
+            if (document.getElementById(`memory-usage-${elementId}`)) {
+                setTimeout(updateMetrics, 1000); // Update every second
+            }
+        };
+
+        // Start monitoring
+        updateMetrics();
+    }
+
+    private setupExecutionControls(elementId: string, loadedComponent: import('../wasm/WasmComponentManager.js').WasmComponent): void {
+        // Set up global control functions
+        (window as any).startComponentExecution = (id: string) => {
+            if (id !== elementId) return;
+            
+            const metrics = (window as any)[`componentMetrics_${id}`];
+            if (metrics) {
+                metrics.isRunning = true;
+                metrics.lastExecution = new Date();
+                console.log(`Starting execution for component: ${loadedComponent.name}`);
+                
+                // Update console
+                const consoleOutput = document.getElementById(`console-${id}`);
+                if (consoleOutput) {
+                    const message = document.createElement('div');
+                    message.style.color = '#0f0';
+                    message.textContent = `> Starting execution for ${loadedComponent.name}...`;
+                    consoleOutput.appendChild(message);
+                    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                }
+            }
+        };
+
+        (window as any).stopComponentExecution = (id: string) => {
+            if (id !== elementId) return;
+            
+            const metrics = (window as any)[`componentMetrics_${id}`];
+            if (metrics) {
+                metrics.isRunning = false;
+                console.log(`Stopping execution for component: ${loadedComponent.name}`);
+                
+                // Update console
+                const consoleOutput = document.getElementById(`console-${id}`);
+                if (consoleOutput) {
+                    const message = document.createElement('div');
+                    message.style.color = '#ff0';
+                    message.textContent = `> Execution stopped for ${loadedComponent.name}`;
+                    consoleOutput.appendChild(message);
+                    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                }
+            }
+        };
+
+        (window as any).resetComponentState = (id: string) => {
+            if (id !== elementId) return;
+            
+            const metrics = (window as any)[`componentMetrics_${id}`];
+            if (metrics) {
+                metrics.memoryUsage = 0;
+                metrics.executionTime = 0;
+                metrics.functionCalls = 0;
+                metrics.lastExecution = null;
+                metrics.isRunning = false;
+                console.log(`Reset state for component: ${loadedComponent.name}`);
+                
+                // Update console
+                const consoleOutput = document.getElementById(`console-${id}`);
+                if (consoleOutput) {
+                    const message = document.createElement('div');
+                    message.style.color = '#0ff';
+                    message.textContent = `> Component state reset for ${loadedComponent.name}`;
+                    consoleOutput.appendChild(message);
+                    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                }
+            }
+        };
+
+        (window as any).inspectComponentState = (id: string) => {
+            if (id !== elementId) return;
+            
+            const metrics = (window as any)[`componentMetrics_${id}`];
+            if (metrics) {
+                const stateInfo = {
+                    name: loadedComponent.name,
+                    path: loadedComponent.path,
+                    loadedAt: loadedComponent.loadedAt,
+                    metrics: {
+                        memoryUsage: `${Math.round(metrics.memoryUsage)} KB`,
+                        executionTime: `${metrics.executionTime}ms`,
+                        functionCalls: metrics.functionCalls,
+                        isRunning: metrics.isRunning,
+                        lastExecution: metrics.lastExecution?.toISOString() || 'Never'
+                    }
+                };
+                
+                console.log('Component State Inspection:', stateInfo);
+                
+                // Update console with detailed state info
+                const consoleOutput = document.getElementById(`console-${id}`);
+                if (consoleOutput) {
+                    const message = document.createElement('div');
+                    message.style.color = '#0ff';
+                    message.innerHTML = `
+                        > Component State Inspection:<br>
+                        &nbsp;&nbsp;Name: ${stateInfo.name}<br>
+                        &nbsp;&nbsp;Status: ${stateInfo.metrics.isRunning ? 'Running' : 'Stopped'}<br>
+                        &nbsp;&nbsp;Memory: ${stateInfo.metrics.memoryUsage}<br>
+                        &nbsp;&nbsp;Execution Time: ${stateInfo.metrics.executionTime}<br>
+                        &nbsp;&nbsp;Function Calls: ${stateInfo.metrics.functionCalls}<br>
+                        &nbsp;&nbsp;Last Execution: ${stateInfo.metrics.lastExecution}
+                    `;
+                    consoleOutput.appendChild(message);
+                    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                }
+            }
+        };
     }
 }

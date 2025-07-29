@@ -16,6 +16,17 @@ export class ToolboxSection {
     
     constructor(onToolSelect?: (tool: Tool) => void) {
         this.onToolSelect = onToolSelect;
+        
+        // Listen for edge type loading from diagram preferences
+        window.addEventListener('diagram-edge-type-loaded', (event: Event & { detail?: { edgeType: string } }) => {
+            const edgeType = event.detail?.edgeType;
+            if (edgeType) {
+                // Select the corresponding edge tool in UI
+                const edgeToolId = `edge-${edgeType}`;
+                this.setSelectedTool(edgeToolId);
+                console.log('ToolboxSection: Updated UI selection for loaded edge type:', edgeType);
+            }
+        });
     }
     
     public addTool(tool: Tool): void {
@@ -321,6 +332,60 @@ export const createDefaultTools = (): Tool[] => [
             console.log('Interface Linker tool activated');
             window.dispatchEvent(new CustomEvent('toolbar-mode-change', {
                 detail: { mode: 'create-interface-link' }
+            }));
+        }
+    },
+    
+    // Edge type tools
+    {
+        id: 'edge-straight',
+        name: 'Straight',
+        icon: '—',
+        category: 'Edge Types',
+        description: 'Create straight line edges',
+        action: () => {
+            console.log('Straight edge type activated');
+            window.dispatchEvent(new CustomEvent('toolbar-edge-type-change', {
+                detail: { edgeType: 'straight' }
+            }));
+        }
+    },
+    {
+        id: 'edge-curved',
+        name: 'Curved',
+        icon: '∿',
+        category: 'Edge Types',
+        description: 'Create curved edges with smooth bends',
+        action: () => {
+            console.log('Curved edge type activated');
+            window.dispatchEvent(new CustomEvent('toolbar-edge-type-change', {
+                detail: { edgeType: 'curved' }
+            }));
+        }
+    },
+    {
+        id: 'edge-orthogonal',
+        name: 'Orthogonal',
+        icon: '┐',
+        category: 'Edge Types',
+        description: 'Create orthogonal edges with right angles',
+        action: () => {
+            console.log('Orthogonal edge type activated');
+            window.dispatchEvent(new CustomEvent('toolbar-edge-type-change', {
+                detail: { edgeType: 'orthogonal' }
+            }));
+        }
+    },
+    {
+        id: 'edge-bezier',
+        name: 'Bezier',
+        icon: '∿',
+        category: 'Edge Types',
+        description: 'Create bezier curve edges',
+        action: () => {
+            console.log('Bezier edge type activated');
+            window.dispatchEvent(new CustomEvent('toolbar-edge-type-change', {
+                detail: { edgeType: 'bezier' }
             }));
         }
     }

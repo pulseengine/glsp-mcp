@@ -54,6 +54,13 @@ export class ViewModeManager {
             compatibleDiagramTypes: ['wasm-component']
         },
         {
+            id: 'wit-interface',
+            label: 'WIT Interface',
+            icon: '🔗',
+            tooltip: 'View WIT interfaces with packages, functions, and types',
+            compatibleDiagramTypes: ['wasm-component', 'wit-interface']
+        },
+        {
             id: 'wit-dependencies',
             label: 'Dependencies',
             icon: '🕸️',
@@ -200,8 +207,10 @@ export class ViewModeManager {
             // Store transformation result for potential restoration
             this.lastTransformationResult = result;
             
-            // Re-render with new view mode
-            this.renderer.render();
+            // Add smooth transition by fading during re-render
+            await this.performViewModeTransition(() => {
+                this.renderer.render();
+            });
 
             // Notify listeners
             this.notifyViewModeChanged(targetMode, previousMode);
@@ -263,9 +272,10 @@ export class ViewModeManager {
                 // If current mode is not compatible, switch to first available mode
                 if (!availableModes.find(mode => mode.id === this.currentViewMode)) {
                     const newMode = availableModes[0].id;
+                    const previousMode = this.currentViewMode;
                     console.log(`ViewModeManager: Switching to compatible view mode: ${newMode}`);
                     this.currentViewMode = newMode;
-                    this.notifyViewModeChanged(newMode);
+                    this.notifyViewModeChanged(newMode, previousMode);
                 }
             }
         }
@@ -286,5 +296,30 @@ export class ViewModeManager {
                 console.error('ViewModeManager: Error in view mode listener:', error);
             }
         });
+    }
+
+    /**
+     * Perform smooth transition animation during view mode change
+     */
+    private async performViewModeTransition(renderCallback: () => void): Promise<void> {
+        const canvas = this.renderer.getCanvas();
+        
+        // Apply fade out effect
+        canvas.style.transition = 'opacity 150ms ease-out';
+        canvas.style.opacity = '0.7';
+        
+        // Wait for fade out
+        await new Promise(resolve => setTimeout(resolve, 75));
+        
+        // Perform the re-render
+        renderCallback();
+        
+        // Fade back in
+        canvas.style.opacity = '1';
+        
+        // Clean up transition after animation
+        setTimeout(() => {
+            canvas.style.transition = '';
+        }, 150);
     }
 }

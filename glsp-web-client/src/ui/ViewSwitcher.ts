@@ -29,6 +29,12 @@ export class ViewSwitcher {
             tooltip: 'View components in UML-style class diagram format'
         },
         {
+            id: 'wit-interface',
+            label: 'WIT Interface',
+            icon: '🔗',
+            tooltip: 'View WIT interfaces with packages, functions, and types'
+        },
+        {
             id: 'wit-dependencies',
             label: 'Dependencies',
             icon: '🕸️',
@@ -44,6 +50,16 @@ export class ViewSwitcher {
         const container = document.createElement('div');
         container.className = 'view-switcher';
         
+        // Add view mode indicator
+        const indicator = document.createElement('div');
+        indicator.className = 'view-mode-indicator';
+        indicator.innerHTML = `
+            <span class="indicator-label">View:</span>
+            <span class="indicator-mode">${this.getViewModeLabel(this.currentMode)}</span>
+        `;
+        container.appendChild(indicator);
+        
+        // Add mode buttons
         this.viewModes.forEach(mode => {
             const button = document.createElement('button');
             button.className = `view-mode-btn ${mode.id === this.currentMode ? 'active' : ''}`;
@@ -66,12 +82,38 @@ export class ViewSwitcher {
         style.textContent = `
             .view-switcher {
                 display: flex;
-                gap: 4px;
+                align-items: center;
+                gap: 8px;
                 background: var(--bg-tertiary);
                 border: 1px solid var(--border);
                 border-radius: var(--radius-md);
-                padding: 4px;
+                padding: 4px 8px;
                 margin: 0 16px;
+            }
+
+            .view-mode-indicator {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                padding: 4px 8px;
+                background: var(--bg-secondary);
+                border-radius: var(--radius-sm);
+                border-left: 3px solid var(--accent-wasm);
+                margin-right: 4px;
+            }
+
+            .indicator-label {
+                font-size: 11px;
+                color: var(--text-secondary);
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .indicator-mode {
+                font-size: 12px;
+                color: var(--text-primary);
+                font-weight: 500;
             }
             
             .view-mode-btn {
@@ -150,9 +192,15 @@ export class ViewSwitcher {
             );
             btn.classList.toggle('active', mode?.id === modeId);
         });
+
+        // Update view mode indicator
+        const indicatorMode = this.container.querySelector('.indicator-mode');
+        if (indicatorMode) {
+            indicatorMode.textContent = this.getViewModeLabel(modeId);
+        }
         
         // Show visual feedback that mode is changing
-        const activeBtn = this.container.querySelector('.view-mode-btn.active');
+        const activeBtn = this.container.querySelector('.view-mode-btn.active') as HTMLElement;
         if (activeBtn) {
             activeBtn.style.opacity = '0.6';
             setTimeout(() => {
@@ -165,6 +213,11 @@ export class ViewSwitcher {
             console.log(`ViewSwitcher: Notifying mode change handler for ${modeId}`);
             this.onModeChange(modeId);
         }
+    }
+
+    private getViewModeLabel(modeId: string): string {
+        const mode = this.viewModes.find(m => m.id === modeId);
+        return mode ? mode.label : modeId;
     }
     
     public setModeChangeHandler(handler: (mode: string) => void): void {

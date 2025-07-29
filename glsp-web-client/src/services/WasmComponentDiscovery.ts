@@ -101,15 +101,33 @@ export class WasmComponentDiscovery {
 
             // Get component list resource
             const listResource = await this.mcpClient.readResource('wasm://components/list');
-            const components: WasmComponent[] = JSON.parse(listResource.text || '[]');
+            const componentList = JSON.parse(listResource.text || '{"components": []}');
+            const components: WasmComponent[] = componentList.components || [];
 
-            // Update local cache
+            // Update local cache and fetch detailed interface data for each component
             this.components.clear();
-            components.forEach(comp => {
-                this.components.set(comp.name, comp);
-            });
+            
+            for (const comp of components) {
+                try {
+                    // Fetch detailed interface data for this component
+                    const interfaceResource = await this.mcpClient.readResource(`wasm://component/${comp.name}/interfaces`);
+                    const interfaceData = JSON.parse(interfaceResource.text || '{"interfaces": []}');
+                    
+                    // Merge detailed interface data into component
+                    const enhancedComponent = {
+                        ...comp,
+                        interfaces: interfaceData.interfaces || []
+                    };
+                    
+                    this.components.set(comp.name, enhancedComponent);
+                } catch (interfaceError) {
+                    console.warn(`Failed to fetch interface data for ${comp.name}:`, interfaceError);
+                    // Fall back to basic component data without detailed interfaces
+                    this.components.set(comp.name, comp);
+                }
+            }
 
-            console.log(`Discovered ${components.length} WASM components`);
+            console.log(`Discovered ${components.length} WASM components with detailed interface data`);
         } catch (error) {
             console.error('Failed to scan components:', error);
         }

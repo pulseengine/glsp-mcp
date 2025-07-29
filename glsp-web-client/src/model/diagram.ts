@@ -93,6 +93,10 @@ export interface DiagramMetadata {
         elementTypes: Record<string, number>;
     };
     lastModified: string;
+    preferences?: {
+        edgeCreationType?: string;
+        // Other diagram-specific preferences can be added here
+    };
 }
 
 // Client-side event types for diagram changes

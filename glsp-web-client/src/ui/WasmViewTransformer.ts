@@ -39,7 +39,7 @@ export class WasmViewTransformer implements ViewTransformer {
      * Check if transformation between view modes is supported
      */
     public canTransform(fromView: string, toView: string, diagram: DiagramModel): boolean {
-        const supportedViews = ['component', 'uml-interface', 'wit-dependencies'];
+        const supportedViews = ['component', 'uml-interface', 'wit-interface', 'wit-dependencies'];
         
         if (!supportedViews.includes(fromView) || !supportedViews.includes(toView)) {
             return false;
@@ -64,6 +64,8 @@ export class WasmViewTransformer implements ViewTransformer {
                     return this.transformToComponentView(diagram);
                 case 'uml-interface':
                     return this.transformToUMLView(diagram);
+                case 'wit-interface':
+                    return this.transformToWitInterfaceView(diagram);
                 case 'wit-dependencies':
                     return this.transformToDependencyView(diagram);
                 default:
@@ -120,121 +122,94 @@ export class WasmViewTransformer implements ViewTransformer {
         let nodeIdCounter = 1;
         let edgeIdCounter = 1;
         
-        // Base positioning
-        let currentX = 50;
-        let currentY = 50;
-        const componentSpacing = 400;
-        const interfaceSpacing = 200;
+        // Auto-layout configuration
+        const layout = this.calculateUMLAutoLayout(wasmComponents);
+        console.log('🎯 Auto-layout calculated:', layout);
         
+        // Apply auto-layout positioning
         wasmComponents.forEach((component, componentIndex) => {
-            // Create main component (simplified - just core component info)
+            const componentPos = layout.componentPositions[componentIndex];
+            const interfaceLayoutForComponent = layout.interfaceLayout[componentIndex];
+            
+            // Create main component with auto-layout positioning
             const mainComponent: ModelElement = {
                 id: `uml-component-${nodeIdCounter++}`,
                 type: 'uml-component',
                 element_type: 'uml-component',
                 label: component.name,
                 bounds: {
-                    x: currentX,
-                    y: currentY,
-                    width: 200,
-                    height: 100
+                    x: componentPos.x,
+                    y: componentPos.y,
+                    width: componentPos.width,
+                    height: componentPos.height
                 },
                 properties: {
                     originalId: component.id,
                     componentType: 'main',
                     category: component.properties?.category,
                     status: component.properties?.status,
-                    componentPath: component.properties?.componentPath
+                    componentPath: component.properties?.componentPath,
+                    originalInterfaces: component.interfaces // Store original interface data
                 }
             };
             umlElements.push(mainComponent);
             
-            // Create separate interface components
-            let interfaceY = currentY;
-            const interfaces = component.interfaces || [];
-            
-            // Group interfaces by type for better layout
-            const importInterfaces = interfaces.filter(iface => iface.type === 'import');
-            const exportInterfaces = interfaces.filter(iface => iface.type === 'export');
-            
-            // Create import interface components (left side)
-            let leftX = currentX - interfaceSpacing;
-            importInterfaces.forEach((iface, index) => {
+            // Create interface components using auto-layout
+            interfaceLayoutForComponent.interfaces.forEach((interfaceLayout, interfaceIndex) => {
+                // Find the corresponding interface data
+                const interfaceData = component.interfaces.find(iface => iface.name === interfaceLayout.name);
+                
                 const interfaceComponent: ModelElement = {
                     id: `uml-interface-${nodeIdCounter++}`,
                     type: 'uml-interface',
                     element_type: 'uml-interface',
-                    label: iface.name,
+                    label: interfaceLayout.name,
                     bounds: {
-                        x: leftX,
-                        y: interfaceY + (index * 120),
-                        width: 180,
-                        height: Math.max(80, (iface.functions?.length || 0) * 20 + 60)
+                        x: interfaceLayout.x,
+                        y: interfaceLayout.y,
+                        width: interfaceLayout.width,
+                        height: interfaceLayout.height
                     },
                     properties: {
-                        interfaceType: 'import',
+                        interfaceType: interfaceLayout.type,
                         parentComponent: component.id,
-                        functions: iface.functions || [],
-                        types: iface.types || []
+                        functions: interfaceData?.functions || [],
+                        types: interfaceData?.types || []
                     }
                 };
                 umlElements.push(interfaceComponent);
                 
-                // Create connection edge from interface to component
-                const edge: ModelElement = {
-                    id: `uml-edge-${edgeIdCounter++}`,
-                    type: 'uml-dependency',
-                    element_type: 'uml-dependency',
-                    sourceId: interfaceComponent.id,
-                    targetId: mainComponent.id,
-                    label: 'requires',
-                    properties: {
-                        edgeType: 'import'
-                    }
-                };
-                umlElements.push(edge);
+                // Create connection edge based on interface type
+                if (interfaceLayout.type === 'import') {
+                    // Dependency edge from interface to component
+                    const edge: ModelElement = {
+                        id: `uml-edge-${edgeIdCounter++}`,
+                        type: 'uml-dependency',
+                        element_type: 'uml-dependency',
+                        sourceId: interfaceComponent.id,
+                        targetId: mainComponent.id,
+                        label: 'requires',
+                        properties: {
+                            edgeType: 'import'
+                        }
+                    };
+                    umlElements.push(edge);
+                } else {
+                    // Realization edge from component to interface
+                    const edge: ModelElement = {
+                        id: `uml-edge-${edgeIdCounter++}`,
+                        type: 'uml-realization',
+                        element_type: 'uml-realization',
+                        sourceId: mainComponent.id,
+                        targetId: interfaceComponent.id,
+                        label: 'provides',
+                        properties: {
+                            edgeType: 'export'
+                        }
+                    };
+                    umlElements.push(edge);
+                }
             });
-            
-            // Create export interface components (right side)
-            let rightX = currentX + 220;
-            exportInterfaces.forEach((iface, index) => {
-                const interfaceComponent: ModelElement = {
-                    id: `uml-interface-${nodeIdCounter++}`,
-                    type: 'uml-interface',
-                    element_type: 'uml-interface',
-                    label: iface.name,
-                    bounds: {
-                        x: rightX,
-                        y: interfaceY + (index * 120),
-                        width: 180,
-                        height: Math.max(80, (iface.functions?.length || 0) * 20 + 60)
-                    },
-                    properties: {
-                        interfaceType: 'export',
-                        parentComponent: component.id,
-                        functions: iface.functions || [],
-                        types: iface.types || []
-                    }
-                };
-                umlElements.push(interfaceComponent);
-                
-                // Create connection edge from component to interface
-                const edge: ModelElement = {
-                    id: `uml-edge-${edgeIdCounter++}`,
-                    type: 'uml-realization',
-                    element_type: 'uml-realization',
-                    sourceId: mainComponent.id,
-                    targetId: interfaceComponent.id,
-                    label: 'provides',
-                    properties: {
-                        edgeType: 'export'
-                    }
-                };
-                umlElements.push(edge);
-            });
-            
-            // Move to next component position
-            currentY += Math.max(200, Math.max(importInterfaces.length, exportInterfaces.length) * 120 + 100);
         });
         
         return {
@@ -250,6 +225,192 @@ export class WasmViewTransformer implements ViewTransformer {
                     showSeparateInterfaces: true
                 }
             }
+        };
+    }
+
+    /**
+     * Calculate UML auto-layout for optimal component and interface positioning
+     */
+    private calculateUMLAutoLayout(components: WasmComponentData[]): {
+        componentPositions: { x: number, y: number, width: number, height: number }[];
+        interfaceLayout: {
+            component: number;
+            interfaces: {
+                id: string;
+                name: string;
+                type: 'import' | 'export';
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+            }[];
+        }[];
+        totalWidth: number;
+        totalHeight: number;
+    } {
+        const margin = 50;
+        const componentSpacing = 300;
+        const interfaceSpacing = 40;
+        const interfaceMargin = 150;
+        
+        // Calculate interface dimensions based on content - moved to method scope
+        const calculateInterfaceSize = (iface: any) => {
+            const functions = iface.functions || [];
+            const baseHeight = 80; // Header + padding
+            const functionHeight = 18; // Height per function line
+            const minWidth = 200;
+            const maxWidth = 350;
+            
+            // Calculate width based on longest function name
+            let calculatedWidth = Math.max(minWidth, iface.name.length * 12);
+            functions.forEach((func: any) => {
+                const funcText = `${func.name}(${(func.params || []).map((p: any) => `${p.name}: ${p.param_type}`).join(', ')})`;
+                calculatedWidth = Math.max(calculatedWidth, funcText.length * 8);
+            });
+            
+            // Calculate height based on number of functions
+            const calculatedHeight = baseHeight + (functions.length * functionHeight) + 20; // Extra padding
+            
+            return {
+                width: Math.min(maxWidth, calculatedWidth),
+                height: Math.max(120, calculatedHeight)
+            };
+        };
+        
+        // Calculate component dimensions and content
+        const componentData = components.map((component, index) => {
+            const importInterfaces = component.interfaces.filter(iface => iface.type === 'import');
+            const exportInterfaces = component.interfaces.filter(iface => iface.type === 'export');
+            
+            const interfaceWidth = 200; // Default width for layout calculations
+            const interfaceHeight = 120; // Default height for layout calculations
+            
+            // Calculate component dimensions
+            const componentWidth = Math.max(250, component.name.length * 12);
+            const componentHeight = 120;
+            
+            // Calculate interface sizes dynamically
+            const importInterfaceSizes = importInterfaces.map(iface => calculateInterfaceSize(iface));
+            const exportInterfaceSizes = exportInterfaces.map(iface => calculateInterfaceSize(iface));
+            
+            // Calculate required space for interfaces
+            const importHeight = importInterfaceSizes.length > 0 
+                ? importInterfaceSizes.reduce((total, size, index) => total + size.height + (index > 0 ? interfaceSpacing : 0), 0)
+                : interfaceHeight;
+            const exportHeight = exportInterfaceSizes.length > 0
+                ? exportInterfaceSizes.reduce((total, size, index) => total + size.height + (index > 0 ? interfaceSpacing : 0), 0)
+                : interfaceHeight;
+            const requiredHeight = Math.max(componentHeight, importHeight, exportHeight);
+            
+            return {
+                component,
+                index,
+                componentWidth,
+                componentHeight,
+                requiredHeight,
+                importInterfaces,
+                exportInterfaces,
+                importInterfaceSizes,
+                exportInterfaceSizes,
+                interfaceWidth,
+                interfaceHeight
+            };
+        });
+        
+        // Arrange components vertically with proper spacing
+        let currentY = margin;
+        const componentPositions: { x: number, y: number, width: number, height: number }[] = [];
+        const interfaceLayout: {
+            component: number;
+            interfaces: {
+                id: string;
+                name: string;
+                type: 'import' | 'export';
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+            }[];
+        }[] = [];
+        
+        // Calculate total width needed
+        const maxInterfaceWidth = Math.max(...componentData.map(cd => cd.interfaceWidth));
+        const totalWidth = interfaceMargin + maxInterfaceWidth + componentSpacing + 
+                          Math.max(...componentData.map(cd => cd.componentWidth)) + 
+                          componentSpacing + maxInterfaceWidth + interfaceMargin;
+        
+        const componentStartX = interfaceMargin + maxInterfaceWidth + componentSpacing;
+        
+        componentData.forEach((data, componentIndex) => {
+            const { component, componentWidth, componentHeight, requiredHeight, 
+                    importInterfaces, exportInterfaces, interfaceWidth, interfaceHeight } = data;
+            
+            // Position main component in center
+            const componentX = componentStartX;
+            const componentY = currentY + (requiredHeight - componentHeight) / 2;
+            
+            componentPositions.push({
+                x: componentX,
+                y: componentY,
+                width: componentWidth,
+                height: componentHeight
+            });
+            
+            // Position interfaces
+            const interfaces: {
+                id: string;
+                name: string;
+                type: 'import' | 'export';
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+            }[] = [];
+            
+            // Import interfaces (left side) with dynamic sizing
+            const importStartY = currentY + (requiredHeight - (importInterfaces.length * (interfaceHeight + interfaceSpacing) - interfaceSpacing)) / 2;
+            importInterfaces.forEach((iface, index) => {
+                const size = calculateInterfaceSize(iface);
+                interfaces.push({
+                    id: `uml-interface-import-${componentIndex}-${index}`,
+                    name: iface.name,
+                    type: 'import',
+                    x: interfaceMargin,
+                    y: importStartY + index * (size.height + interfaceSpacing),
+                    width: size.width,
+                    height: size.height
+                });
+            });
+            
+            // Export interfaces (right side) with dynamic sizing
+            const exportStartY = currentY + (requiredHeight - (exportInterfaces.length * (interfaceHeight + interfaceSpacing) - interfaceSpacing)) / 2;
+            const exportStartX = componentStartX + componentWidth + componentSpacing;
+            exportInterfaces.forEach((iface, index) => {
+                const size = calculateInterfaceSize(iface);
+                interfaces.push({
+                    id: `uml-interface-export-${componentIndex}-${index}`,
+                    name: iface.name,
+                    type: 'export',
+                    x: exportStartX,
+                    y: exportStartY + index * (size.height + interfaceSpacing),
+                    width: size.width,
+                    height: size.height
+                });
+            });
+            
+            interfaceLayout.push({
+                component: componentIndex,
+                interfaces
+            });
+            
+            currentY += requiredHeight + margin * 2;
+        });
+        
+        return {
+            componentPositions,
+            interfaceLayout,
+            totalWidth,
+            totalHeight: currentY + margin
         };
     }
 
@@ -293,6 +454,13 @@ export class WasmViewTransformer implements ViewTransformer {
             functionVerticalSpacing: 70,
             functionHorizontalOffset: 300 + (complexityFactor * 50)
         };
+    }
+
+    /**
+     * Transform to WIT interface view - public entry point for WIT interface mode
+     */
+    private transformToWitInterfaceView(diagram: DiagramModel): ViewTransformationResult {
+        return this.transformToInterfaceView(diagram);
     }
 
     /**

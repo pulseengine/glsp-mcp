@@ -741,21 +741,52 @@ export class UMLComponentRenderer {
         ctx.textBaseline = 'middle';
 
         let textY = y + 16;
+        const lineHeight = 16;
+        const maxWidth = width - 24;
 
         functions.forEach(func => {
-            const params = (func.params || []).map((p: any) => `${p.name}: ${p.param_type}`).join(', ');
+            // Format function signature with better readability
+            const params = (func.params || []).map((p: any) => `${p.name}: ${p.param_type}`);
             const returnType = func.returns && func.returns.length > 0 
                 ? func.returns[0].param_type || 'void'
                 : 'void';
             
-            const functionText = `+ ${func.name}(${params}): ${returnType}`;
+            // Handle long parameter lists by wrapping
+            const funcName = `+ ${func.name}`;
+            const paramString = params.join(', ');
+            const returnString = `: ${returnType}`;
             
-            // Truncate long function names
-            const maxWidth = width - 24;
-            const truncatedText = this.truncateText(functionText, maxWidth, ctx);
+            // If the full signature fits, draw it on one line
+            const fullSignature = `${funcName}(${paramString})${returnString}`;
+            if (ctx.measureText(fullSignature).width <= maxWidth) {
+                ctx.fillText(fullSignature, x + this.TEXT_MARGIN, textY);
+                textY += lineHeight;
+            } else {
+                // Multi-line rendering for long signatures
+                ctx.fillText(`${funcName}(`, x + this.TEXT_MARGIN, textY);
+                textY += lineHeight;
+                
+                // Indent parameters
+                const indent = x + this.TEXT_MARGIN + 20;
+                params.forEach((param, index) => {
+                    const paramText = index < params.length - 1 ? `  ${param},` : `  ${param}`;
+                    if (ctx.measureText(paramText).width <= maxWidth - 20) {
+                        ctx.fillText(paramText, indent, textY);
+                        textY += lineHeight;
+                    } else {
+                        // Truncate very long parameter names
+                        const truncated = this.truncateText(paramText, maxWidth - 20, ctx);
+                        ctx.fillText(truncated, indent, textY);
+                        textY += lineHeight;
+                    }
+                });
+                
+                ctx.fillText(`)${returnString}`, x + this.TEXT_MARGIN, textY);
+                textY += lineHeight;
+            }
             
-            ctx.fillText(truncatedText, x + this.TEXT_MARGIN, textY);
-            textY += 18;
+            // Add small spacing between functions
+            textY += 4;
         });
     }
 

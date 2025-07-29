@@ -11,6 +11,7 @@ import { UMLComponentRenderer, UMLRenderingContext } from '../diagrams/uml-compo
 import { getDiagramTypeConfig } from '../diagrams/diagram-type-registry.js';
 import { ComponentInterface } from '../types/wasm-component.js';
 import { WitInterface, WitFunction } from '../diagrams/interface-compatibility.js';
+import { witFileViewer } from '../ui/WitFileViewer.js';
 
 // Convert ComponentInterface to WitInterface for compatibility
 function convertToWitInterface(componentInterface: ComponentInterface): WitInterface {
@@ -51,7 +52,7 @@ export interface RenderOptions {
 }
 
 export interface InteractionEvent {
-    type: 'click' | 'hover' | 'drag-start' | 'drag-move' | 'drag-end' | 'canvas-click' | 'edge-start' | 'edge-end' | 'interface-click';
+    type: 'click' | 'double-click' | 'hover' | 'drag-start' | 'drag-move' | 'drag-end' | 'canvas-click' | 'edge-start' | 'edge-end' | 'interface-click';
     position: Position;
     element?: ModelElement;
     sourceElement?: ModelElement; // For edge creation
@@ -91,7 +92,9 @@ export class CanvasRenderer {
     private interfaceLinkingMode = false;
     private sourceInterfaceInfo?: InterfaceInfo;
     private highlightedInterfaces: Map<string, string[]> = new Map(); // componentId -> interface names
+    private hoveredConnector?: { element: ModelElement; interface: ComponentInterface; side: 'left' | 'right'; connectorPosition: Position };
     private interfaceTooltip?: HTMLElement;
+    private contextMenu?: HTMLElement;
     private minScale = 0.1;
     private maxScale = 5.0;
     private scrollBounds?: { minX: number; minY: number; maxX: number; maxY: number };
@@ -141,7 +144,9 @@ export class CanvasRenderer {
         this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
         this.canvas.addEventListener('click', this.handleClick.bind(this));
+        this.canvas.addEventListener('dblclick', this.handleDoubleClick.bind(this));
         this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
+        this.canvas.addEventListener('contextmenu', this.handleContextMenu.bind(this));
 
         // Resize observer
         const resizeObserver = new ResizeObserver(() => {
@@ -415,39 +420,111 @@ export class CanvasRenderer {
                 break;
                 
             case InteractionMode.CreateEdge: {
-                const elementTypeForEdge = element?.type || element?.element_type || '';
-                if (element && (elementTypeForEdge === 'task' || elementTypeForEdge.includes('event') || elementTypeForEdge === 'gateway')) {
+                // Check for interface connector first (for precise snapping)
+                const interfaceConnector = this.getInterfaceConnectorAt(position);
+                
+                if (interfaceConnector) {
+                    // Handle edge creation with interface connectors
                     if (!this.edgeCreationSource) {
-                        // Start edge creation
-                        this.edgeCreationSource = element;
+                        // Start edge creation from interface connector
+                        this.edgeCreationSource = interfaceConnector.element;
                         this.emit({
                             type: 'edge-start',
-                            position,
-                            element,
+                            position: interfaceConnector.connectorPosition,
+                            element: interfaceConnector.element,
+                            interfaceInfo: {
+                                componentId: interfaceConnector.element.id,
+                                interface: convertToWitInterface(interfaceConnector.interface),
+                                interfaceType: interfaceConnector.side === 'left' ? 'import' : 'export',
+                                connectorPosition: interfaceConnector.connectorPosition
+                            },
                             originalEvent: event
                         });
-                    } else if (element.id !== this.edgeCreationSource.id) {
-                        // Complete edge creation
+                    } else if (interfaceConnector.element.id !== this.edgeCreationSource.id) {
+                        // Complete edge creation to interface connector
                         this.emit({
                             type: 'edge-end',
-                            position,
-                            element,
+                            position: interfaceConnector.connectorPosition,
+                            element: interfaceConnector.element,
                             sourceElement: this.edgeCreationSource,
+                            interfaceInfo: {
+                                componentId: interfaceConnector.element.id,
+                                interface: convertToWitInterface(interfaceConnector.interface),
+                                interfaceType: interfaceConnector.side === 'left' ? 'import' : 'export',
+                                connectorPosition: interfaceConnector.connectorPosition
+                            },
                             originalEvent: event
                         });
                         this.edgeCreationSource = undefined;
                         this.edgePreviewTarget = undefined;
                     }
-                } else if (!element && this.edgeCreationSource) {
-                    // Cancel edge creation
-                    this.edgeCreationSource = undefined;
-                    this.edgePreviewTarget = undefined;
-                    this.render();
+                } else {
+                    // Fallback to regular element-based edge creation
+                    const elementTypeForEdge = element?.type || element?.element_type || '';
+                    if (element && (elementTypeForEdge === 'task' || elementTypeForEdge.includes('event') || elementTypeForEdge === 'gateway' || elementTypeForEdge === 'wasm-component')) {
+                        if (!this.edgeCreationSource) {
+                            // Start edge creation
+                            this.edgeCreationSource = element;
+                            this.emit({
+                                type: 'edge-start',
+                                position,
+                                element,
+                                originalEvent: event
+                            });
+                        } else if (element.id !== this.edgeCreationSource.id) {
+                            // Complete edge creation
+                            this.emit({
+                                type: 'edge-end',
+                                position,
+                                element,
+                                sourceElement: this.edgeCreationSource,
+                                originalEvent: event
+                            });
+                            this.edgeCreationSource = undefined;
+                            this.edgePreviewTarget = undefined;
+                        }
+                    } else if (!element && this.edgeCreationSource) {
+                        // Cancel edge creation
+                        this.edgeCreationSource = undefined;
+                        this.edgePreviewTarget = undefined;
+                        this.render();
+                    }
                 }
                 break;
             }
 
             // Note: InteractionMode.CreateInterfaceLink is handled above the switch statement
+        }
+    }
+
+    protected handleDoubleClick(event: MouseEvent): void {
+        console.log('handleDoubleClick: Method called');
+        
+        const position = this.getMousePosition(event);
+        const element = this.getElementAt(position);
+        
+        // Only handle double-click for elements (not empty canvas)
+        if (element) {
+            console.log('handleDoubleClick: Element found:', element.id, element.type);
+            
+            // Check if this is a WASM component that can be executed
+            const isWasmComponent = element.type === 'wasm-component' || 
+                                   element.element_type === 'wasm-component' ||
+                                   element.properties?.componentType === 'wasm-component';
+            
+            if (isWasmComponent) {
+                console.log('handleDoubleClick: WASM component detected, emitting double-click event');
+                this.emit({
+                    type: 'double-click',
+                    position,
+                    element,
+                    originalEvent: event
+                });
+            } else {
+                console.log('handleDoubleClick: Non-WASM component, no action taken');
+            }
+        } else {
+            console.log('handleDoubleClick: No element found at position');
         }
     }
 
@@ -494,10 +571,24 @@ export class CanvasRenderer {
             const interfaceConnector = this.getInterfaceConnectorAt(position);
             
             if (interfaceConnector) {
+                // Update hovered connector for visual highlighting
+                const newHoverKey = `${interfaceConnector.element.id}-${interfaceConnector.interface.name}-${interfaceConnector.side}`;
+                const currentHoverKey = this.hoveredConnector ? 
+                    `${this.hoveredConnector.element.id}-${this.hoveredConnector.interface.name}-${this.hoveredConnector.side}` : null;
+                
+                if (newHoverKey !== currentHoverKey) {
+                    this.hoveredConnector = interfaceConnector;
+                    this.render(); // Re-render to show hover highlight
+                }
+                
                 // Show interface connector tooltip
                 this.showInterfaceTooltip(interfaceConnector, position);
             } else {
-                // Hide tooltip if no connector
+                // Clear hovered connector and hide tooltip
+                if (this.hoveredConnector) {
+                    this.hoveredConnector = undefined;
+                    this.render(); // Re-render to clear hover highlight
+                }
                 this.hideInterfaceTooltip();
                 
                 // Handle regular element hover
@@ -532,7 +623,17 @@ export class CanvasRenderer {
             
             // Update edge preview if creating edge
             if (this.edgeCreationSource) {
-                this.edgePreviewTarget = position;
+                // Check for interface connector near the mouse for snapping
+                const nearbyConnector = this.getInterfaceConnectorAt(position);
+                if (nearbyConnector) {
+                    // Snap to connector position
+                    this.edgePreviewTarget = nearbyConnector.connectorPosition;
+                    this.canvas.style.cursor = 'crosshair';
+                } else {
+                    // Use mouse position if no connector nearby
+                    this.edgePreviewTarget = position;
+                    this.canvas.style.cursor = 'copy';
+                }
                 this.render();
             }
         }
@@ -647,11 +748,164 @@ export class CanvasRenderer {
         this.render();
     }
 
+    private handleContextMenu(event: MouseEvent): void {
+        event.preventDefault(); // Prevent browser context menu
+        
+        const position = this.getMousePosition(event);
+        const element = this.getElementAt(position);
+        
+        if (element && this.currentViewMode === 'uml-interface') {
+            const elementType = element.type || element.element_type;
+            
+            if (elementType === 'uml-interface' || elementType === 'uml-component') {
+                this.showWitContextMenu(event, element);
+            }
+        }
+    }
+
+    private showWitContextMenu(event: MouseEvent, element: ModelElement): void {
+        // Create context menu
+        const menu = document.createElement('div');
+        menu.className = 'wit-context-menu';
+        menu.style.cssText = `
+            position: absolute;
+            left: ${event.pageX}px;
+            top: ${event.pageY}px;
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            min-width: 160px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 13px;
+        `;
+
+        const elementType = element.type || element.element_type;
+        const isInterface = elementType === 'uml-interface';
+        
+        // View WIT Definition option
+        const viewWitOption = document.createElement('div');
+        viewWitOption.style.cssText = `
+            padding: 8px 12px;
+            cursor: pointer;
+            color: #e6e6e6;
+            border-bottom: 1px solid #444;
+        `;
+        viewWitOption.textContent = isInterface ? 'View WIT Interface' : 'View WIT Component';
+        viewWitOption.onclick = () => {
+            this.removeContextMenu();
+            this.showWitDefinition(element, isInterface);
+        };
+
+        // View Component Path option (for components)
+        if (!isInterface && element.properties?.componentPath) {
+            const viewPathOption = document.createElement('div');
+            viewPathOption.style.cssText = `
+                padding: 8px 12px;
+                cursor: pointer;
+                color: #e6e6e6;
+                border-bottom: 1px solid #444;
+            `;
+            viewPathOption.textContent = 'Show Component Path';
+            viewPathOption.onclick = () => {
+                this.removeContextMenu();
+                alert(`Component Path:\n${element.properties?.componentPath}`);
+            };
+            menu.appendChild(viewPathOption);
+        }
+
+        menu.appendChild(viewWitOption);
+
+        // Add close listener
+        const closeMenu = () => this.removeContextMenu();
+        setTimeout(() => {
+            document.addEventListener('click', closeMenu, { once: true });
+            document.addEventListener('contextmenu', closeMenu, { once: true });
+        }, 0);
+
+        document.body.appendChild(menu);
+        this.contextMenu = menu;
+    }
+
+    private removeContextMenu(): void {
+        if (this.contextMenu) {
+            this.contextMenu.remove();
+            this.contextMenu = undefined;
+        }
+    }
+
+    private showWitDefinition(element: ModelElement, isInterface: boolean): void {
+        if (isInterface) {
+            witFileViewer.showWitDefinition({
+                interfaceName: element.label?.toString() || 'interface',
+                interfaceData: {
+                    name: element.label?.toString() || 'interface',
+                    interface_type: element.properties?.interfaceType || 'import',
+                    functions: element.properties?.functions || []
+                }
+            });
+        } else {
+            // For components, we need to gather all interface data
+            witFileViewer.showWitDefinition({
+                componentData: {
+                    name: element.label?.toString() || 'component',
+                    interfaces: this.gatherComponentInterfaces(element)
+                },
+                componentPath: element.properties?.componentPath
+            });
+        }
+    }
+
+    private gatherComponentInterfaces(component: ModelElement): any[] {
+        if (!this.currentDiagram) return [];
+        
+        // Find all interfaces connected to this component
+        const interfaces: any[] = [];
+        const componentId = component.id;
+        const originalComponentId = component.properties?.originalId;
+        
+        Object.values(this.currentDiagram.elements).forEach(element => {
+            const elementType = element.type || element.element_type;
+            if (elementType === 'uml-interface') {
+                // Check both current component ID and original component ID
+                const parentComponent = element.properties?.parentComponent;
+                if (parentComponent === componentId || parentComponent === originalComponentId) {
+                    interfaces.push({
+                        name: element.label?.toString() || 'interface',
+                        interface_type: element.properties?.interfaceType || 'import',
+                        functions: element.properties?.functions || [],
+                        types: element.properties?.types || []
+                    });
+                }
+            }
+        });
+        
+        // If no interfaces found via parentComponent, try to get from original component data
+        if (interfaces.length === 0 && component.properties?.originalInterfaces) {
+            return component.properties.originalInterfaces;
+        }
+        
+        return interfaces;
+    }
+
     setDiagram(diagram: DiagramModel): void {
         this.currentDiagram = diagram;
         this.selectionManager.clearSelection();
+        
+        // Load edge type preference for this diagram
+        const savedEdgeType = this.loadEdgeTypePreference();
+        this.edgeCreationType = savedEdgeType;
+        
+        // Notify UI about the loaded edge type preference
+        window.dispatchEvent(new CustomEvent('diagram-edge-type-loaded', {
+            detail: { edgeType: savedEdgeType }
+        }));
+        
         this.updateScrollBounds();
         this.render();
+        
+        console.log('CanvasRenderer: Diagram loaded with edge type:', savedEdgeType);
     }
 
     clear(): void {
@@ -751,6 +1005,10 @@ export class CanvasRenderer {
             return;
         }
 
+        // Get view mode rendering hints for optimization
+        const renderingHints = this.getViewModeRenderingHints();
+        const isWitMode = this.isWitViewMode();
+
         // Apply transformations
         this.ctx.translate(this.options.offset.x, this.options.offset.y);
         this.ctx.scale(this.options.scale, this.options.scale);
@@ -760,11 +1018,18 @@ export class CanvasRenderer {
             this.drawGrid();
         }
 
-        // Draw edges first (so they appear behind nodes)
-        this.drawEdges();
+        // Apply WIT-specific styling if in WIT mode
+        if (isWitMode) {
+            this.applyWitSpecificStyling(renderingHints);
+        }
 
-        // Draw nodes
-        this.drawNodes();
+        // Draw edges first (so they appear behind nodes)
+        if (renderingHints.showConnections !== false) {
+            this.drawEdges();
+        }
+
+        // Draw nodes with view mode context
+        this.drawNodes(renderingHints);
         
         // Draw selection rectangle if active
         if (this.isSelectingRect && this.selectionRect) {
@@ -775,6 +1040,9 @@ export class CanvasRenderer {
         if (this.edgeCreationSource && this.edgePreviewTarget) {
             this.drawEdgePreview();
         }
+
+        // Draw interface connector highlights
+        this.drawConnectorHighlights();
 
         this.ctx.restore();
     }
@@ -911,7 +1179,7 @@ export class CanvasRenderer {
         this.ctx.stroke();
     }
 
-    private drawNodes(): void {
+    private drawNodes(renderingHints: Record<string, boolean> = {}): void {
         if (!this.currentDiagram) return;
 
         const elements = Object.values(this.currentDiagram.elements);
@@ -922,11 +1190,16 @@ export class CanvasRenderer {
                 return;
             }
             
-            this.drawNode(element as Node);
+            // Apply view mode filtering based on rendering hints
+            if (!this.shouldRenderElement(element, renderingHints)) {
+                return;
+            }
+            
+            this.drawNode(element as Node, renderingHints);
         });
     }
 
-    private drawNode(node: Node): void {
+    private drawNode(node: Node, renderingHints: Record<string, boolean> = {}): void {
         // Ensure element has bounds before rendering
         this.ensureElementBounds(node);
         
@@ -1242,6 +1515,9 @@ export class CanvasRenderer {
     private drawEdges(): void {
         if (!this.currentDiagram) return;
 
+        // Debug logging for all elements
+        console.log('🔍 Drawing edges - total elements:', Object.keys(this.currentDiagram.elements).length);
+        
         Object.values(this.currentDiagram.elements).forEach(element => {
             const elementType = element.type || element.element_type || '';
             // Check for various edge types - the backend might use 'flow' instead of 'edge'
@@ -1252,12 +1528,25 @@ export class CanvasRenderer {
                           elementType === 'sequence-flow' ||
                           elementType === 'message-flow' ||
                           elementType === 'conditional-flow' ||
+                          elementType.startsWith('uml-') && (elementType.includes('dependency') || 
+                                                              elementType.includes('realization') || 
+                                                              elementType.includes('association')) ||
                           elementType.startsWith('wit-') && (elementType.includes('contains') || 
                                                               elementType.includes('import') || 
                                                               elementType.includes('export'));
             
+            // Debug logging for each element
+            console.log('📋 Element check:', {
+                id: element.id,
+                type: elementType,
+                isEdge,
+                hasSourceId: !!(element as any).sourceId,
+                hasTargetId: !!(element as any).targetId
+            });
+            
             if (!isEdge) return;
             
+            console.log('🎯 Found edge to draw:', element.id, elementType);
             this.drawEdge(element as Edge);
         });
     }
@@ -1570,12 +1859,31 @@ export class CanvasRenderer {
             y: this.edgeCreationSource.bounds.y + this.edgeCreationSource.bounds.height / 2
         };
         
-        this.ctx.strokeStyle = this.options.selectedColor;
+        // Check if target is compatible (if it's an interface connector)
+        const targetConnector = this.getInterfaceConnectorAt(this.edgePreviewTarget);
+        let isCompatible = true;
+        
+        if (targetConnector && this.sourceInterfaceInfo) {
+            isCompatible = this.isInterfaceCompatible(this.sourceInterfaceInfo.interface, targetConnector.interface);
+        }
+        
+        // Set edge color based on compatibility
+        this.ctx.strokeStyle = isCompatible ? this.options.selectedColor : '#F44336'; // Red for incompatible
         this.ctx.lineWidth = 2;
         this.ctx.setLineDash([5, 5]);
         
         // Draw preview edge using the selected creation type
         this.drawEdgeByType(sourceCenter, this.edgePreviewTarget, undefined, this.edgeCreationType || 'straight');
+        
+        // Add visual indicator at target for compatibility
+        if (targetConnector) {
+            this.ctx.setLineDash([]);
+            this.ctx.beginPath();
+            this.ctx.arc(this.edgePreviewTarget.x, this.edgePreviewTarget.y, 8, 0, 2 * Math.PI);
+            this.ctx.fillStyle = isCompatible ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)';
+            this.ctx.fill();
+            this.ctx.stroke();
+        }
         
         this.ctx.setLineDash([]);
     }
@@ -1591,6 +1899,51 @@ export class CanvasRenderer {
     public setEdgeCreationType(creationType: string): void {
         this.edgeCreationType = creationType;
         console.log('CanvasRenderer: Edge creation type set to:', creationType);
+        
+        // Save preference to current diagram metadata
+        this.saveEdgeTypePreference(creationType);
+    }
+    
+    // Save edge type preference to diagram metadata
+    private saveEdgeTypePreference(edgeType: string): void {
+        if (!this.currentDiagram) return;
+        
+        // Initialize metadata if it doesn't exist
+        if (!this.currentDiagram.metadata) {
+            this.currentDiagram.metadata = {
+                id: this.currentDiagram.id,
+                type: this.currentDiagram.diagramType || this.currentDiagram.diagram_type || 'unknown',
+                revision: this.currentDiagram.revision,
+                statistics: {
+                    totalElements: Object.keys(this.currentDiagram.elements).length,
+                    nodes: 0,
+                    edges: 0,
+                    elementTypes: {}
+                },
+                lastModified: new Date().toISOString()
+            };
+        }
+        
+        // Initialize preferences if they don't exist
+        if (!this.currentDiagram.metadata.preferences) {
+            this.currentDiagram.metadata.preferences = {};
+        }
+        
+        // Save edge type preference
+        this.currentDiagram.metadata.preferences.edgeCreationType = edgeType;
+        this.currentDiagram.metadata.lastModified = new Date().toISOString();
+        
+        console.log('CanvasRenderer: Saved edge type preference:', edgeType, 'to diagram:', this.currentDiagram.id);
+    }
+    
+    // Load edge type preference from diagram metadata
+    private loadEdgeTypePreference(): string {
+        const savedEdgeType = this.currentDiagram?.metadata?.preferences?.edgeCreationType;
+        if (savedEdgeType) {
+            console.log('CanvasRenderer: Loaded edge type preference:', savedEdgeType, 'from diagram:', this.currentDiagram?.id);
+            return savedEdgeType;
+        }
+        return 'straight'; // default
     }
     
     // Set interaction mode (pan, select, etc.)
@@ -1635,8 +1988,35 @@ export class CanvasRenderer {
     private updateInterfaceHighlights(): void {
         if (!this.sourceInterfaceInfo || !this.currentDiagram) return;
 
+        // Clear existing highlights
+        this.highlightedInterfaces.clear();
+        
         // Find all compatible interfaces in the diagram
-        // This will be implemented with the compatibility checker
+        for (const element of Object.values(this.currentDiagram.elements)) {
+            const elementType = element.type || element.element_type;
+            if (elementType !== 'wasm-component' || !element.bounds) continue;
+            
+            // Skip the source component to avoid self-connection
+            if (element.id === this.sourceInterfaceInfo.componentId) continue;
+
+            const interfaces = element.properties?.interfaces || [];
+            if (interfaces.length === 0) continue;
+
+            const compatibleInterfaceNames: string[] = [];
+            
+            // Check each interface for compatibility
+            interfaces.forEach((iface: ComponentInterface) => {
+                if (this.isInterfaceCompatible(this.sourceInterfaceInfo!.interface, iface)) {
+                    compatibleInterfaceNames.push(iface.name);
+                }
+            });
+
+            // Store compatible interfaces for this component
+            if (compatibleInterfaceNames.length > 0) {
+                this.highlightedInterfaces.set(element.id, compatibleInterfaceNames);
+            }
+        }
+        
         this.render();
     }
 
@@ -1973,6 +2353,35 @@ export class CanvasRenderer {
     private drawUMLEdge(edge: Edge, sourceElement: ModelElement, targetElement: ModelElement, isSelected: boolean, isHovered: boolean): void {
         const edgeType = edge.type || edge.element_type || '';
         
+        // Enhanced debug logging
+        console.log('🔗 Drawing UML edge:', {
+            id: edge.id,
+            type: edgeType,
+            sourceId: edge.sourceId,
+            targetId: edge.targetId,
+            sourceElement: sourceElement?.id,
+            targetElement: targetElement?.id,
+            sourceBounds: sourceElement?.bounds,
+            targetBounds: targetElement?.bounds,
+            label: edge.label
+        });
+        
+        if (!sourceElement || !targetElement) {
+            console.warn('❌ Missing source or target element for UML edge:', {
+                edgeId: edge.id,
+                sourceId: edge.sourceId,
+                targetId: edge.targetId,
+                sourceFound: !!sourceElement,
+                targetFound: !!targetElement
+            });
+            return;
+        }
+        
+        if (!sourceElement.bounds || !targetElement.bounds) {
+            console.warn('❌ Missing bounds for UML edge elements:', edge.id);
+            return;
+        }
+        
         // Set styling based on UML edge type
         if (edgeType === 'uml-dependency') {
             this.ctx.strokeStyle = isSelected ? '#E53E3E' : '#DD6B20';
@@ -2279,6 +2688,13 @@ export class CanvasRenderer {
     public getViewMode(): string {
         return this.currentViewMode;
     }
+
+    /**
+     * Get the canvas element for external access
+     */
+    public getCanvas(): HTMLCanvasElement {
+        return this.canvas;
+    }
     
     public updateTheme(): void {
         const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -2332,6 +2748,210 @@ export class CanvasRenderer {
             default:
                 return {};
         }
+    }
+
+    /**
+     * Apply WIT-specific styling and rendering context
+     */
+    private applyWitSpecificStyling(renderingHints: Record<string, boolean>): void {
+        if (renderingHints.emphasizeStructure) {
+            // Enhance line weights for structural elements
+            this.ctx.lineWidth = Math.max(1, this.ctx.lineWidth * 1.2);
+        }
+
+        if (renderingHints.highlightDependencies) {
+            // Set context for dependency highlighting
+            this.ctx.globalAlpha = 0.9;
+        }
+    }
+
+    /**
+     * Determine if an element should be rendered based on view mode hints
+     */
+    private shouldRenderElement(element: ModelElement, renderingHints: Record<string, boolean>): boolean {
+        const elementType = element.type || element.element_type;
+
+        // Component filtering
+        if (renderingHints.showComponents === false && elementType === 'wasm-component') {
+            return false;
+        }
+
+        // Interface filtering
+        if (renderingHints.showInterfaces === false && this.isInterfaceElement(element)) {
+            return false;
+        }
+
+        // Package filtering for WIT mode
+        if (renderingHints.showPackages === false && elementType === 'wit-package') {
+            return false;
+        }
+
+        // Function filtering for WIT mode
+        if (renderingHints.showFunctions === false && elementType === 'wit-function') {
+            return false;
+        }
+
+        // Type filtering for WIT mode
+        if (renderingHints.showTypes === false && elementType === 'wit-type') {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if element represents an interface
+     */
+    private isInterfaceElement(element: ModelElement): boolean {
+        const elementType = element.type || element.element_type;
+        return elementType === 'interface' || elementType === 'wit-interface' || elementType === 'uml-interface';
+    }
+
+    /**
+     * Draw visual highlights for interface connectors
+     */
+    private drawConnectorHighlights(): void {
+        // Draw hovered connector highlight
+        if (this.hoveredConnector) {
+            this.drawConnectorHighlight(this.hoveredConnector, 'hover');
+        }
+
+        // Draw compatible connector highlights during interface linking
+        if (this.interfaceLinkingMode && this.sourceInterfaceInfo) {
+            this.drawCompatibleConnectorHighlights();
+        }
+    }
+
+    /**
+     * Draw highlight for a specific connector
+     */
+    private drawConnectorHighlight(
+        connector: { element: ModelElement; interface: ComponentInterface; side: 'left' | 'right'; connectorPosition: Position },
+        type: 'hover' | 'compatible' | 'incompatible'
+    ): void {
+        const ctx = this.ctx;
+        const pos = connector.connectorPosition;
+        const radius = 10; // Slightly larger than port radius for visibility
+
+        ctx.save();
+
+        // Set highlight style based on type
+        switch (type) {
+            case 'hover':
+                ctx.strokeStyle = '#4CAF50'; // Green for hover
+                ctx.fillStyle = 'rgba(76, 175, 80, 0.2)';
+                ctx.lineWidth = 2;
+                break;
+            case 'compatible':
+                ctx.strokeStyle = '#2196F3'; // Blue for compatible
+                ctx.fillStyle = 'rgba(33, 150, 243, 0.2)';
+                ctx.lineWidth = 2;
+                break;
+            case 'incompatible':
+                ctx.strokeStyle = '#F44336'; // Red for incompatible
+                ctx.fillStyle = 'rgba(244, 67, 54, 0.2)';
+                ctx.lineWidth = 2;
+                break;
+        }
+
+        // Draw highlight circle
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, radius, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+
+        // Add pulse effect for hover
+        if (type === 'hover') {
+            const pulseRadius = radius + (Math.sin(Date.now() * 0.01) * 2);
+            ctx.strokeStyle = 'rgba(76, 175, 80, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, pulseRadius, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+
+    /**
+     * Draw highlights for all compatible connectors during interface linking
+     */
+    private drawCompatibleConnectorHighlights(): void {
+        if (!this.currentDiagram || !this.sourceInterfaceInfo) return;
+
+        // Find all WASM components and check their interface compatibility
+        for (const element of Object.values(this.currentDiagram.elements)) {
+            const elementType = element.type || element.element_type;
+            if (elementType !== 'wasm-component' || !element.bounds) continue;
+
+            const interfaces = element.properties?.interfaces || [];
+            if (interfaces.length === 0) continue;
+
+            // Check each interface for compatibility
+            interfaces.forEach((iface: ComponentInterface, index: number) => {
+                if (this.isInterfaceCompatible(this.sourceInterfaceInfo!.interface, iface)) {
+                    // Calculate connector position
+                    const side = this.getInterfaceSide(iface);
+                    const connectorPos = this.calculateConnectorPosition(element, index, side);
+                    
+                    if (connectorPos) {
+                        this.drawConnectorHighlight({
+                            element,
+                            interface: iface,
+                            side,
+                            connectorPosition: connectorPos
+                        }, 'compatible');
+                    }
+                }
+            });
+        }
+    }
+
+    /**
+     * Check if two interfaces are compatible for connection
+     */
+    private isInterfaceCompatible(sourceInterface: ComponentInterface, targetInterface: ComponentInterface): boolean {
+        // Basic compatibility check: export can connect to import and vice versa
+        const sourceType = sourceInterface.interface_type || sourceInterface.type || sourceInterface.direction;
+        const targetType = targetInterface.interface_type || targetInterface.type || targetInterface.direction;
+
+        // Export/Output can connect to Import/Input
+        if ((sourceType === 'export' || sourceType === 'output') && 
+            (targetType === 'import' || targetType === 'input')) {
+            return true;
+        }
+
+        // Import/Input can connect to Export/Output  
+        if ((sourceType === 'import' || sourceType === 'input') && 
+            (targetType === 'export' || targetType === 'output')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the side (left/right) for an interface based on its type
+     */
+    private getInterfaceSide(iface: ComponentInterface): 'left' | 'right' {
+        const type = iface.interface_type || iface.type || iface.direction;
+        return (type === 'import' || type === 'input') ? 'left' : 'right';
+    }
+
+    /**
+     * Calculate connector position for an interface
+     */
+    private calculateConnectorPosition(element: ModelElement, interfaceIndex: number, side: 'left' | 'right'): Position | undefined {
+        if (!element.bounds) return undefined;
+
+        const headerHeight = 40;
+        const portSpacing = 24;
+        const startY = element.bounds.y + headerHeight + 20;
+
+        const x = side === 'left' ? element.bounds.x : element.bounds.x + element.bounds.width;
+        const y = startY + (interfaceIndex * portSpacing);
+
+        return { x, y };
     }
 
     // Protected methods for subclass access
