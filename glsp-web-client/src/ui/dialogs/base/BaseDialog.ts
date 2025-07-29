@@ -15,6 +15,8 @@ export interface DialogConfig extends Partial<FloatingPanelConfig> {
     primaryButtonText?: string;
     secondaryButtonText?: string;
     cancelButtonText?: string;
+    animationType?: 'fade' | 'slide' | 'scale' | 'bounce' | 'none';
+    contextAware?: boolean; // Enable context-aware positioning
 }
 
 export interface DialogEvents extends FloatingPanelEvents {
@@ -62,6 +64,8 @@ export abstract class BaseDialog extends FloatingPanel {
             primaryButtonText: 'OK',
             secondaryButtonText: 'Cancel',
             cancelButtonText: 'Cancel',
+            animationType: 'scale', // Default to scale animation
+            contextAware: true, // Enable context-aware positioning by default
             ...config
         };
 
@@ -73,6 +77,7 @@ export abstract class BaseDialog extends FloatingPanel {
         this.dialogConfig = dialogConfig;
         this.dialogEvents = events;
         this.setupDialogStyling();
+        this.setupMouseTracking();
         this.setupFooter();
     }
 
@@ -92,8 +97,7 @@ export abstract class BaseDialog extends FloatingPanel {
         // Add dialog-specific CSS classes
         this.element.classList.add('base-dialog');
         
-        // DISABLED: CSS animations with transforms can cause blur in dialog content
-        // Simple opacity-only animations are safer for text rendering
+        // Enhanced dialog animations with multiple entrance/exit effects
         if (!document.querySelector('#dialog-animations')) {
             const style = document.createElement('style');
             style.id = 'dialog-animations';
@@ -114,6 +118,98 @@ export abstract class BaseDialog extends FloatingPanel {
                     to {
                         opacity: 0;
                     }
+                }
+                
+                @keyframes slideInFromTop {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-30px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                @keyframes slideOutToTop {
+                    from {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                    to {
+                        opacity: 0;
+                        transform: translateY(-30px);
+                    }
+                }
+                
+                @keyframes scaleIn {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+                
+                @keyframes scaleOut {
+                    from {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                    to {
+                        opacity: 0;
+                        transform: scale(0.95);
+                    }
+                }
+                
+                @keyframes bounceIn {
+                    0% {
+                        opacity: 0;
+                        transform: scale(0.3);
+                    }
+                    50% {
+                        opacity: 1;
+                        transform: scale(1.05);
+                    }
+                    70% {
+                        transform: scale(0.98);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+                
+                /* Dialog entrance animations */
+                .dialog-animate-fade-in {
+                    animation: fadeIn 0.3s ease-out forwards;
+                }
+                
+                .dialog-animate-slide-in {
+                    animation: slideInFromTop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+                }
+                
+                .dialog-animate-scale-in {
+                    animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+                }
+                
+                .dialog-animate-bounce-in {
+                    animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+                }
+                
+                /* Dialog exit animations */
+                .dialog-animate-fade-out {
+                    animation: fadeOut 0.2s ease-in forwards;
+                }
+                
+                .dialog-animate-slide-out {
+                    animation: slideOutToTop 0.3s ease-in forwards;
+                }
+                
+                .dialog-animate-scale-out {
+                    animation: scaleOut 0.2s ease-in forwards;
                 }
             `;
             document.head.appendChild(style);
@@ -330,6 +426,9 @@ export abstract class BaseDialog extends FloatingPanel {
             this.createBackdrop();
         }
 
+        // Add to dialog stack for proper z-index management
+        BaseDialog.addToStack(this);
+
         // Check if we need centering
         if (this.config.initialPosition.x === -1 && this.config.initialPosition.y === -1) {
             // ALWAYS use flexbox centering (2024-2025 best practice for blur prevention)
@@ -357,6 +456,9 @@ export abstract class BaseDialog extends FloatingPanel {
 
         // Show the panel (but prevent it from moving the element)
         this.element.style.display = 'block';
+        
+        // Apply entrance animation
+        this.applyEntranceAnimation();
         
         // Manually handle z-index like bringToFront does
         const allPanels = document.querySelectorAll('.floating-panel');
@@ -461,22 +563,24 @@ export abstract class BaseDialog extends FloatingPanel {
 
         console.log('🐛 BaseDialog.close() called');
 
-        // Remove backdrop first
-        if (this.backdrop) {
-            this.removeBackdrop();
-        }
+        // Apply exit animation before closing
+        this.applyExitAnimation(() => {
+            // Remove backdrop first
+            if (this.backdrop) {
+                this.removeBackdrop();
+            }
 
-        // Hide the panel
-        super.hide();
-        this.isShown = false;
+            // Hide the panel
+            super.hide();
+            this.isShown = false;
 
-        // Trigger close event
-        if (this.dialogEvents.onClose) {
-            this.dialogEvents.onClose();
-        }
+            // Trigger close event
+            if (this.dialogEvents.onClose) {
+                this.dialogEvents.onClose();
+            }
 
-        // Clean up: remove dialog and flexbox container from DOM after animation
-        setTimeout(() => {
+            // Clean up: remove dialog and flexbox container from DOM after animation
+            setTimeout(() => {
             if (this.element && this.element.parentNode) {
                 console.log('🔧 Removing dialog from DOM');
                 
@@ -500,6 +604,7 @@ export abstract class BaseDialog extends FloatingPanel {
                 }
             }
         }, 300); // Wait for animations to complete
+        });
     }
 
     public setZIndex(zIndex: number): void {
@@ -547,23 +652,57 @@ export abstract class BaseDialog extends FloatingPanel {
     }
 
     private blurPageContent(): void {
-        // Disabled blur effect to prevent dialog content from appearing blurred
-        // The backdrop provides sufficient visual separation
-        console.log('🐛 Blur effect disabled - using backdrop only');
-        return;
+        // Enhanced blur effect for improved modal backdrop - selectively blur main content areas
+        console.log('🌫️ Applying selective blur to background content');
         
-        // Original blur code commented out:
-        // const bodyChildren = Array.from(document.body.children);
-        // bodyChildren.forEach(child => {
-        //     const element = child as HTMLElement;
-        //     if (!element.classList.contains('base-dialog') && 
-        //         !element.classList.contains('dialog-backdrop') &&
-        //         !element.classList.contains('floating-panel')) {
-        //         element.style.filter = 'blur(4px)';
-        //         element.style.transition = 'filter 0.2s ease-out';
-        //         element.setAttribute('data-dialog-blurred', 'true');
-        //     }
-        // });
+        // Define specific blur sources for better UX
+        const blurSources = [
+            '.main-container',
+            '.canvas-container', 
+            '.sidebar',
+            '.toolbar-container',
+            '.header-container',
+            '#diagram-canvas',
+            '.view-switcher',
+            '.toolbox-container'
+        ];
+        
+        // Apply blur to specific elements rather than all body children
+        blurSources.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(element => {
+                const htmlElement = element as HTMLElement;
+                if (!htmlElement.classList.contains('base-dialog') && 
+                    !htmlElement.classList.contains('dialog-backdrop') &&
+                    !htmlElement.classList.contains('floating-panel')) {
+                    
+                    // Apply subtle blur with smooth transition
+                    htmlElement.style.filter = 'blur(3px)';
+                    htmlElement.style.transition = 'filter 0.3s ease-out';
+                    htmlElement.setAttribute('data-dialog-blurred', 'true');
+                    
+                    console.log('🌫️ Applied blur to:', selector);
+                }
+            });
+        });
+        
+        // Fallback: blur any remaining main content if specific selectors didn't catch everything
+        const bodyChildren = Array.from(document.body.children);
+        bodyChildren.forEach(child => {
+            const element = child as HTMLElement;
+            if (!element.hasAttribute('data-dialog-blurred') &&
+                !element.classList.contains('base-dialog') && 
+                !element.classList.contains('dialog-backdrop') &&
+                !element.classList.contains('floating-panel') &&
+                !element.classList.contains('dialog-flexbox-container') &&
+                element.tagName !== 'SCRIPT' &&
+                element.tagName !== 'STYLE') {
+                
+                element.style.filter = 'blur(2px)';
+                element.style.transition = 'filter 0.3s ease-out';
+                element.setAttribute('data-dialog-blurred', 'true');
+            }
+        });
     }
 
     private unblurPageContent(): void {
@@ -814,5 +953,124 @@ export abstract class BaseDialog extends FloatingPanel {
         });
 
         console.groupEnd();
+    }
+
+    private applyEntranceAnimation(): void {
+        if (this.dialogConfig.animationType === 'none') return;
+
+        // Remove any existing animation classes
+        this.element.className = this.element.className.replace(/dialog-animate-\w+-\w+/g, '');
+
+        // Apply entrance animation based on type
+        const animationType = this.dialogConfig.animationType || 'scale';
+        this.element.classList.add(`dialog-animate-${animationType}-in`);
+
+        console.log(`🎬 Applied entrance animation: ${animationType}-in`);
+    }
+
+    private applyExitAnimation(callback: () => void): void {
+        if (this.dialogConfig.animationType === 'none') {
+            callback();
+            return;
+        }
+
+        // Remove any existing animation classes
+        this.element.className = this.element.className.replace(/dialog-animate-\w+-\w+/g, '');
+
+        // Apply exit animation based on type
+        const animationType = this.dialogConfig.animationType || 'scale';
+        this.element.classList.add(`dialog-animate-${animationType}-out`);
+
+        console.log(`🎬 Applied exit animation: ${animationType}-out`);
+
+        // Wait for animation to complete before executing callback
+        const animationDuration = animationType === 'bounce' ? 600 : 
+                                  animationType === 'slide' ? 400 : 300;
+        
+        setTimeout(callback, animationDuration);
+    }
+
+    protected implementContextAwarePositioning(): void {
+        if (!this.dialogConfig.contextAware) return;
+
+        // Get viewport dimensions
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const dialogWidth = this.element.offsetWidth;
+        const dialogHeight = this.element.offsetHeight;
+
+        // Get current mouse position or use center as fallback
+        const mouseX = (window as any).lastMouseX || viewportWidth / 2;
+        const mouseY = (window as any).lastMouseY || viewportHeight / 2;
+
+        // Calculate optimal position near mouse but keep dialog fully visible
+        let optimalX = mouseX - dialogWidth / 2;
+        let optimalY = mouseY - dialogHeight / 2;
+
+        // Ensure dialog stays within viewport with padding
+        const padding = 20;
+        optimalX = Math.max(padding, Math.min(optimalX, viewportWidth - dialogWidth - padding));
+        optimalY = Math.max(padding, Math.min(optimalY, viewportHeight - dialogHeight - padding));
+
+        // Apply positioning
+        this.element.style.left = `${Math.round(optimalX)}px`;
+        this.element.style.top = `${Math.round(optimalY)}px`;
+
+        console.log(`🎯 Context-aware positioning: (${Math.round(optimalX)}, ${Math.round(optimalY)})`);
+    }
+
+    // Enhanced z-index management for dialog stacking
+    public static getNextZIndex(): number {
+        const allDialogs = document.querySelectorAll('.floating-panel');
+        let maxZ = 100000; // Base z-index for dialogs
+        
+        allDialogs.forEach(dialog => {
+            const z = parseInt(window.getComputedStyle(dialog).zIndex) || 0;
+            if (z > maxZ) maxZ = z;
+        });
+        
+        return maxZ + 10; // Increment by 10 to leave room for backdrop
+    }
+
+    // Dialog stack management
+    private static dialogStack: BaseDialog[] = [];
+
+    public static addToStack(dialog: BaseDialog): void {
+        // Remove dialog if it's already in stack
+        BaseDialog.dialogStack = BaseDialog.dialogStack.filter(d => d !== dialog);
+        // Add to top of stack
+        BaseDialog.dialogStack.push(dialog);
+        dialog.setZIndex(BaseDialog.getNextZIndex());
+    }
+
+    public static removeFromStack(dialog: BaseDialog): void {
+        BaseDialog.dialogStack = BaseDialog.dialogStack.filter(d => d !== dialog);
+    }
+
+    public static getTopDialog(): BaseDialog | null {
+        return BaseDialog.dialogStack.length > 0 ? 
+            BaseDialog.dialogStack[BaseDialog.dialogStack.length - 1] : null;
+    }
+
+    public bringToFront(): void {
+        BaseDialog.addToStack(this);
+        console.log(`🔝 Brought dialog to front with z-index: ${this.element.style.zIndex}`);
+    }
+
+    // Override hide to manage dialog stack
+    public hide(): void {
+        BaseDialog.removeFromStack(this);
+        super.hide();
+    }
+
+    // Global mouse tracking for better context-aware positioning
+    private setupMouseTracking(): void {
+        if (!(window as any).dialogMouseTrackingSetup) {
+            document.addEventListener('mousemove', (event: MouseEvent) => {
+                (window as any).lastMouseX = event.clientX;
+                (window as any).lastMouseY = event.clientY;
+            });
+            (window as any).dialogMouseTrackingSetup = true;
+        }
     }
 }

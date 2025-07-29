@@ -47,7 +47,19 @@ export class InterfaceConnectionDialog extends BaseDialog {
         
         const availableInterfacesHtml = this.interfaceConfig.availableInterfaces.length === 0 
             ? '<div style="text-align: center; color: var(--text-secondary, #666); padding: 40px;">No compatible interfaces found</div>'
-            : this.interfaceConfig.availableInterfaces.map((option, index) => `
+            : this.interfaceConfig.availableInterfaces.map((option, index) => {
+                const compatibilityColor = option.compatibility.score >= 80 ? '#28a745' : 
+                                           option.compatibility.score >= 60 ? '#ffc107' : '#dc3545';
+                const compatibilityIcon = option.compatibility.score >= 80 ? '✅' : 
+                                          option.compatibility.score >= 60 ? '⚠️' : '❌';
+                
+                const issuesHtml = option.compatibility.issues.length > 0 
+                    ? `<div style="font-size: 11px; color: #dc3545; margin-top: 4px;">
+                         ${option.compatibility.issues.map(issue => `• ${issue}`).join('<br>')}
+                       </div>`
+                    : '';
+                
+                return `
                 <div class="connection-option" data-index="${index}" style="
                     border: 2px solid var(--border, #ddd);
                     border-radius: 8px;
@@ -58,15 +70,19 @@ export class InterfaceConnectionDialog extends BaseDialog {
                 ">
                     <div style="font-weight: 600; color: var(--text-primary, #333);">
                         ${option.interface.name}
+                        <span style="float: right; color: ${compatibilityColor}; font-size: 14px;">
+                            ${compatibilityIcon} ${option.compatibility.score}%
+                        </span>
                     </div>
                     <div style="font-size: 14px; color: var(--text-secondary, #666);">
                         ${option.interface.interface_type.toUpperCase()} from "${option.componentName}"
                     </div>
                     <div style="font-size: 12px; color: var(--text-secondary, #666); margin-top: 4px;">
-                        ${option.interface.functions?.length || 0} function(s)
+                        ${option.interface.functions?.length || 0} function(s) • ${option.compatibility.matchedFunctions}/${option.compatibility.totalFunctions} matching
                     </div>
-                </div>
-            `).join('');
+                    ${issuesHtml}
+                </div>`;
+            }).join('');
 
         return `
             <div class="interface-connection-dialog" style="
