@@ -1,4 +1,5 @@
 import { ComponentUploadService, UploadProgress as ServiceUploadProgress } from '../../services/ComponentUploadService.js';
+import { ValidationService } from '../../services/ValidationService.js';
 
 export interface UploadProgress {
     stage: 'uploading' | 'validating' | 'transpiling' | 'registering' | 'complete' | 'error';
@@ -10,15 +11,19 @@ export interface UploadProgress {
 export class ComponentUploadPanel {
     private element: HTMLElement & { _selectedFile?: File | null };
     private uploadService: ComponentUploadService;
+    private validationService: ValidationService;
     private onUploadComplete?: (componentId: string) => void;
     private onUploadError?: (error: string) => void;
+    private validationCache: Map<string, any> = new Map(); // Cache validation results
 
     constructor(
         uploadService: ComponentUploadService,
+        validationService: ValidationService,
         onUploadComplete?: (componentId: string) => void,
         onUploadError?: (error: string) => void
     ) {
         this.uploadService = uploadService;
+        this.validationService = validationService;
         this.onUploadComplete = onUploadComplete;
         this.onUploadError = onUploadError;
         this.element = this.createElement();
@@ -316,7 +321,29 @@ export class ComponentUploadPanel {
         uploadBtn.disabled = true;
 
         try {
-            // Upload component with progress tracking
+            // First, validate the component and show results
+            const fileArrayBuffer = await this.readFileAsArrayBuffer(file);
+            const base64 = this.arrayBufferToBase64(fileArrayBuffer);
+            
+            // Show validation progress
+            this.showProgress({
+                stage: 'validating',
+                progress: 10,
+                message: 'Validating component...'
+            });
+
+            const validationResult = await this.uploadService.validateComponent(base64);
+            
+            // Show validation results in UI
+            await this.showValidationResults(validationResult);
+            
+            // If validation failed with errors, stop here
+            if (!validationResult.isValid) {
+                uploadBtn.disabled = false;
+                return;
+            }
+            
+            // Continue with upload if validation passed
             const componentId = await this.uploadService.uploadComponent(
                 file,
                 componentName,
@@ -392,8 +419,9 @@ export class ComponentUploadPanel {
         errorSection.style.display = 'none';
     }
     
-    private showValidation(validation: { isValid: boolean; issues?: Array<{ message: string; severity: string }> }): void {
+    private showValidation(validation: { isValid: boolean; warnings?: string[]; errors?: string[]; securityScan?: any; witAnalysis?: any }): void {
         const validationSection = this.element.querySelector('.validation-section') as HTMLElement;
+        const validationIcon = this.element.querySelector('.validation-icon') as HTMLElement;
         const securityScoreDiv = this.element.querySelector('.security-score') as HTMLElement;
         const scoreValue = this.element.querySelector('.score-value') as HTMLElement;
         const warningsDiv = this.element.querySelector('.validation-warnings') as HTMLElement;
@@ -403,6 +431,13 @@ export class ComponentUploadPanel {
         
         // Show validation section
         validationSection.style.display = 'block';
+        
+        // Update validation icon based on result
+        if (validation.isValid) {
+            validationIcon.textContent = validation.warnings && validation.warnings.length > 0 ? '⚠️' : '✅';
+        } else {
+            validationIcon.textContent = '❌';
+        }
         
         // Show security score if available
         if (validation.securityScan) {
@@ -424,7 +459,7 @@ export class ComponentUploadPanel {
         // Show warnings
         if (validation.warnings && validation.warnings.length > 0) {
             warningsDiv.style.display = 'block';
-            warningsList.innerHTML = validation.warnings.map((w: string) => `<li>${w}</li>`).join('');
+            warningsList.innerHTML = validation.warnings.map((w: string) => `<li>${this.escapeHtml(w)}</li>`).join('');
         } else {
             warningsDiv.style.display = 'none';
         }
@@ -432,10 +467,32 @@ export class ComponentUploadPanel {
         // Show errors
         if (validation.errors && validation.errors.length > 0) {
             errorsDiv.style.display = 'block';
-            errorsList.innerHTML = validation.errors.map((e: string) => `<li>${e}</li>`).join('');
+            errorsList.innerHTML = validation.errors.map((e: string) => `<li>${this.escapeHtml(e)}</li>`).join('');
         } else {
             errorsDiv.style.display = 'none';
         }
+        
+        // Add success message if no issues
+        if (validation.isValid && (!validation.warnings || validation.warnings.length === 0) && (!validation.errors || validation.errors.length === 0)) {
+            const successMsg = document.createElement('div');
+            successMsg.style.cssText = `
+                color: var(--accent-success, #3FB950);
+                text-align: center;
+                padding: 8px;
+                font-weight: 500;
+            `;
+            successMsg.textContent = '✅ Component validation passed successfully!';
+            validationSection.querySelector('.validation-details')?.appendChild(successMsg);
+        }
+        
+        // Hide error section when showing validation
+        this.hideError();
+    }
+
+    private escapeHtml(text: string): string {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     private hideValidation(): void {
@@ -447,6 +504,174 @@ export class ComponentUploadPanel {
         if (bytes < 1024) return `${bytes} B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    // Helper methods for file processing
+    private readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as ArrayBuffer);
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    private arrayBufferToBase64(buffer: ArrayBuffer): string {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+    }
+
+    private async showValidationResults(validation: any): Promise<void> {
+        // Hide progress temporarily to show validation
+        const progressSection = this.element.querySelector('.progress-section') as HTMLElement;
+        progressSection.style.display = 'none';
+        
+        // Get security analysis and WIT analysis from backend if available
+        let securityScan = null;
+        let witAnalysis = null;
+        
+        try {
+            // Try to get additional validation data
+            if (validation.metadata?.interfaces) {
+                // Component has interfaces, get more detailed analysis
+                securityScan = await this.getSecurityAnalysis(validation);
+                witAnalysis = await this.getWitAnalysis(validation);
+            }
+        } catch (error) {
+            console.warn('Could not fetch additional validation data:', error);
+        }
+        
+        // Prepare validation data for display
+        const validationDisplay = {
+            isValid: validation.isValid,
+            warnings: validation.warnings || [],
+            errors: validation.errors || [],
+            securityScan: securityScan ? {
+                score: securityScan.overall_risk === 'Low' ? 85 : 
+                       securityScan.overall_risk === 'Medium' ? 65 : 
+                       securityScan.overall_risk === 'High' ? 45 : 25
+            } : null,
+            witAnalysis
+        };
+        
+        // Show validation section
+        this.showValidation(validationDisplay);
+        
+        // Add retry button if validation failed
+        if (!validation.isValid) {
+            this.addRetryButton();
+        }
+        
+        // Show progress again after a delay
+        setTimeout(() => {
+            if (validation.isValid) {
+                progressSection.style.display = 'block';
+                this.updateProgress({
+                    stage: 'validating',
+                    progress: 100,
+                    message: 'Validation passed! Proceeding with upload...'
+                });
+            }
+        }, 2000);
+    }
+
+    private async getSecurityAnalysis(validation: any) {
+        try {
+            // Use file name as component identifier for now
+            const file = this.element._selectedFile;
+            if (!file) return null;
+            
+            const componentName = file.name.replace('.wasm', '');
+            const cacheKey = `security_${componentName}`;
+            
+            // Check cache first
+            if (this.validationCache.has(cacheKey)) {
+                return this.validationCache.get(cacheKey);
+            }
+            
+            // Request security analysis from backend
+            const securityAnalysis = await this.validationService.requestSecurityAnalysis(componentName);
+            
+            // Cache the result
+            if (securityAnalysis) {
+                this.validationCache.set(cacheKey, securityAnalysis);
+            }
+            
+            return securityAnalysis;
+        } catch (error) {
+            console.warn('Failed to get security analysis:', error);
+            return null;
+        }
+    }
+
+    private async getWitAnalysis(validation: any) {
+        try {
+            // Use file name as component identifier for now
+            const file = this.element._selectedFile;
+            if (!file) return null;
+            
+            const componentName = file.name.replace('.wasm', '');
+            const cacheKey = `wit_${componentName}`;
+            
+            // Check cache first
+            if (this.validationCache.has(cacheKey)) {
+                return this.validationCache.get(cacheKey);
+            }
+            
+            // Request WIT analysis from backend
+            const witAnalysis = await this.validationService.requestWitValidation(componentName);
+            
+            // Cache the result
+            if (witAnalysis) {
+                this.validationCache.set(cacheKey, witAnalysis);
+            }
+            
+            return witAnalysis;
+        } catch (error) {
+            console.warn('Failed to get WIT analysis:', error);
+            return null;
+        }
+    }
+
+    private addRetryButton(): void {
+        const actionButtons = this.element.querySelector('.action-buttons') as HTMLElement;
+        
+        // Check if retry button already exists
+        if (this.element.querySelector('.retry-btn')) return;
+        
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'retry-btn';
+        retryBtn.textContent = 'Retry Validation';
+        retryBtn.style.cssText = `
+            padding: 8px 16px;
+            background: linear-gradient(90deg, #F59E0B, #D97706);
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            margin-right: 8px;
+        `;
+        
+        retryBtn.addEventListener('click', async () => {
+            // Clear validation display and retry
+            this.hideValidation();
+            this.hideError();
+            retryBtn.remove();
+            
+            // Re-trigger upload
+            await this.handleUpload();
+        });
+        
+        // Insert before upload button
+        const uploadBtn = actionButtons.querySelector('.upload-btn');
+        actionButtons.insertBefore(retryBtn, uploadBtn);
+        actionButtons.style.display = 'flex';
     }
 
     show(): void {

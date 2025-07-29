@@ -16,6 +16,9 @@ import { McpService } from '../services/McpService.js';
 import { DiagramService } from '../services/DiagramService.js';
 import { ValidationService } from '../services/ValidationService.js';
 import { CanvasRenderer } from '../renderer/canvas-renderer.js';
+import { WasmComponentRendererV2, ComponentColors } from '../diagrams/wasm-component-renderer-v2.js';
+import { GraphicsBridge, GraphicsAPI } from './graphics/GraphicsBridge.js';
+import { GraphicsComponentFactory } from './graphics/WasmGraphicsComponent.js';
 
 interface SecurityAnalysis {
     safe: boolean;
@@ -27,6 +30,18 @@ interface ComponentUpdateData {
     componentId: string;
     status: string;
     message?: string;
+}
+
+interface ComponentStatus {
+    state: 'loaded' | 'unloaded' | 'error' | 'loading';
+    message?: string;
+    lastUpdated: number;
+    metadata?: {
+        size: number;
+        interfaces: number;
+        dependencies: string[];
+        version?: string;
+    };
 }
 
 export interface WasmComponent {
@@ -66,6 +81,12 @@ export class WasmComponentManager {
     private componentsCache: Map<string, WasmComponent> = new Map();
     private cacheTimeout = 5 * 60 * 1000; // 5 minutes
     private lastCacheUpdate = 0;
+    
+    // Advanced rendering properties
+    private graphics?: GraphicsAPI;
+    private componentColors: ComponentColors;
+    private thumbnailCache: Map<string, string> = new Map(); // Cache for component thumbnails
+    private statusCache: Map<string, ComponentStatus> = new Map(); // Cache for component status
 
     constructor(mcpService: McpService, diagramService: DiagramService, renderer?: CanvasRenderer) {
         this.mcpService = mcpService;
@@ -73,6 +94,10 @@ export class WasmComponentManager {
         this.renderer = renderer;
         this.validationService = new ValidationService(mcpService);
         this.wasmComponentPalette = new WasmComponentPalette(mcpService as unknown as import('../mcp/client.js').McpClient);
+        
+        // Initialize advanced rendering
+        this.componentColors = WasmComponentRendererV2.getDefaultColors();
+        this.initializeGraphics();
         
         // Setup real-time updates via streaming
         this.setupStreamingUpdates();
@@ -416,6 +441,316 @@ export class WasmComponentManager {
         // Clear any cached data
         this.clearCache();
         console.log('Component manager cleaned up');
+    }
+
+    // ===== ADVANCED RENDERING METHODS =====
+
+    /**
+     * Initialize graphics for advanced component rendering
+     */
+    private initializeGraphics(): void {
+        if (this.renderer) {
+            try {
+                // Initialize graphics bridge for advanced rendering
+                const canvas = document.createElement('canvas');
+                canvas.width = 300;
+                canvas.height = 200;
+                this.graphics = new GraphicsBridge(canvas);
+                console.log('WasmComponentManager: Graphics initialized for advanced rendering');
+            } catch (error) {
+                console.warn('WasmComponentManager: Failed to initialize graphics:', error);
+            }
+        }
+    }
+
+    /**
+     * Generate thumbnail for a component
+     */
+    public async generateComponentThumbnail(component: WasmComponent): Promise<string | null> {
+        const cacheKey = `thumbnail_${component.name}`;
+        
+        // Check cache first
+        if (this.thumbnailCache.has(cacheKey)) {
+            return this.thumbnailCache.get(cacheKey)!;
+        }
+
+        if (!this.graphics) {
+            console.warn('Graphics not initialized for thumbnail generation');
+            return null;
+        }
+
+        try {
+            // Create a small canvas for thumbnail
+            const thumbnailCanvas = document.createElement('canvas');
+            thumbnailCanvas.width = 120;
+            thumbnailCanvas.height = 80;
+            const ctx = thumbnailCanvas.getContext('2d')!;
+
+            // Create mock element for rendering
+            const mockElement = {
+                label: component.name,
+                properties: {
+                    componentName: component.name,
+                    componentType: this.inferComponentType(component),
+                    interfaces: component.interfaces || [],
+                    isLoaded: component.file_exists
+                }
+            };
+
+            const bounds = { x: 5, y: 5, width: 110, height: 70 };
+            const renderContext = {
+                ctx,
+                scale: 0.6,
+                isSelected: false,
+                isHovered: false,
+                isMissing: !component.file_exists,
+                colors: this.componentColors,
+                showInterfaceNames: false
+            };
+
+            // Render component thumbnail
+            WasmComponentRendererV2.renderWasmComponent(mockElement, bounds, renderContext);
+            
+            // Convert to data URL
+            const thumbnailDataUrl = thumbnailCanvas.toDataURL('image/png');
+            
+            // Cache the thumbnail
+            this.thumbnailCache.set(cacheKey, thumbnailDataUrl);
+            
+            return thumbnailDataUrl;
+        } catch (error) {
+            console.error('Failed to generate component thumbnail:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get enhanced component metadata
+     */
+    public async getComponentMetadata(componentName: string): Promise<ComponentStatus | null> {
+        const cacheKey = `metadata_${componentName}`;
+        
+        // Check cache first
+        const cached = this.statusCache.get(cacheKey);
+        if (cached && Date.now() - cached.lastUpdated < this.cacheTimeout) {
+            return cached;
+        }
+
+        try {
+            const component = await this.getComponent(componentName);
+            if (!component) return null;
+
+            // Get detailed metadata from validation services
+            const [securityAnalysis, witAnalysis] = await Promise.all([
+                this.validationService.requestSecurityAnalysis(componentName),
+                this.validationService.requestWitValidation(componentName)
+            ]);
+
+            const metadata: ComponentStatus = {
+                state: component.file_exists ? 'loaded' : 'unloaded',
+                lastUpdated: Date.now(),
+                metadata: {
+                    size: await this.getComponentSize(component),
+                    interfaces: component.interfaces?.length || 0,
+                    dependencies: this.extractDependencies(witAnalysis),
+                    version: '1.0.0' // TODO: Extract from component metadata
+                }
+            };
+
+            // Add security status
+            if (securityAnalysis) {
+                if (securityAnalysis.overall_risk === 'Critical' || securityAnalysis.overall_risk === 'High') {
+                    metadata.state = 'error';
+                    metadata.message = `Security risk: ${securityAnalysis.overall_risk}`;
+                }
+            }
+
+            // Cache the metadata
+            this.statusCache.set(cacheKey, metadata);
+            
+            return metadata;
+        } catch (error) {
+            console.error('Failed to get component metadata:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get component status with visual indicators
+     */
+    public getComponentStatusIndicator(component: WasmComponent): { icon: string; color: string; message: string } {
+        const status = this.statusCache.get(`metadata_${component.name}`);
+        
+        if (!component.file_exists) {
+            return { icon: '❌', color: this.componentColors.status.error, message: 'Component file missing' };
+        }
+
+        if (status?.state === 'error') {
+            return { icon: '⚠️', color: this.componentColors.status.error, message: status.message || 'Error' };
+        }
+
+        if (status?.state === 'loading') {
+            return { icon: '⏳', color: this.componentColors.status.unloaded, message: 'Loading...' };
+        }
+
+        if (status?.state === 'loaded') {
+            return { icon: '✅', color: this.componentColors.status.loaded, message: 'Active' };
+        }
+
+        return { icon: '⭕', color: this.componentColors.status.unloaded, message: 'Inactive' };
+    }
+
+    /**
+     * Search and filter components by metadata
+     */
+    public async searchComponents(query: {
+        name?: string;
+        type?: string;
+        interfaces?: number;
+        status?: 'loaded' | 'unloaded' | 'error';
+        dependencies?: string[];
+    }): Promise<WasmComponent[]> {
+        const allComponents = await this.getComponents();
+        
+        return allComponents.filter(component => {
+            // Name filter
+            if (query.name && !component.name.toLowerCase().includes(query.name.toLowerCase())) {
+                return false;
+            }
+
+            // Type filter
+            if (query.type) {
+                const componentType = this.inferComponentType(component);
+                if (!componentType.toLowerCase().includes(query.type.toLowerCase())) {
+                    return false;
+                }
+            }
+
+            // Interface count filter
+            if (query.interfaces !== undefined) {
+                const interfaceCount = component.interfaces?.length || 0;
+                if (interfaceCount !== query.interfaces) {
+                    return false;
+                }
+            }
+
+            // Status filter
+            if (query.status) {
+                const status = this.statusCache.get(`metadata_${component.name}`);
+                if (!status || status.state !== query.status) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }
+
+    /**
+     * Render component with advanced visualization
+     */
+    public renderComponentAdvanced(
+        component: WasmComponent,
+        canvas: HTMLCanvasElement,
+        options: {
+            showMetadata?: boolean;
+            showInterfaces?: boolean;
+            showStatus?: boolean;
+            size?: { width: number; height: number };
+        } = {}
+    ): void {
+        const ctx = canvas.getContext('2d')!;
+        const { width = 200, height = 150 } = options.size || {};
+        
+        canvas.width = width;
+        canvas.height = height;
+
+        // Create element for rendering
+        const element = {
+            label: component.name,
+            properties: {
+                componentName: component.name,
+                componentType: this.inferComponentType(component),
+                interfaces: component.interfaces || [],
+                isLoaded: component.file_exists
+            }
+        };
+
+        const bounds = { x: 10, y: 10, width: width - 20, height: height - 20 };
+        const status = this.statusCache.get(`metadata_${component.name}`);
+
+        const renderContext = {
+            ctx,
+            scale: 1,
+            isSelected: false,
+            isHovered: false,
+            isMissing: !component.file_exists,
+            colors: this.componentColors,
+            showInterfaceNames: options.showInterfaces || false
+        };
+
+        // Render the component
+        WasmComponentRendererV2.renderWasmComponent(element, bounds, renderContext);
+
+        // Add metadata overlay if requested
+        if (options.showMetadata && status?.metadata) {
+            this.renderMetadataOverlay(ctx, bounds, status.metadata);
+        }
+    }
+
+    // Helper methods
+
+    private async getComponentSize(component: WasmComponent): Promise<number> {
+        // TODO: Get actual file size from backend
+        return Math.floor(Math.random() * 1000000) + 50000; // Mock size for now
+    }
+
+    private extractDependencies(witAnalysis: any): string[] {
+        if (!witAnalysis?.dependencies) return [];
+        return witAnalysis.dependencies.map((dep: any) => dep.name || 'unknown');
+    }
+
+    private inferComponentType(component: WasmComponent): string {
+        const name = component.name.toLowerCase();
+        if (name.includes('ai') || name.includes('ml') || name.includes('neural')) return 'AI';
+        if (name.includes('sensor') || name.includes('camera') || name.includes('lidar')) return 'Sensor';
+        if (name.includes('ecu') || name.includes('control')) return 'ECU';
+        if (name.includes('fusion') || name.includes('processor')) return 'Processor';
+        return 'WASM';
+    }
+
+    private renderMetadataOverlay(
+        ctx: CanvasRenderingContext2D, 
+        bounds: { x: number; y: number; width: number; height: number }, 
+        metadata: ComponentStatus['metadata']
+    ): void {
+        if (!metadata) return;
+
+        // Background for metadata
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(bounds.x + bounds.width - 80, bounds.y + bounds.height - 60, 75, 55);
+
+        // Metadata text
+        ctx.fillStyle = 'white';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'left';
+        
+        const startX = bounds.x + bounds.width - 75;
+        let y = bounds.y + bounds.height - 45;
+        
+        ctx.fillText(`Size: ${this.formatFileSize(metadata.size)}`, startX, y);
+        y += 12;
+        ctx.fillText(`Interfaces: ${metadata.interfaces}`, startX, y);
+        y += 12;
+        ctx.fillText(`Deps: ${metadata.dependencies.length}`, startX, y);
+        y += 12;
+        ctx.fillText(`v${metadata.version || '1.0.0'}`, startX, y);
+    }
+
+    private formatFileSize(bytes: number): string {
+        if (bytes < 1024) return `${bytes}B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
     }
 
 }
