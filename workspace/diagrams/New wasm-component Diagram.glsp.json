@@ -2,19 +2,10 @@
   "id": "86ab1162-00e5-4fd9-889d-41cbea3cef2f",
   "name": "New wasm-component Diagram",
   "diagram_type": "wasm-component",
-  "revision": 20,
+  "revision": 38,
   "created_at": "2025-07-08T20:40:26.533418Z",
   "updated_at": "2025-07-08T20:40:26.533422Z",
   "nodes": [
-    {
-      "id": "1cc0f85b-b96f-41e4-8376-eb661dea5f81",
-      "node_type": "straight",
-      "label": null,
-      "properties": {
-        "sourceId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0",
-        "targetId": "46b2e2b9-2d00-4183-9d35-36e255677c97"
-      }
-    },
     {
       "id": "46b2e2b9-2d00-4183-9d35-36e255677c97",
       "node_type": "wasm-component",
@@ -85,6 +76,177 @@
         "category": "Vision",
         "label": "component",
         "status": "unloaded"
+      }
+    },
+    {
+      "id": "9e7b84a0-4e67-49c9-8546-6424f1876ca2",
+      "node_type": "wasm-component",
+      "label": "component",
+      "properties": {
+        "status": "unloaded",
+        "componentPath": "../workspace/adas-wasm-components/bazel-adas-wasm-components/deps-symlink/camera-test/component.wasm",
+        "category": "Vision",
+        "componentName": "component",
+        "label": "component",
+        "interfaces": [
+          {
+            "functions": [
+              {
+                "name": "process",
+                "params": [
+                  {
+                    "name": "input",
+                    "param_type": "sensor-data"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "output",
+                    "param_type": "processed-data"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "export",
+            "name": "adas:component/component"
+          },
+          {
+            "functions": [
+              {
+                "name": "read",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "data",
+                    "param_type": "sensor-data"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "wasi:sensors/input"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-config",
+                "params": [
+                  {
+                    "name": "key",
+                    "param_type": "string"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "value",
+                    "param_type": "string"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "adas:config/reader"
+          }
+        ]
+      }
+    },
+    {
+      "id": "3cbd9474-1738-4f76-b071-c386fbe13f72",
+      "node_type": "straight",
+      "label": null,
+      "properties": {
+        "sourceId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0",
+        "targetId": "46b2e2b9-2d00-4183-9d35-36e255677c97"
+      }
+    },
+    {
+      "id": "25d0f501-817d-4123-8f86-47db0fc2690d",
+      "node_type": "straight",
+      "label": null,
+      "properties": {
+        "sourceId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0",
+        "targetId": "46b2e2b9-2d00-4183-9d35-36e255677c97"
+      }
+    },
+    {
+      "id": "021d5f5f-5754-4cbd-893c-07152d6d2a8b",
+      "node_type": "flow",
+      "label": null,
+      "properties": {
+        "targetId": "9e7b84a0-4e67-49c9-8546-6424f1876ca2",
+        "sourceId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0"
+      }
+    },
+    {
+      "id": "0c6c16af-9d98-4ecb-9211-a4122afa9d01",
+      "node_type": "direct",
+      "label": null,
+      "properties": {
+        "targetId": "9e7b84a0-4e67-49c9-8546-6424f1876ca2",
+        "sourceId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0"
+      }
+    },
+    {
+      "id": "ab0ed6c8-180d-4995-955a-e790326f021a",
+      "node_type": "direct",
+      "label": null,
+      "properties": {
+        "targetId": "9e7b84a0-4e67-49c9-8546-6424f1876ca2",
+        "sourceId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0"
+      }
+    },
+    {
+      "id": "72cbd8ce-4528-42a6-99f3-67d1a82f6f8f",
+      "node_type": "straight",
+      "label": null,
+      "properties": {
+        "targetId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0",
+        "sourceId": "46b2e2b9-2d00-4183-9d35-36e255677c97"
+      }
+    },
+    {
+      "id": "1a112ad0-6e02-4756-88e6-a2ba09753c51",
+      "node_type": "straight",
+      "label": null,
+      "properties": {
+        "sourceId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0",
+        "targetId": "46b2e2b9-2d00-4183-9d35-36e255677c97"
+      }
+    },
+    {
+      "id": "540ab022-4382-495d-8f2b-ccc7312400be",
+      "node_type": "flow",
+      "label": null,
+      "properties": {
+        "sourceId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0",
+        "targetId": "46b2e2b9-2d00-4183-9d35-36e255677c97"
+      }
+    },
+    {
+      "id": "52e0b73c-d755-4f85-bfbd-fcb2c41adca2",
+      "node_type": "direct",
+      "label": null,
+      "properties": {
+        "targetId": "46b2e2b9-2d00-4183-9d35-36e255677c97",
+        "sourceId": "9e7b84a0-4e67-49c9-8546-6424f1876ca2"
+      }
+    },
+    {
+      "id": "1cc0f85b-b96f-41e4-8376-eb661dea5f81",
+      "node_type": "straight",
+      "label": null,
+      "properties": {
+        "sourceId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0",
+        "targetId": "46b2e2b9-2d00-4183-9d35-36e255677c97"
+      }
+    },
+    {
+      "id": "bfdb0a96-61f5-4c79-8932-40b9f50e1ceb",
+      "node_type": "straight",
+      "label": null,
+      "properties": {
+        "sourceId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0",
+        "targetId": "9e7b84a0-4e67-49c9-8546-6424f1876ca2"
       }
     },
     {
@@ -276,93 +438,421 @@
       }
     },
     {
-      "id": "72cbd8ce-4528-42a6-99f3-67d1a82f6f8f",
-      "node_type": "straight",
-      "label": null,
-      "properties": {
-        "targetId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0",
-        "sourceId": "46b2e2b9-2d00-4183-9d35-36e255677c97"
-      }
-    },
-    {
-      "id": "1a112ad0-6e02-4756-88e6-a2ba09753c51",
-      "node_type": "straight",
-      "label": null,
-      "properties": {
-        "sourceId": "610b4c3b-48f7-40df-a345-f31f2f19c0f0",
-        "targetId": "46b2e2b9-2d00-4183-9d35-36e255677c97"
-      }
-    },
-    {
-      "id": "9e7b84a0-4e67-49c9-8546-6424f1876ca2",
+      "id": "992ec921-8ed5-4b0f-9ba4-2c0990c7a701",
       "node_type": "wasm-component",
-      "label": "component",
+      "label": "lidar_ecu_wasm_lib_release",
       "properties": {
-        "status": "unloaded",
-        "componentPath": "../workspace/adas-wasm-components/bazel-adas-wasm-components/deps-symlink/camera-test/component.wasm",
-        "category": "Vision",
-        "componentName": "component",
-        "label": "component",
         "interfaces": [
           {
             "functions": [
               {
-                "name": "process",
+                "name": "get-environment",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "environment"
+          },
+          {
+            "functions": [
+              {
+                "name": "exit",
                 "params": [
                   {
-                    "name": "input",
-                    "param_type": "sensor-data"
+                    "name": "status",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": []
+              }
+            ],
+            "interface_type": "import",
+            "name": "exit"
+          },
+          {
+            "functions": [],
+            "interface_type": "import",
+            "name": "error"
+          },
+          {
+            "functions": [
+              {
+                "name": "[method]output-stream.check-write",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
                   }
                 ],
                 "returns": [
                   {
-                    "name": "output",
-                    "param_type": "processed-data"
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "[method]output-stream.write",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  },
+                  {
+                    "name": "contents",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "[method]output-stream.blocking-write-and-flush",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  },
+                  {
+                    "name": "contents",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "[method]output-stream.blocking-flush",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "streams"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-stdin",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "stdin"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-stdout",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "stdout"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-stderr",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "stderr"
+          },
+          {
+            "functions": [
+              {
+                "name": "now",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "monotonic-clock"
+          },
+          {
+            "functions": [
+              {
+                "name": "now",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "wall-clock"
+          },
+          {
+            "functions": [
+              {
+                "name": "[method]descriptor.write-via-stream",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  },
+                  {
+                    "name": "offset",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "[method]descriptor.append-via-stream",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "[method]descriptor.get-type",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "[method]descriptor.stat",
+                "params": [
+                  {
+                    "name": "self",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "filesystem-error-code",
+                "params": [
+                  {
+                    "name": "err",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "types"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-directories",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              }
+            ],
+            "interface_type": "import",
+            "name": "preopens"
+          },
+          {
+            "functions": [
+              {
+                "name": "initialize",
+                "params": [
+                  {
+                    "name": "cfg",
+                    "param_type": "custom"
+                  }
+                ],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "start",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "stop",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "process-frame",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "get-status",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "get-stats",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "reset-stats",
+                "params": [],
+                "returns": []
+              }
+            ],
+            "interface_type": "export",
+            "name": "lidar-sensor"
+          },
+          {
+            "functions": [
+              {
+                "name": "get-health",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "run-diagnostics",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "custom"
+                  }
+                ]
+              },
+              {
+                "name": "get-report",
+                "params": [],
+                "returns": [
+                  {
+                    "name": "result",
+                    "param_type": "string"
                   }
                 ]
               }
             ],
             "interface_type": "export",
-            "name": "adas:component/component"
-          },
-          {
-            "functions": [
-              {
-                "name": "read",
-                "params": [],
-                "returns": [
-                  {
-                    "name": "data",
-                    "param_type": "sensor-data"
-                  }
-                ]
-              }
-            ],
-            "interface_type": "import",
-            "name": "wasi:sensors/input"
-          },
-          {
-            "functions": [
-              {
-                "name": "get-config",
-                "params": [
-                  {
-                    "name": "key",
-                    "param_type": "string"
-                  }
-                ],
-                "returns": [
-                  {
-                    "name": "value",
-                    "param_type": "string"
-                  }
-                ]
-              }
-            ],
-            "interface_type": "import",
-            "name": "adas:config/reader"
+            "name": "diagnostics"
           }
-        ]
+        ],
+        "label": "lidar_ecu_wasm_lib_release",
+        "componentName": "lidar_ecu_wasm_lib_release",
+        "status": "unloaded",
+        "componentPath": "../workspace/adas-wasm-components/bazel-adas-wasm-components/bazel-out/darwin_arm64-fastbuild-ST-805526428602/bin/components/sensors/lidar/lidar_ecu_wasm_lib_release.wasm",
+        "category": "Automotive"
       }
     }
   ],
