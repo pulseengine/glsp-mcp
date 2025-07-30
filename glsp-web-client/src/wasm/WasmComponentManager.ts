@@ -48,7 +48,7 @@ export interface WasmComponent {
     name: string;
     path: string;
     description: string;
-    file_exists: boolean;
+    fileExists: boolean;
     last_seen?: string;
     interfaces: WasmInterface[];
     security_analysis?: SecurityAnalysis;
@@ -157,11 +157,78 @@ export class WasmComponentManager {
     }
 
     /**
-     * Get a specific component by name
+     * Get a specific component by name or ID
      */
-    public async getComponent(name: string): Promise<WasmComponent | null> {
+    public async getComponent(nameOrId: string): Promise<WasmComponent | null> {
         const components = await this.getComponents();
-        return components.find(comp => comp.name === name) || null;
+        return components.find(comp => comp.name === nameOrId || comp.name.includes(nameOrId)) || null;
+    }
+
+    /**
+     * Check if a component is loaded and ready for execution
+     */
+    public isComponentLoaded(nameOrId: string): boolean {
+        // Check in cache first
+        const cached = this.statusCache.get(`metadata_${nameOrId}`);
+        if (cached) {
+            return cached.state === 'loaded';
+        }
+
+        // For thin client, we assume components from the list are available
+        const component = Array.from(this.componentsCache.values()).find(
+            comp => comp.name === nameOrId || comp.name.includes(nameOrId)
+        );
+        
+        return component?.fileExists || false;
+    }
+
+    /**
+     * Load a component for execution
+     */
+    public async loadComponent(nameOrId: string): Promise<WasmComponent | null> {
+        console.log(`WasmComponentManager: Loading component for execution: ${nameOrId}`);
+        
+        try {
+            // First check if component exists
+            let component = await this.getComponent(nameOrId);
+            
+            if (!component) {
+                console.error(`Component not found: ${nameOrId}`);
+                return null;
+            }
+
+            // Call backend to ensure component is loaded
+            const loadResult = await this.mcpService.callTool('load_wasm_component', {
+                componentName: component.name,
+                componentPath: component.path
+            });
+
+            if (loadResult.success) {
+                // Update cache with loaded status
+                const cacheKey = `metadata_${component.name}`;
+                this.statusCache.set(cacheKey, {
+                    state: 'loaded',
+                    message: 'Component loaded for execution',
+                    lastUpdated: Date.now(),
+                    metadata: {
+                        size: await this.getComponentSize(component),
+                        interfaces: component.interfaces?.length || 0,
+                        dependencies: [],
+                        version: '1.0.0'
+                    }
+                });
+
+                console.log(`Component loaded successfully: ${component.name}`);
+                return component;
+            } else {
+                console.error(`Failed to load component: ${loadResult.error}`);
+                return null;
+            }
+
+        } catch (error) {
+            console.error(`Error loading component ${nameOrId}:`, error);
+            return null;
+        }
     }
 
     /**
@@ -493,7 +560,7 @@ export class WasmComponentManager {
                     componentName: component.name,
                     componentType: this.inferComponentType(component),
                     interfaces: component.interfaces || [],
-                    isLoaded: component.file_exists
+                    isLoaded: component.fileExists
                 }
             };
 
@@ -503,7 +570,7 @@ export class WasmComponentManager {
                 scale: 0.6,
                 isSelected: false,
                 isHovered: false,
-                isMissing: !component.file_exists,
+                isMissing: !component.fileExists,
                 colors: this.componentColors,
                 showInterfaceNames: false
             };
@@ -547,7 +614,7 @@ export class WasmComponentManager {
             ]);
 
             const metadata: ComponentStatus = {
-                state: component.file_exists ? 'loaded' : 'unloaded',
+                state: component.fileExists ? 'loaded' : 'unloaded',
                 lastUpdated: Date.now(),
                 metadata: {
                     size: await this.getComponentSize(component),
@@ -581,7 +648,7 @@ export class WasmComponentManager {
     public getComponentStatusIndicator(component: WasmComponent): { icon: string; color: string; message: string } {
         const status = this.statusCache.get(`metadata_${component.name}`);
         
-        if (!component.file_exists) {
+        if (!component.fileExists) {
             return { icon: '❌', color: this.componentColors.status.error, message: 'Component file missing' };
         }
 
@@ -672,7 +739,7 @@ export class WasmComponentManager {
                 componentName: component.name,
                 componentType: this.inferComponentType(component),
                 interfaces: component.interfaces || [],
-                isLoaded: component.file_exists
+                isLoaded: component.fileExists
             }
         };
 
@@ -684,7 +751,7 @@ export class WasmComponentManager {
             scale: 1,
             isSelected: false,
             isHovered: false,
-            isMissing: !component.file_exists,
+            isMissing: !component.fileExists,
             colors: this.componentColors,
             showInterfaceNames: options.showInterfaces || false
         };

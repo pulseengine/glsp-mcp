@@ -127,8 +127,8 @@ export class UMLComponentRenderer {
         const componentName = this.getComponentName(element);
         const stereotype = this.getStereotype(element, renderMode);
         const attributes = this.getMainComponentAttributes(element);
-        const methods = []; // Main component doesn't show methods - they're in interfaces
-        const interfaces = []; // No inline interfaces in separate view
+        const methods: UMLMethod[] = []; // Main component doesn't show methods - they're in interfaces
+        const interfaces: UMLComponentInterface[] = []; // No inline interfaces in separate view
 
         // Calculate compartment dimensions
         const compartments = this.calculateCompartments(
@@ -171,8 +171,8 @@ export class UMLComponentRenderer {
         
         // Get interface data
         const interfaceName = element.label?.toString() || 'Interface';
-        const interfaceType = element.properties?.interfaceType || 'export';
-        const functions = element.properties?.functions || [];
+        const interfaceType = element.properties?.interfaceType?.toString() || 'export';
+        const functions = Array.isArray(element.properties?.functions) ? element.properties.functions : [];
         
         // Interface styling
         const interfaceStyle = {
@@ -337,8 +337,8 @@ export class UMLComponentRenderer {
         if (Array.isArray(interfaces)) {
             interfaces.forEach(iface => {
                 const functions = iface.functions || [];
-                functions.forEach(func => {
-                    const parameters: UMLParameter[] = (func.params || []).map(param => ({
+                functions.forEach((func: any) => {
+                    const parameters: UMLParameter[] = (func.params || []).map((param: any) => ({
                         name: param.name || 'param',
                         type: param.param_type || 'unknown'
                     }));
@@ -744,9 +744,9 @@ export class UMLComponentRenderer {
         const lineHeight = 16;
         const maxWidth = width - 24;
 
-        functions.forEach(func => {
+        functions.forEach((func: any) => {
             // Format function signature with better readability
-            const params = (func.params || []).map((p: any) => `${p.name}: ${p.param_type}`);
+            const params = (func.params || []).map((param: any) => `${param.name}: ${param.param_type}`);
             const returnType = func.returns && func.returns.length > 0 
                 ? func.returns[0].param_type || 'void'
                 : 'void';
@@ -768,7 +768,7 @@ export class UMLComponentRenderer {
                 
                 // Indent parameters
                 const indent = x + this.TEXT_MARGIN + 20;
-                params.forEach((param, index) => {
+                params.forEach((param: any, index: number) => {
                     const paramText = index < params.length - 1 ? `  ${param},` : `  ${param}`;
                     if (ctx.measureText(paramText).width <= maxWidth - 20) {
                         ctx.fillText(paramText, indent, textY);

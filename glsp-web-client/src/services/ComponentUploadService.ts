@@ -83,7 +83,7 @@ export class ComponentUploadService {
                 version
             });
             
-            if (result.isError) {
+            if (result.is_error) {
                 throw new Error(result.content?.[0]?.text || 'Upload failed');
             }
             
@@ -115,7 +115,7 @@ export class ComponentUploadService {
             wasmBase64
         });
         
-        if (result.isError) {
+        if (result.is_error) {
             return {
                 isValid: false,
                 errors: [result.content?.[0]?.text || 'Validation failed'],
@@ -143,7 +143,7 @@ export class ComponentUploadService {
             includeMetadata
         });
         
-        if (result.isError) {
+        if (result.is_error) {
             throw new Error(result.content?.[0]?.text || 'Failed to list components');
         }
         
@@ -163,7 +163,7 @@ export class ComponentUploadService {
             componentName
         });
         
-        if (result.isError) {
+        if (result.is_error) {
             throw new Error(result.content?.[0]?.text || 'Failed to delete component');
         }
     }

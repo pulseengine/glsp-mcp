@@ -7,6 +7,9 @@ import {
   ComponentGroupDeployView,
   DeployConfiguration,
 } from "../../views/ComponentGroupDeployView.js";
+import { getService } from "../../../core/ServiceRegistration.js";
+import { WasmRuntimeManager } from "../../../wasm/WasmRuntimeManager.js";
+import { InteractionManager } from "../../InteractionManager.js";
 
 export interface ComponentItem {
   id: string;
@@ -48,6 +51,11 @@ export class ComponentLibrarySection {
   private multiSelectMode = false;
   private onGroupCreated?: (groupData: ComponentGroupData) => void;
   private onGroupUpdated?: (groupData: ComponentGroupData) => void;
+  
+  // Service references for execution bridge
+  private wasmRuntimeManager?: WasmRuntimeManager;
+  private interactionManager?: InteractionManager;
+  private servicesInitialized = false;
   private onGroupDeleted?: (groupId: string) => void;
   private componentGroups: Map<string, ComponentGroupData> = new Map();
   private showGroups = false;
@@ -56,10 +64,128 @@ export class ComponentLibrarySection {
     this.onGroupCreated = options.onGroupCreated;
     this.onGroupUpdated = options.onGroupUpdated;
     this.onGroupDeleted = options.onGroupDeleted;
+    
+    // Initialize services asynchronously
+    this.initializeServices();
+  }
+
+  /**
+   * Initialize service connections for execution bridge
+   */
+  private async initializeServices(): Promise<void> {
+    try {
+      console.log('ComponentLibrarySection: Initializing service connections...');
+      
+      // Get service references from the container
+      this.wasmRuntimeManager = await getService<WasmRuntimeManager>('wasmRuntimeManager');
+      this.interactionManager = await getService<InteractionManager>('interactionManager');
+      
+      this.servicesInitialized = true;
+      console.log('ComponentLibrarySection: Service connections initialized');
+      
+      // Update component execution capabilities
+      this.updateComponentExecutionCapabilities();
+      
+    } catch (error) {
+      console.error('ComponentLibrarySection: Failed to initialize services:', error);
+      this.servicesInitialized = false;
+    }
+  }
+
+  /**
+   * Update components with execution capabilities
+   */
+  private updateComponentExecutionCapabilities(): void {
+    if (!this.servicesInitialized) return;
+
+    // Update existing components with execution bridge callbacks
+    for (const [id, component] of this.components) {
+      this.components.set(id, {
+        ...component,
+        onSelect: () => this.handleComponentSelection(id),
+        onDragStart: (e: DragEvent) => this.handleComponentDragStart(e, component)
+      });
+    }
+
+    this.refresh();
+  }
+
+  /**
+   * Handle component selection with execution context
+   */
+  private async handleComponentSelection(componentId: string): Promise<void> {
+    const component = this.components.get(componentId);
+    if (!component || !this.servicesInitialized || !this.wasmRuntimeManager) {
+      return;
+    }
+
+    console.log(`ComponentLibrarySection: Component selected for execution: ${component.name}`);
+
+    try {
+      // Load component for execution if not already loaded
+      const loadedComponent = await this.wasmRuntimeManager.getComponent(componentId);
+      
+      if (!loadedComponent) {
+        console.log(`Loading component for execution: ${component.name}`);
+        // Trigger component loading
+        await this.wasmRuntimeManager.loadComponent(component.path || component.name);
+      }
+
+      // Update component status
+      this.updateComponent(componentId, { status: 'available' });
+      
+    } catch (error) {
+      console.error(`Failed to prepare component for execution: ${component.name}`, error);
+      this.updateComponent(componentId, { status: 'error' });
+    }
+  }
+
+  /**
+   * Handle component drag start with execution context
+   */
+  private handleComponentDragStart(e: DragEvent, component: ComponentItem): void {
+    if (!this.servicesInitialized) {
+      console.warn('Services not initialized, drag-and-drop may not work properly');
+    }
+
+    // Standard drag data for canvas drop
+    const dragData = {
+      type: 'wasm-component',
+      componentId: component.id,
+      componentName: component.name,
+      componentPath: component.path,
+      category: component.category,
+      description: component.description,
+      interfaces: component.interfaces,
+      // Add execution context
+      executionCapable: true,
+      loadedForExecution: this.wasmRuntimeManager?.isComponentLoaded(component.id) || false
+    };
+
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('application/json', JSON.stringify(dragData));
+      e.dataTransfer.setData('text/plain', component.name);
+      
+      // Add execution context data
+      e.dataTransfer.setData('application/x-wasm-component-execution', JSON.stringify({
+        componentId: component.id,
+        executionReady: this.servicesInitialized
+      }));
+    }
+
+    console.log(`ComponentLibrarySection: Started dragging component: ${component.name}`, dragData);
   }
 
   public addComponent(component: ComponentItem): void {
-    this.components.set(component.id, component);
+    // Enhanced component with execution capabilities
+    const enhancedComponent: ComponentItem = {
+      ...component,
+      onSelect: this.servicesInitialized ? () => this.handleComponentSelection(component.id) : component.onSelect,
+      onDragStart: this.servicesInitialized ? (e: DragEvent) => this.handleComponentDragStart(e, component) : component.onDragStart
+    };
+    
+    this.components.set(component.id, enhancedComponent);
     this.categories.add(component.category);
     this.refresh();
   }

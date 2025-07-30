@@ -237,7 +237,7 @@ export class DiagramService {
             // Set loading status
             statusManager.setDiagramSyncStatus('loading');
             
-            const diagram: DiagramModel = await this.mcpService.getDiagramModel(diagramId);
+            const diagram = await this.mcpService.getDiagramModel(diagramId);
             console.log('DiagramService: Got diagram from MCP service:', diagram);
             if (diagram) {
                 console.log('DiagramService: About to update diagram state and set current diagram');

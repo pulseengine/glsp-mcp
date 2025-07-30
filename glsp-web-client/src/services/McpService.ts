@@ -119,7 +119,7 @@ export class McpService {
         return result;
     }
 
-    async getDiagramModel(diagramId: string): Promise<import('../model/diagram.js').DiagramModel> {
+    async getDiagramModel(diagramId: string): Promise<import('../model/diagram.js').DiagramModel | undefined> {
         const resource = await this.readResource(`diagram://model/${diagramId}`);
         console.log('McpService: Diagram model resource for', diagramId, ':', resource);
         console.log('McpService: Resource has text?', !!resource?.text);
@@ -150,6 +150,99 @@ export class McpService {
 
     public removeStreamListener(streamType: string, listener: (data: unknown) => void): void {
         this.mcpClient.removeStreamListener(streamType, listener);
+    }
+
+    /**
+     * Add execution-specific streaming listeners
+     */
+    public setupExecutionStreaming(): void {
+        console.log('McpService: Setting up execution streaming listeners...');
+
+        // Stream listener for component execution progress
+        this.addStreamListener('wasm-execution-progress', (data: any) => {
+            console.log('McpService: Received execution progress:', data);
+            this.broadcastExecutionProgress(data);
+        });
+
+        // Stream listener for component execution results
+        this.addStreamListener('wasm-execution-result', (data: any) => {
+            console.log('McpService: Received execution result:', data);
+            this.broadcastExecutionResult(data);
+        });
+
+        // Stream listener for component status changes
+        this.addStreamListener('wasm-component-status', (data: any) => {
+            console.log('McpService: Received component status update:', data);
+            this.broadcastComponentStatus(data);
+        });
+
+        console.log('McpService: Execution streaming listeners setup complete');
+    }
+
+    /**
+     * Broadcast execution progress to interested listeners
+     */
+    private broadcastExecutionProgress(progressData: any): void {
+        // Notify InteractionManager about execution progress
+        if (window.interactionManager) {
+            try {
+                (window.interactionManager as any).handleExecutionProgress?.(progressData);
+            } catch (error) {
+                console.error('Error notifying InteractionManager of execution progress:', error);
+            }
+        }
+
+        // Notify component library about execution status
+        if (window.componentLibrary) {
+            try {
+                (window.componentLibrary as any).handleExecutionProgress?.(progressData);
+            } catch (error) {
+                console.error('Error notifying ComponentLibrary of execution progress:', error);
+            }
+        }
+
+        // Emit custom event for other listeners
+        window.dispatchEvent(new CustomEvent('wasm-execution-progress', {
+            detail: progressData
+        }));
+    }
+
+    /**
+     * Broadcast execution results to interested listeners
+     */
+    private broadcastExecutionResult(resultData: any): void {
+        // Notify InteractionManager about execution results
+        if (window.interactionManager) {
+            try {
+                (window.interactionManager as any).handleExecutionResult?.(resultData);
+            } catch (error) {
+                console.error('Error notifying InteractionManager of execution result:', error);
+            }
+        }
+
+        // Emit custom event for other listeners
+        window.dispatchEvent(new CustomEvent('wasm-execution-result', {
+            detail: resultData
+        }));
+    }
+
+    /**
+     * Broadcast component status changes to interested listeners
+     */
+    private broadcastComponentStatus(statusData: any): void {
+        // Notify component library about status changes
+        if (window.componentLibrary) {
+            try {
+                (window.componentLibrary as any).handleComponentStatus?.(statusData);
+            } catch (error) {
+                console.error('Error notifying ComponentLibrary of component status:', error);
+            }
+        }
+
+        // Emit custom event for other listeners
+        window.dispatchEvent(new CustomEvent('wasm-component-status', {
+            detail: statusData
+        }));
     }
 
     public isStreaming(): boolean {

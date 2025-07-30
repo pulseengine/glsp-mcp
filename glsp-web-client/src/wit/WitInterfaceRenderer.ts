@@ -376,12 +376,19 @@ export class WitInterfaceRenderer extends CanvasRenderer {
         
         ctx.stroke();
         
+        // Set stroke color for arrowhead
+        ctx.strokeStyle = edgeConfig.color || '#6B7280';
+        
         // Draw arrowhead
-        this.drawArrowhead(ctx, targetPoint, sourcePoint, edgeConfig.color || '#6B7280');
+        this.drawArrowhead(targetPoint, sourcePoint);
         
         // Draw edge label if present
         if (edge.label) {
-            this.drawEdgeLabel(edge, sourcePoint, targetPoint);
+            const midPoint = {
+                x: (sourcePoint.x + targetPoint.x) / 2,
+                y: (sourcePoint.y + targetPoint.y) / 2
+            };
+            this.drawEdgeLabel(edge.label, midPoint);
         }
         
         ctx.restore();
@@ -425,15 +432,14 @@ export class WitInterfaceRenderer extends CanvasRenderer {
      * Draw an arrowhead at the target point
      */
     protected drawArrowhead(
-        ctx: CanvasRenderingContext2D, 
         to: { x: number; y: number }, 
-        from: { x: number; y: number }, 
-        color: string
+        from: { x: number; y: number }
     ): void {
+        const ctx = this.ctx;
         const headLength = 10;
         const angle = Math.atan2(to.y - from.y, to.x - from.x);
         
-        ctx.fillStyle = color;
+        ctx.fillStyle = ctx.strokeStyle || '#666';
         ctx.beginPath();
         ctx.moveTo(to.x, to.y);
         ctx.lineTo(
@@ -452,24 +458,17 @@ export class WitInterfaceRenderer extends CanvasRenderer {
      * Draw edge label
      */
     protected drawEdgeLabel(
-        edge: Edge, 
-        sourcePoint: { x: number; y: number }, 
-        targetPoint: { x: number; y: number }
+        text: string, 
+        position: { x: number; y: number }
     ): void {
         const ctx = this.ctx;
-        const text = edge.label;
         if (!ctx || !text) return;
-        
-        // Calculate midpoint
-        const position = {
-            x: (sourcePoint.x + targetPoint.x) / 2,
-            y: (sourcePoint.y + targetPoint.y) / 2
-        };
         
         ctx.save();
         
         // Draw label background
         const padding = 4;
+        ctx.font = '11px sans-serif';
         const metrics = ctx.measureText(text);
         const width = metrics.width + padding * 2;
         const height = 16;
@@ -479,7 +478,6 @@ export class WitInterfaceRenderer extends CanvasRenderer {
         
         // Draw label text
         ctx.fillStyle = '#E5E7EB';
-        ctx.font = '11px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(text, position.x, position.y);
@@ -587,7 +585,7 @@ export class WitInterfaceRenderer extends CanvasRenderer {
             id: witDiagram.id,
             diagramType: 'wit-diagram',
             revision: 1,
-            root: '',
+            root: { id: 'root', type: 'wit-root', bounds: { x: 0, y: 0, width: 800, height: 600 } },
             elements: {},
             metadata: {
                 type: 'wit-diagram',
@@ -705,7 +703,7 @@ export class WitInterfaceRenderer extends CanvasRenderer {
         return {
             id: node.id,
             type: witType as WitElementType,
-            name: node.label || node.properties?.name || 'Unnamed',
+            name: (node.label?.toString() || node.properties?.name?.toString() || 'Unnamed'),
             position: node.position,
             size: node.size,
             metadata: node.properties?.metadata || {}
@@ -793,7 +791,7 @@ export class WitInterfaceRenderer extends CanvasRenderer {
                 break;
             case WitElementType.Resource:
                 props.methods = witElement.metadata?.methods || [];
-                props.constructor = witElement.metadata?.constructor;
+                props.constructor = witElement.metadata?.constructor || undefined;
                 props.destructor = witElement.metadata?.destructor;
                 props.statics = witElement.metadata?.statics || [];
                 break;
@@ -1072,8 +1070,8 @@ export class WitInterfaceRenderer extends CanvasRenderer {
         // Check for duplicate names within the same type
         const namesByType = new Map<string, string[]>();
         nodes.forEach(node => {
-            const witType = node.properties?.witType || 'unknown';
-            const name = node.label || 'unnamed';
+            const witType = node.properties?.witType?.toString() || 'unknown';
+            const name = node.label?.toString() || 'unnamed';
             
             if (!namesByType.has(witType)) {
                 namesByType.set(witType, []);

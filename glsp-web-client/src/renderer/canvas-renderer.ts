@@ -852,7 +852,7 @@ export class CanvasRenderer {
                     name: element.label?.toString() || 'component',
                     interfaces: this.gatherComponentInterfaces(element)
                 },
-                componentPath: element.properties?.componentPath
+                componentPath: element.properties?.componentPath?.toString()
             });
         }
     }
@@ -883,7 +883,7 @@ export class CanvasRenderer {
         
         // If no interfaces found via parentComponent, try to get from original component data
         if (interfaces.length === 0 && component.properties?.originalInterfaces) {
-            return component.properties.originalInterfaces;
+            return Array.isArray(component.properties.originalInterfaces) ? component.properties.originalInterfaces : [];
         }
         
         return interfaces;
@@ -1477,7 +1477,7 @@ export class CanvasRenderer {
         if (!node.bounds) return;
         
         const icon = style.icon;
-        const name = node.label || node.properties?.name || node.id;
+        const name = (node.label?.toString() || node.properties?.name?.toString() || node.id?.toString() || 'unnamed');
         const centerX = node.bounds.x + node.bounds.width / 2;
         const iconY = node.bounds.y + 20;
         const textY = node.bounds.y + 40;
@@ -1604,7 +1604,7 @@ export class CanvasRenderer {
         this.drawArrowhead(targetCenter, sourceCenter);
 
         // Draw edge label
-        const edgeLabel = edge.label || edge.properties?.label;
+        const edgeLabel = (edge.label?.toString() || edge.properties?.label?.toString());
         if (edgeLabel) {
             const midPoint = {
                 x: (sourceCenter.x + targetCenter.x) / 2,
@@ -2227,9 +2227,9 @@ export class CanvasRenderer {
 
                     const connector = {
                         element,
-                        interface: portInfo.port,
+                        interface: portInfo.port as ComponentInterface,
                         side: (isInput ? 'left' : 'right') as 'left' | 'right',
-                        connectorPosition: { x, y }
+                        connectorPosition: { x, y } as Position
                     };
                     console.log('getInterfaceConnectorAt: Returning connector:', connector);
                     return connector;
@@ -2446,7 +2446,7 @@ export class CanvasRenderer {
         this.ctx.setLineDash([]);
 
         // Draw edge label if present
-        const edgeLabel = edge.label || edge.properties?.label;
+        const edgeLabel = (edge.label?.toString() || edge.properties?.label?.toString());
         if (edgeLabel) {
             const midPoint = {
                 x: (sourceCenter.x + targetCenter.x) / 2,

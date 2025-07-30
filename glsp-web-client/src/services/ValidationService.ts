@@ -131,7 +131,7 @@ export class ValidationService {
             const cached = this.getFromCache(cacheKey);
             if (cached) {
                 console.log(`ValidationService: Using cached security analysis for ${componentName}`);
-                return cached;
+                return cached as SecurityAnalysis;
             }
 
             // Request from backend via MCP
@@ -139,7 +139,7 @@ export class ValidationService {
                 component_name: componentName
             });
 
-            if (result && result.content && result.content[0]) {
+            if (result && result.content && result.content[0] && result.content[0].text) {
                 const analysis = JSON.parse(result.content[0].text);
                 this.setCache(cacheKey, analysis);
                 console.log(`ValidationService: Received security analysis for ${componentName}:`, analysis);
@@ -165,7 +165,7 @@ export class ValidationService {
             const cached = this.getFromCache(cacheKey);
             if (cached) {
                 console.log(`ValidationService: Using cached WIT analysis for ${componentName}`);
-                return cached;
+                return cached as ComponentWitAnalysis;
             }
 
             // Request from backend via MCP
@@ -173,7 +173,7 @@ export class ValidationService {
                 component_name: componentName
             });
 
-            if (result && result.content && result.content[0]) {
+            if (result && result.content && result.content[0] && result.content[0].text) {
                 const analysis = JSON.parse(result.content[0].text);
                 this.setCache(cacheKey, analysis);
                 console.log(`ValidationService: Received WIT analysis for ${componentName}:`, analysis);
@@ -199,7 +199,7 @@ export class ValidationService {
                 component_b: componentB
             });
 
-            if (result && result.content && result.content[0]) {
+            if (result && result.content && result.content[0] && result.content[0].text) {
                 const analysis = JSON.parse(result.content[0].text);
                 console.log(`ValidationService: Received compatibility analysis:`, analysis);
                 return analysis;
@@ -224,13 +224,13 @@ export class ValidationService {
             const cached = this.getFromCache(cacheKey);
             if (cached) {
                 console.log('ValidationService: Using cached validation summary');
-                return cached;
+                return cached as ValidationSummary;
             }
 
             // Request from backend via MCP
             const result = await this.mcpService.callTool('get_validation_summary', {});
 
-            if (result && result.content && result.content[0]) {
+            if (result && result.content && result.content[0] && result.content[0].text) {
                 const summary = JSON.parse(result.content[0].text);
                 this.setCache(cacheKey, summary, 60000); // Cache for 1 minute only
                 console.log('ValidationService: Received validation summary:', summary);
@@ -277,42 +277,45 @@ export class ValidationService {
         const mcpClient = this.mcpService.getClient();
         
         // Listen for security analysis updates
-        mcpClient.addStreamListener('security_analysis_update', (data: Record<string, unknown>) => {
+        mcpClient.addStreamListener('security_analysis_update', (data: unknown) => {
             console.log('ValidationService: Received security analysis update:', data);
+            const typedData = data as Record<string, unknown>;
             
             // Update cache with new data
-            if (data.component_name) {
-                const cacheKey = `security_${data.component_name}`;
-                this.setCache(cacheKey, data.analysis);
+            if (typedData.component_name) {
+                const cacheKey = `security_${typedData.component_name}`;
+                this.setCache(cacheKey, typedData.analysis);
             }
             
             // Notify UI components
-            this.notifyValidationUpdate('security', data);
+            this.notifyValidationUpdate('security', typedData);
         });
 
         // Listen for WIT analysis updates
-        mcpClient.addStreamListener('wit_analysis_update', (data: Record<string, unknown>) => {
+        mcpClient.addStreamListener('wit_analysis_update', (data: unknown) => {
             console.log('ValidationService: Received WIT analysis update:', data);
+            const typedData = data as Record<string, unknown>;
             
             // Update cache with new data
-            if (data.component_name) {
-                const cacheKey = `wit_${data.component_name}`;
-                this.setCache(cacheKey, data.analysis);
+            if (typedData.component_name) {
+                const cacheKey = `wit_${typedData.component_name}`;
+                this.setCache(cacheKey, typedData.analysis);
             }
             
             // Notify UI components
-            this.notifyValidationUpdate('wit', data);
+            this.notifyValidationUpdate('wit', typedData);
         });
 
         // Listen for component discovery updates
-        mcpClient.addStreamListener('component_discovered', (data: Record<string, unknown>) => {
+        mcpClient.addStreamListener('component_discovered', (data: unknown) => {
             console.log('ValidationService: New component discovered:', data);
+            const typedData = data as Record<string, unknown>;
             
             // Clear summary cache to get updated counts
             this.clearCache('validation_summary');
             
             // Notify UI components
-            this.notifyValidationUpdate('discovery', data);
+            this.notifyValidationUpdate('discovery', typedData);
         });
     }
 
@@ -365,14 +368,14 @@ export class ValidationService {
      * Get cached validation data for quick UI updates
      */
     getCachedSecurityAnalysis(componentName: string): SecurityAnalysis | null {
-        return this.getFromCache(`security_${componentName}`);
+        return this.getFromCache(`security_${componentName}`) as SecurityAnalysis | null;
     }
 
     /**
      * Get cached WIT analysis data for quick UI updates
      */
     getCachedWitAnalysis(componentName: string): ComponentWitAnalysis | null {
-        return this.getFromCache(`wit_${componentName}`);
+        return this.getFromCache(`wit_${componentName}`) as ComponentWitAnalysis | null;
     }
 
     /**

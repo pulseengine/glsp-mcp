@@ -226,8 +226,8 @@ export class SelectionManager {
     }
 
     fromJSON(data: { selectedElementIds?: string[] }): void {
-        if (data.selectedElements && Array.isArray(data.selectedElements)) {
-            this.state.selectedElements = new Set(data.selectedElements);
+        if (data.selectedElementIds && Array.isArray(data.selectedElementIds)) {
+            this.state.selectedElements = new Set(data.selectedElementIds);
         }
         if (data.hoveredElement !== undefined) {
             this.state.hoveredElement = data.hoveredElement;

@@ -5,7 +5,7 @@ import { UIManager } from './UIManager.js';
 import { statusManager } from '../services/StatusManager.js';
 import { McpService } from '../services/McpService.js';
 import { InterfaceConnectionDialog, InterfaceConnectionOption } from './dialogs/specialized/InterfaceConnectionDialog.js';
-import { InterfaceCompatibilityChecker, WitInterface } from '../diagrams/interface-compatibility.js';
+import { InterfaceCompatibilityChecker, WitInterface, WitFunction, WitType } from '../diagrams/interface-compatibility.js';
 import { ViewModeManager } from './ViewModeManager.js';
 
 declare global {
@@ -1011,7 +1011,7 @@ function sleep(ms) {
             if (currentDiagram && currentDiagram.elements) {
                 // Select all elements in the current diagram
                 const allElementIds = Object.keys(currentDiagram.elements);
-                this.renderer.selectionManager.setSelectedIds(allElementIds);
+                this.renderer.selectionManager.selectAll(allElementIds);
                 this.renderer.renderImmediate();
             }
         } catch (error) {
@@ -1167,7 +1167,7 @@ function sleep(ms) {
         this.autoSaveTimeout = window.setTimeout(async () => {
             try {
                 console.log(`Auto-saving positions for ${selectedElements.length} moved element(s)`);
-                await this.diagramService.updateSelectedElementPositions(diagramId, selectedElements);
+                await this.diagramService.updateSelectedElementPositions(diagramId, selectedElements as import('../services/DiagramService.js').ElementWithBounds[]);
                 this.pendingAutoSave = false;
             } catch (error) {
                 console.error('Debounced auto-save failed:', error);
@@ -1235,9 +1235,9 @@ function sleep(ms) {
                 interfaces.forEach((iface: { name?: string; interface_type?: string; functions?: unknown[]; types?: unknown[] }) => {
                     const witInterface: WitInterface = {
                         name: iface.name || 'unknown',
-                        interface_type: iface.interface_type,
-                        functions: iface.functions || [],
-                        types: iface.types || []
+                        interface_type: (iface.interface_type as 'import' | 'export') || 'export',
+                        functions: (iface.functions as WitFunction[]) || [],
+                        types: (iface.types as WitType[]) || []
                     };
                     availableInterfaces.push({
                         componentId: element.id,
@@ -1496,23 +1496,58 @@ function sleep(ms) {
 
     private setupExecutionControls(elementId: string, loadedComponent: import('../wasm/WasmComponentManager.js').WasmComponent): void {
         // Set up global control functions
-        (window as any).startComponentExecution = (id: string) => {
+        (window as any).startComponentExecution = async (id: string) => {
             if (id !== elementId) return;
             
             const metrics = (window as any)[`componentMetrics_${id}`];
-            if (metrics) {
-                metrics.isRunning = true;
-                metrics.lastExecution = new Date();
-                console.log(`Starting execution for component: ${loadedComponent.name}`);
-                
-                // Update console
-                const consoleOutput = document.getElementById(`console-${id}`);
-                if (consoleOutput) {
-                    const message = document.createElement('div');
-                    message.style.color = '#0f0';
-                    message.textContent = `> Starting execution for ${loadedComponent.name}...`;
-                    consoleOutput.appendChild(message);
-                    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            if (metrics && !metrics.isRunning) {
+                try {
+                    metrics.isRunning = true;
+                    metrics.lastExecution = new Date();
+                    console.log(`Starting real server-side execution for component: ${loadedComponent.name}`);
+                    
+                    // Update console
+                    const consoleOutput = document.getElementById(`console-${id}`);
+                    if (consoleOutput) {
+                        const message = document.createElement('div');
+                        message.style.color = '#0f0';
+                        message.textContent = `> Starting server execution for ${loadedComponent.name}...`;
+                        consoleOutput.appendChild(message);
+                        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                    }
+
+                    // Execute component on server via MCP
+                    const executionResult = await this.executeComponentOnServer(loadedComponent, id);
+                    
+                    if (executionResult) {
+                        // Update metrics with real data
+                        metrics.memoryUsage = executionResult.memory_usage_mb || 0;
+                        metrics.executionTime = executionResult.duration_ms || 0;
+                        metrics.functionCalls += 1;
+                        
+                        // Display results in console
+                        if (consoleOutput) {
+                            const resultMessage = document.createElement('div');
+                            resultMessage.style.color = executionResult.success ? '#0f0' : '#f00';
+                            resultMessage.textContent = `> ${executionResult.success ? 'Success' : 'Error'}: ${executionResult.output || executionResult.error || 'No output'}`;
+                            consoleOutput.appendChild(resultMessage);
+                            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Component execution failed:', error);
+                    
+                    // Update console with error
+                    const consoleOutput = document.getElementById(`console-${id}`);
+                    if (consoleOutput) {
+                        const errorMessage = document.createElement('div');
+                        errorMessage.style.color = '#f00';
+                        errorMessage.textContent = `> Execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+                        consoleOutput.appendChild(errorMessage);
+                        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                    }
+                } finally {
+                    metrics.isRunning = false;
                 }
             }
         };
@@ -1601,4 +1636,115 @@ function sleep(ms) {
             }
         };
     }
+
+    /**
+     * Execute component on server via MCP and return execution result
+     */
+    private async executeComponentOnServer(component: WasmComponent, executionId: string): Promise<ExecutionResult | null> {
+        try {
+            // Create execution parameters matching server expectations
+            const executionParams = {
+                componentName: component.name,
+                method: 'main', // Default method for WASM components
+                args: {},
+                timeout_ms: 30000, // 30 second timeout
+                max_memory_mb: 512 // 512MB memory limit
+            };
+
+            // Execute component via MCP tool
+            const executeResult = await this.mcpService.callTool('execute_wasm_component', executionParams);
+            
+            if (!executeResult.success) {
+                console.error('Component execution failed:', executeResult.error);
+                return null;
+            }
+
+            // Extract execution ID from server response
+            const responseText = executeResult.result || '';
+            const executionIdMatch = responseText.match(/ID:\s*([a-f0-9-]+)/);
+            const serverExecutionId = executionIdMatch ? executionIdMatch[1] : executionId;
+
+            console.log(`Server assigned execution ID: ${serverExecutionId}`);
+
+            // Monitor execution progress
+            let isComplete = false;
+            const progressMonitor = setInterval(async () => {
+                if (isComplete) return;
+                
+                try {
+                    const progressResource = await this.mcpService.readResource(`wasm://executions/${serverExecutionId}/progress`);
+                    if (progressResource?.content) {
+                        const progress = JSON.parse(progressResource.content);
+                        console.log(`Execution ${serverExecutionId} progress:`, progress.stage, `${(progress.progress * 100).toFixed(1)}%`);
+                        
+                        // Stop monitoring when complete or failed
+                        if (progress.stage === 'Complete' || progress.stage === 'Error') {
+                            isComplete = true;
+                            clearInterval(progressMonitor);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Failed to read execution progress:', error);
+                }
+            }, 1000); // Check progress every second
+
+            // Wait for execution to complete or timeout after 45 seconds
+            const timeout = setTimeout(() => {
+                isComplete = true;
+                clearInterval(progressMonitor);
+            }, 45000);
+
+            // Wait for completion
+            return new Promise((resolve) => {
+                const checkCompletion = setInterval(async () => {
+                    if (isComplete) {
+                        clearInterval(checkCompletion);
+                        clearTimeout(timeout);
+                        
+                        try {
+                            // Get final execution result
+                            const resultResource = await this.mcpService.readResource(`wasm://executions/${serverExecutionId}/result`);
+                            if (resultResource?.content) {
+                                const result = JSON.parse(resultResource.content);
+                                resolve({
+                                    execution_id: result.execution_id,
+                                    success: result.success,
+                                    result: result.result,
+                                    error: result.error,
+                                    duration_ms: result.execution_time_ms,
+                                    memory_usage_mb: result.memory_usage_mb,
+                                    output_data: result.output_data,
+                                    graphics_output: result.graphics_output,
+                                    completed_at: result.completed_at
+                                });
+                            } else {
+                                resolve(null);
+                            }
+                        } catch (error) {
+                            console.error('Failed to read execution result:', error);
+                            resolve(null);
+                        }
+                    }
+                }, 1000);
+            });
+        } catch (error) {
+            console.error('Server execution failed:', error);
+            return null;
+        }
+    }
+}
+
+/**
+ * Execution result from server-side WASM execution
+ */
+interface ExecutionResult {
+    execution_id: string;
+    success: boolean;
+    result?: any;
+    error?: string;
+    duration_ms: number;
+    memory_usage_mb: number;
+    output_data?: any;
+    graphics_output?: any;
+    completed_at: string;
 }

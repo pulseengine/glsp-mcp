@@ -307,7 +307,7 @@ export class DiagramNameDialog extends PromptDialog {
                 {
                     onConfirm: (name) => {
                         dialog.close();
-                        resolve(name || null);
+                        resolve(typeof name === 'string' ? name : null);
                     },
                     onCancel: () => {
                         dialog.close();

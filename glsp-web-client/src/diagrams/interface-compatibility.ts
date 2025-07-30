@@ -205,6 +205,16 @@ export class InterfaceCompatibilityChecker {
     }
 
     /**
+     * Alias for calculateCompatibility for backward compatibility
+     */
+    static checkCompatibility(
+        sourceInterface: WitInterface, 
+        targetInterface: WitInterface
+    ): InterfaceCompatibility {
+        return this.calculateCompatibility(sourceInterface, targetInterface);
+    }
+
+    /**
      * Find all compatible interfaces for a given source interface
      */
     static findCompatibleInterfaces(

@@ -14,7 +14,7 @@ export interface DialogResult<T = unknown> {
 export interface DialogQueueItem {
     id: string;
     dialog: BaseDialog;
-    resolve: (result: DialogResult) => void;
+    resolve: (result: DialogResult<unknown>) => void;
     reject: (error: Error) => void;
 }
 
@@ -46,7 +46,7 @@ export class DialogManager {
             const queueItem: DialogQueueItem = {
                 id: dialogId,
                 dialog,
-                resolve,
+                resolve: resolve as (result: DialogResult<unknown>) => void,
                 reject
             };
 

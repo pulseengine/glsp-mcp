@@ -12,6 +12,10 @@ import { ViewSwitcher } from './ui/ViewSwitcher.js';
 import { ViewModeManager } from './ui/ViewModeManager.js';
 import { WasmViewTransformer } from './ui/WasmViewTransformer.js';
 import { WasmComponent } from './types/wasm-component.js';
+import { serviceContainer } from './core/ServiceContainer.js';
+import { registerServices, getService, getServiceHealthDashboard } from './core/ServiceRegistration.js';
+import { integrationTester } from './core/IntegrationTesting.js';
+import { testComponentLoading } from './debug/ComponentLoadingTest.js';
 
 // Debug interface for window properties
 interface WindowDebug {
@@ -40,36 +44,148 @@ declare global {
 }
 
 export class AppController {
-    private mcpService: McpService;
-    private diagramService: DiagramService;
-    public uiManager: UIManager;
-    private renderer: CanvasRenderer;
-    private interactionManager: InteractionManager;
-    private aiService: AIService;
-    private wasmRuntimeManager: WasmRuntimeManager;
-    private witVisualizationPanel: WitVisualizationPanel;
-    private viewSwitcher: ViewSwitcher;
-    private viewModeManager: ViewModeManager;
+    // Service references - populated after initialization
+    private mcpService!: McpService;
+    private diagramService!: DiagramService;
+    public uiManager!: UIManager;
+    private renderer!: CanvasRenderer;
+    private interactionManager!: InteractionManager;
+    private aiService!: AIService;
+    private wasmRuntimeManager!: WasmRuntimeManager;
+    private witVisualizationPanel!: WitVisualizationPanel;
+    private viewSwitcher!: ViewSwitcher;
+    private viewModeManager!: ViewModeManager;
 
     constructor(private canvas: HTMLCanvasElement) {
-        this.mcpService = new McpService();
-        this.diagramService = new DiagramService(this.mcpService);
-        this.uiManager = new UIManager();
-        this.renderer = new CanvasRenderer(canvas);
-        this.interactionManager = new InteractionManager(this.renderer, this.diagramService, this.mcpService);
-        this.aiService = new AIService(this.mcpService);
-        this.wasmRuntimeManager = new WasmRuntimeManager(this.mcpService, this.diagramService, {
-            enableClientSideTranspilation: true,
-            maxConcurrentExecutions: 5,
-            maxCachedComponents: 50
-        }, this.renderer);
-        this.witVisualizationPanel = new WitVisualizationPanel(this.mcpService);
-        this.viewSwitcher = new ViewSwitcher();
-        this.viewModeManager = new ViewModeManager(this.diagramService, this.renderer);
+        // Register all services with the container
+        registerServices(canvas);
         
-        // Register the WASM view transformer
-        this.viewModeManager.registerTransformer('wasm-component', new WasmViewTransformer());
+        // Initialize all services asynchronously
+        this.initializeServices();
+    }
 
+    /**
+     * Initialize all services using the ServiceContainer
+     */
+    private async initializeServices(): Promise<void> {
+        try {
+            console.log('AppController: Starting service container initialization...');
+            
+            // Initialize all services through the container
+            await serviceContainer.initializeAll();
+            
+            // Get service references
+            this.mcpService = await getService<McpService>('mcpService');
+            this.diagramService = await getService<DiagramService>('diagramService');
+            this.uiManager = await getService<UIManager>('uiManager');
+            this.renderer = await getService<CanvasRenderer>('canvasRenderer');
+            this.interactionManager = await getService<InteractionManager>('interactionManager');
+            this.aiService = await getService<AIService>('aiService');
+            this.wasmRuntimeManager = await getService<WasmRuntimeManager>('wasmRuntimeManager');
+            this.witVisualizationPanel = await getService<WitVisualizationPanel>('witVisualizationPanel');
+            this.viewSwitcher = await getService<ViewSwitcher>('viewSwitcher');
+            this.viewModeManager = await getService<ViewModeManager>('viewModeManager');
+
+            // Continue with AppController-specific initialization
+            await this.completeInitialization();
+            
+            console.log('AppController: All services initialized successfully');
+            
+            // Log service health dashboard
+            const healthDashboard = getServiceHealthDashboard();
+            console.log('Service Health Dashboard:', healthDashboard);
+            
+        } catch (error) {
+            console.error('AppController: Failed to initialize services:', error);
+            this.uiManager?.updateStatus('Failed to initialize application services');
+            throw error;
+        }
+    }
+
+    /**
+     * Complete AppController-specific initialization after services are ready
+     */
+    private async completeInitialization(): Promise<void> {
+        // Setup drag and drop for WASM components
+        this.setupCanvasDragAndDrop();
+
+        // Setup MCP streaming for real-time updates
+        this.setupMcpStreaming();
+
+        // Setup UI event handlers
+        this.setupUIEventHandlers();
+
+        // Setup AI model selection
+        await this.setupAIModelSelection();
+
+        // Connect WASM runtime to header icons
+        this.wasmRuntimeManager.setHeaderIconManager(this.uiManager.getHeaderIconManager());
+
+        // Initialize edge creation type
+        const initialEdgeCreationType = this.uiManager.getCurrentEdgeCreationType();
+        this.renderer.setEdgeCreationType(initialEdgeCreationType);
+        console.log('AppController: Initialized edge creation type:', initialEdgeCreationType);
+
+        // Load initial diagram if available
+        await this.loadInitialDiagram();
+
+        // Setup debug utilities
+        this.setupDebugUtilities();
+
+        // Log environment info
+        this.logEnvironmentInfo();
+
+        // Run integration tests in development mode
+        if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
+            console.log('🧪 Running integration tests in development mode...');
+            setTimeout(async () => {
+                try {
+                    const testResults = await integrationTester.runAllTests();
+                    const allPassed = integrationTester.allTestsPassed();
+                    
+                    if (allPassed) {
+                        console.log('🎉 All integration tests passed! Component Execution Monitoring System is ready.');
+                        this.uiManager?.updateStatus('✅ Integration tests passed - System ready');
+                    } else {
+                        console.warn('⚠️ Some integration tests failed. Check console for details.');
+                        this.uiManager?.updateStatus('⚠️ Integration tests failed - Check console');
+                    }
+                } catch (error) {
+                    console.error('❌ Integration testing failed:', error);
+                    this.uiManager?.updateStatus('❌ Integration testing failed');
+                }
+            }, 2000); // Run tests after 2 seconds to allow full initialization
+        }
+    }
+
+    /**
+     * Setup UI event handlers
+     */
+    private setupUIEventHandlers(): void {
+        // Setup toolbar event handlers
+        this.uiManager.setupToolbarEventHandlers(async (newType: string) => {
+            await this.handleDiagramTypeChange(newType);
+        });
+        
+        // Setup AI panel event handlers
+        this.uiManager.setupAIPanelEventHandlers(
+            async (prompt: string) => await this.handleAICreateDiagram(prompt),
+            async () => await this.handleAITestDiagram(),
+            async () => await this.handleAIAnalyzeDiagram(),
+            async () => await this.handleAIOptimizeLayout()
+        );
+        
+        // Setup diagram close event handler
+        window.addEventListener('diagram-close-requested', () => {
+            console.log('AppController: Diagram close requested - clearing canvas');
+            this.renderer.clear();
+        });
+    }
+
+    /**
+     * Setup debug utilities
+     */
+    private setupDebugUtilities(): void {
         // Development-only debug utilities
         if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
             if (!window.debug) window.debug = {};
@@ -99,6 +215,7 @@ export class AppController {
                 });
             };
             window.debug.debugDialogs = () => BaseDialog.debugDialogState();
+            window.debug.testComponentLoading = testComponentLoading;
         }
 
         this.mountUI();
@@ -231,7 +348,7 @@ export class AppController {
                     
                     // Extract component info from the MCP data
                     const name = component.name || 'Unknown Component';
-                    const status = component.status || 'available';
+                    const status = component.fileExists ? 'available' : 'missing';
                     
                     const componentData: WasmComponent = {
                         id: component.name || name,
@@ -327,145 +444,61 @@ export class AppController {
         }
     }
 
-    private async initialize(): Promise<void> {
-        try {
-            console.log('AppController: Starting initialization...');
-            await this.mcpService.initialize();
-            console.log('MCP Service Initialized');
-            this.uiManager.updateStatus('Connected to MCP server');
+    /**
+     * Load initial diagram from available diagrams
+     */
+    private async loadInitialDiagram(): Promise<void> {
+        // Load WASM components into the sidebar if modern sidebar is active
+        await this.loadWasmComponentsToSidebar();
 
-            this.interactionManager.setupEventHandlers();
-            this.interactionManager.setWasmComponentManager(this.wasmRuntimeManager);
-            this.interactionManager.setUIManager(this.uiManager);
-            this.interactionManager.setViewModeManager(this.viewModeManager);
-            // Setup drag and drop for WASM components
-            this.setupCanvasDragAndDrop();
-
-            // Setup connection status monitoring
-            this.mcpService.addConnectionListener((connected: boolean) => {
-                statusManager.setMcpStatus(connected);
-            });
-
-            // Setup MCP streaming for real-time updates
-            this.setupMcpStreaming();
-
-            // Setup AI connection monitoring
-            this.aiService.addConnectionListener((connected: boolean) => {
-                statusManager.setAiStatus(connected);
-            });
-
-            // Check current MCP connection status since the listener was added after initialization
-            const mcpConnected = this.mcpService.isConnected();
-            console.log('AppController: Current MCP connection status after listener setup:', mcpConnected);
-            statusManager.setMcpStatus(mcpConnected);
-
-            this.uiManager.setupToolbarEventHandlers(async (newType: string) => {
-                await this.handleDiagramTypeChange(newType);
-            });
-            
-            this.uiManager.setupAIPanelEventHandlers(
-                async (prompt: string) => await this.handleAICreateDiagram(prompt),
-                async () => await this.handleAITestDiagram(),
-                async () => await this.handleAIAnalyzeDiagram(),
-                async () => await this.handleAIOptimizeLayout()
-            );
-            
-            // Setup diagram close event handler
-            window.addEventListener('diagram-close-requested', () => {
-                console.log('AppController: Diagram close requested - clearing canvas');
-                this.renderer.clear();
-            });
-
-            // Show the AI panel
-            this.uiManager.showAIPanel();
-
-            // Check connections to initialize connection monitoring
-            await this.aiService.checkConnections();
-            // AI status will be set automatically by the connection listener
-
-            // Always attempt to load models and set up the model selection, regardless of current connection status
-            await this.setupAIModelSelection();
-
-            // Set up a listener for when AI connection status changes to retry model loading
-            this.aiService.addConnectionListener((connected: boolean) => {
-                if (connected) {
-                    console.log('AI service connected, reloading models...');
-                    this.setupAIModelSelection().catch(error => {
-                        console.error('Failed to reload AI models after connection:', error);
-                    });
-                }
-            });
-
-            await this.wasmRuntimeManager.initializeEnhancedWasmComponents();
-            
-            // Connect header icon manager to WASM runtime manager
-            this.wasmRuntimeManager.setHeaderIconManager(this.uiManager.getHeaderIconManager());
-            
-            // Initialize edge creation type with default value
-            const initialEdgeCreationType = this.uiManager.getCurrentEdgeCreationType();
-            this.renderer.setEdgeCreationType(initialEdgeCreationType);
-            console.log('AppController: Initialized edge creation type:', initialEdgeCreationType);
-            
-            // Load WASM components into the sidebar if modern sidebar is active
-            await this.loadWasmComponentsToSidebar();
-
-            // Load existing diagrams instead of creating a new one
-            console.log('AppController: Loading available diagrams...');
-            const diagrams = await this.diagramService.getAvailableDiagrams();
-            console.log('AppController: Retrieved diagrams:', diagrams);
-            
-            // Update the diagram list UI
-            this.uiManager.updateDiagramList(
-                diagrams,
-                this.loadDiagramCallback.bind(this),
-                this.deleteDiagramCallback.bind(this)
-            );
-            
-            // If there are existing diagrams, load the first one
-            if (diagrams.length > 0) {
-                console.log('AppController: Loading first available diagram:', diagrams[0].id);
-                const firstDiagram = await this.diagramService.loadDiagram(diagrams[0].id);
-                if (firstDiagram) {
-                    this.renderer.setDiagram(firstDiagram);
-                    this.uiManager.updateStatus(`Loaded diagram: ${firstDiagram.name}`);
-                    console.log('AppController: Diagram loaded successfully');
-                    
-                    // Update the toolbar to show the correct node/edge types for this diagram type
-                    // Handle both camelCase and snake_case naming conventions
-                    const diagramType = firstDiagram.diagramType || firstDiagram.diagram_type || 'workflow';
-                    console.log('AppController: Updating toolbar for initial diagram type:', diagramType);
-                    this.uiManager.updateToolbarContent(this.uiManager.getToolbarElement(), diagramType);
-                    
-                    // Refresh WASM component interfaces if this is a WASM diagram
-                    if (diagramType === 'wasm-component' && this.wasmRuntimeManager) {
-                        console.log('AppController: Refreshing WASM component interfaces...');
-                        try {
-                            await this.wasmRuntimeManager.refreshComponentInterfaces('all');
-                        } catch (error) {
-                            console.error('Failed to refresh component interfaces:', error);
-                        }
+        // Load existing diagrams instead of creating a new one
+        console.log('AppController: Loading available diagrams...');
+        const diagrams = await this.diagramService.getAvailableDiagrams();
+        console.log('AppController: Retrieved diagrams:', diagrams);
+        
+        // Update the diagram list UI
+        this.uiManager.updateDiagramList(
+            diagrams,
+            this.loadDiagramCallback.bind(this),
+            this.deleteDiagramCallback.bind(this)
+        );
+        
+        // If there are existing diagrams, load the first one
+        if (diagrams.length > 0) {
+            console.log('AppController: Loading first available diagram:', diagrams[0].id);
+            const firstDiagram = await this.diagramService.loadDiagram(diagrams[0].id);
+            if (firstDiagram) {
+                this.renderer.setDiagram(firstDiagram);
+                this.uiManager.updateStatus(`Loaded diagram: ${firstDiagram.name}`);
+                console.log('AppController: Diagram loaded successfully');
+                
+                // Update the toolbar to show the correct node/edge types for this diagram type
+                // Handle both camelCase and snake_case naming conventions
+                const diagramType = firstDiagram.diagramType || firstDiagram.diagram_type || 'workflow';
+                console.log('AppController: Updating toolbar for initial diagram type:', diagramType);
+                this.uiManager.updateToolbarContent(this.uiManager.getToolbarElement(), diagramType);
+                
+                // Refresh WASM component interfaces if this is a WASM diagram
+                if (diagramType === 'wasm-component' && this.wasmRuntimeManager) {
+                    console.log('AppController: Refreshing WASM component interfaces...');
+                    try {
+                        await this.wasmRuntimeManager.refreshComponentInterfaces('all');
+                    } catch (error) {
+                        console.error('Failed to refresh component interfaces:', error);
                     }
                 }
-            } else {
-                console.log('AppController: No existing diagrams found');
-                this.uiManager.updateStatus('No diagrams found - Create a new diagram to start');
-                // Clear the canvas to show empty state
-                this.renderer.clear();
             }
-
-            // Setup create new diagram button
-            this.uiManager.setupCreateDiagramButton(async () => {
-                await this.handleCreateNewDiagram();
-            });
-
-        } catch (error) {
-            console.error('Failed to initialize application:', error);
-            if (error instanceof Error) {
-                console.error('Error details:', error.message, error.stack);
-            }
-            statusManager.setMcpStatus(false);
-            // AI status will be updated by its own connection monitoring
+        } else {
+            console.log('AppController: No existing diagrams found');
+            this.uiManager.updateStatus('No diagrams found - Create a new diagram to start');
+            // Clear the canvas to show empty state
+            this.renderer.clear();
         }
+
+        // Setup create new diagram button
+        this.uiManager.setupCreateDiagramButton(async () => {
+            await this.handleCreateNewDiagram();
+        });
     }
 
     private async handleAICreateDiagram(prompt: string): Promise<void> {
