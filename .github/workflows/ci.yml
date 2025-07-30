@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04, windows-latest, macOS-latest]
+        os: [ubuntu-24.04, windows-latest, macOS-latest]
         rust: [stable]
     steps:
       - uses: actions/checkout@v4
@@ -72,7 +72,7 @@ jobs:
 
   build-web-client:
     name: Build Web Client
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       
@@ -96,7 +96,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04, windows-latest, macOS-latest]
+        os: [ubuntu-24.04, windows-latest, macOS-latest]
     steps:
       - uses: actions/checkout@v4
       
