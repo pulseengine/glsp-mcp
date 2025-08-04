@@ -1140,12 +1140,7 @@ export abstract class BaseDialog extends FloatingPanel {
       : null;
   }
 
-  protected bringToFront(): void {
-    BaseDialog.addToStack(this);
-    console.log(
-      `🔝 Brought dialog to front with z-index: ${this.element.style.zIndex}`,
-    );
-  }
+  // Note: bringToFront() inherited from FloatingPanel
 
   // Override hide to manage dialog stack
   public hide(): void {

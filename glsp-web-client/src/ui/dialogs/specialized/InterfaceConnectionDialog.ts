@@ -43,7 +43,7 @@ export class InterfaceConnectionDialog extends BaseDialog {
   public onConnection(
     callback: (option: InterfaceConnectionOption) => void,
   ): void {
-    this.onConnectionCreate = callback;
+    this._onConnectionCreate = callback;
   }
 
   protected createDialogContent(): string {

@@ -442,7 +442,7 @@ export class ValidationService {
 
   private setCache(key: string, data: unknown, customTimeout?: number): void {
     this.validationCache.set(key, {
-      data,
+      data: data as SecurityAnalysis | ComponentWitAnalysis | WasmValidationResult | CompatibilityAnalysis | Record<string, unknown>,
       timestamp: Date.now(),
     });
 
