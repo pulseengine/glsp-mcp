@@ -1,3 +1,17 @@
+// Copyright (c) 2024 GLSP-Rust Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use notify::{Event, EventKind, RecursiveMode, Result as NotifyResult, Watcher};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -148,11 +162,21 @@ impl FileSystemWatcher {
                     if path.extension().and_then(|s| s.to_str()) == Some("wasm") {
                         info!("WASM file created: {:?}", path);
 
-                        let component_name = path
-                            .file_stem()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or("unknown")
-                            .to_string();
+                        let component_name = if let Some(parent) = path.parent() {
+                            if let Some(dir_name) = parent.file_name().and_then(|s| s.to_str()) {
+                                dir_name.to_string()
+                            } else {
+                                path.file_stem()
+                                    .and_then(|s| s.to_str())
+                                    .unwrap_or("unknown")
+                                    .to_string()
+                            }
+                        } else {
+                            path.file_stem()
+                                .and_then(|s| s.to_str())
+                                .unwrap_or("unknown")
+                                .to_string()
+                        };
 
                         let change = WasmComponentChange {
                             event_type: WasmChangeType::Added,
@@ -175,11 +199,21 @@ impl FileSystemWatcher {
                     if path.extension().and_then(|s| s.to_str()) == Some("wasm") {
                         info!("WASM file modified: {:?}", path);
 
-                        let component_name = path
-                            .file_stem()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or("unknown")
-                            .to_string();
+                        let component_name = if let Some(parent) = path.parent() {
+                            if let Some(dir_name) = parent.file_name().and_then(|s| s.to_str()) {
+                                dir_name.to_string()
+                            } else {
+                                path.file_stem()
+                                    .and_then(|s| s.to_str())
+                                    .unwrap_or("unknown")
+                                    .to_string()
+                            }
+                        } else {
+                            path.file_stem()
+                                .and_then(|s| s.to_str())
+                                .unwrap_or("unknown")
+                                .to_string()
+                        };
 
                         let change = WasmComponentChange {
                             event_type: WasmChangeType::Modified,
@@ -202,11 +236,21 @@ impl FileSystemWatcher {
                     if path.extension().and_then(|s| s.to_str()) == Some("wasm") {
                         info!("WASM file removed: {:?}", path);
 
-                        let component_name = path
-                            .file_stem()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or("unknown")
-                            .to_string();
+                        let component_name = if let Some(parent) = path.parent() {
+                            if let Some(dir_name) = parent.file_name().and_then(|s| s.to_str()) {
+                                dir_name.to_string()
+                            } else {
+                                path.file_stem()
+                                    .and_then(|s| s.to_str())
+                                    .unwrap_or("unknown")
+                                    .to_string()
+                            }
+                        } else {
+                            path.file_stem()
+                                .and_then(|s| s.to_str())
+                                .unwrap_or("unknown")
+                                .to_string()
+                        };
 
                         let change = WasmComponentChange {
                             event_type: WasmChangeType::Removed,
