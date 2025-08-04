@@ -1420,14 +1420,8 @@ function sleep(ms) {
         elementType === "wasm-component" &&
         element.id !== interfaceInfo.componentId
       ) {
-        const interfaces = element.properties?.interfaces || [];
-        interfaces.forEach(
-          (iface: {
-            name?: string;
-            interface_type?: string;
-            functions?: unknown[];
-            types?: unknown[];
-          }) => {
+        const interfaces = (element.properties?.interfaces as unknown[]) || [];
+        interfaces.forEach((iface: any) => {
             const witInterface: WitInterface = {
               name: iface.name || "unknown",
               interface_type:
@@ -1701,7 +1695,7 @@ function sleep(ms) {
 
   private setupExecutionMonitoring(
     elementId: string,
-    loadedComponent: import("../wasm/WasmComponentManager.js").WasmComponent,
+    _loadedComponent: import("../wasm/WasmComponentManager.js").WasmComponent,
   ): void {
     // Initialize metrics tracking
     const componentMetrics = {
@@ -1808,7 +1802,7 @@ function sleep(ms) {
               resultMessage.textContent = `> ${
                 executionResult.success ? "Success" : "Error"
               }: ${
-                executionResult.output || executionResult.error || "No output"
+(executionResult as any).output || executionResult.error || "No output"
               }`;
               consoleOutput.appendChild(resultMessage);
               consoleOutput.scrollTop = consoleOutput.scrollHeight;
@@ -1933,7 +1927,7 @@ function sleep(ms) {
    * Execute component on server via MCP and return execution result
    */
   private async executeComponentOnServer(
-    component: WasmComponent,
+    component: import("../wasm/WasmComponentManager.js").WasmComponent,
     executionId: string,
   ): Promise<ExecutionResult | null> {
     try {
@@ -1952,13 +1946,13 @@ function sleep(ms) {
         executionParams,
       );
 
-      if (!executeResult.success) {
-        console.error("Component execution failed:", executeResult.error);
+      if (!(executeResult as any).success) {
+        console.error("Component execution failed:", (executeResult as any).error);
         return null;
       }
 
       // Extract execution ID from server response
-      const responseText = executeResult.result || "";
+      const responseText = (executeResult as any).result || "";
       const executionIdMatch = responseText.match(/ID:\s*([a-f0-9-]+)/);
       const serverExecutionId = executionIdMatch
         ? executionIdMatch[1]
@@ -1975,8 +1969,8 @@ function sleep(ms) {
           const progressResource = await this.mcpService.readResource(
             `wasm://executions/${serverExecutionId}/progress`,
           );
-          if (progressResource?.content) {
-            const progress = JSON.parse(progressResource.content);
+          if ((progressResource as any)?.content) {
+            const progress = JSON.parse((progressResource as any).content);
             console.log(
               `Execution ${serverExecutionId} progress:`,
               progress.stage,
@@ -2012,8 +2006,8 @@ function sleep(ms) {
               const resultResource = await this.mcpService.readResource(
                 `wasm://executions/${serverExecutionId}/result`,
               );
-              if (resultResource?.content) {
-                const result = JSON.parse(resultResource.content);
+              if ((resultResource as any)?.content) {
+                const result = JSON.parse((resultResource as any).content);
                 resolve({
                   execution_id: result.execution_id,
                   success: result.success,

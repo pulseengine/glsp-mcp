@@ -267,7 +267,7 @@ export class PropertiesSection {
             case 'text': {
                 const input = document.createElement('input');
                 input.type = 'text';
-                input.value = property.value || '';
+                input.value = String(property.value || '');
                 input.readOnly = property.readonly || false;
                 input.style.cssText = baseStyle;
                 
@@ -315,7 +315,7 @@ export class PropertiesSection {
                 
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
-                checkbox.checked = property.value || false;
+                checkbox.checked = Boolean(property.value) || false;
                 checkbox.disabled = property.readonly || false;
                 checkbox.style.cssText = `
                     margin-right: 8px;
@@ -340,7 +340,7 @@ export class PropertiesSection {
                 
                 property.options?.forEach(option => {
                     const optionElement = document.createElement('option');
-                    optionElement.value = option.value;
+                    optionElement.value = String(option.value);
                     optionElement.textContent = option.label;
                     optionElement.selected = option.value === property.value;
                     select.appendChild(optionElement);

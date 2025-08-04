@@ -614,7 +614,7 @@ export class InterfaceConnectionEditor {
     }
 
     // Hide the drop zone if we have connections
-    const hasConnections = connectionsContainer?.children.length > 0;
+    const hasConnections = (connectionsContainer?.children.length || 0) > 0;
     dropZone.style.display = hasConnections ? "none" : "flex";
   }
 
