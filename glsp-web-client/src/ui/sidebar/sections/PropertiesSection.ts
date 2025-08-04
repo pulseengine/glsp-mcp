@@ -364,7 +364,7 @@ export class PropertiesSection {
                 
                 const colorInput = document.createElement('input');
                 colorInput.type = 'color';
-                colorInput.value = property.value || '#000000';
+                colorInput.value = String(property.value) || '#000000';
                 colorInput.disabled = property.readonly || false;
                 colorInput.style.cssText = `
                     width: 32px;
@@ -376,7 +376,7 @@ export class PropertiesSection {
                 
                 const textInput = document.createElement('input');
                 textInput.type = 'text';
-                textInput.value = property.value || '#000000';
+                textInput.value = String(property.value) || '#000000';
                 textInput.readOnly = property.readonly || false;
                 textInput.style.cssText = baseStyle + `flex: 1;`;
                 

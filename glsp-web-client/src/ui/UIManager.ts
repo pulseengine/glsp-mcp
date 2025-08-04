@@ -621,9 +621,9 @@ export class UIManager {
 
       if (
         canvasRenderer &&
-        typeof canvasRenderer.initializeIconLegend === "function"
+        typeof (canvasRenderer as any).initializeIconLegend === "function"
       ) {
-        canvasRenderer.initializeIconLegend();
+        (canvasRenderer as any).initializeIconLegend();
         console.log("UIManager: Initialized WIT icon legend for WIT diagram");
       } else {
         console.warn(
@@ -674,9 +674,9 @@ export class UIManager {
 
     if (
       canvasRenderer &&
-      typeof canvasRenderer.toggleIconLegend === "function"
+      typeof (canvasRenderer as any).toggleIconLegend === "function"
     ) {
-      canvasRenderer.toggleIconLegend();
+      (canvasRenderer as any).toggleIconLegend();
       console.log("UIManager: Toggled WIT icon legend");
     } else {
       console.warn(
@@ -691,8 +691,8 @@ export class UIManager {
   public showWitIconLegend(): void {
     const canvasRenderer = window.canvasRenderer;
 
-    if (canvasRenderer && typeof canvasRenderer.showIconLegend === "function") {
-      canvasRenderer.showIconLegend();
+    if (canvasRenderer && typeof (canvasRenderer as any).showIconLegend === "function") {
+      (canvasRenderer as any).showIconLegend();
       console.log("UIManager: Showed WIT icon legend");
     } else {
       console.warn("UIManager: WIT icon legend not available");
@@ -705,8 +705,8 @@ export class UIManager {
   public hideWitIconLegend(): void {
     const canvasRenderer = window.canvasRenderer;
 
-    if (canvasRenderer && typeof canvasRenderer.hideIconLegend === "function") {
-      canvasRenderer.hideIconLegend();
+    if (canvasRenderer && typeof (canvasRenderer as any).hideIconLegend === "function") {
+      (canvasRenderer as any).hideIconLegend();
       console.log("UIManager: Hid WIT icon legend");
     } else {
       console.warn("UIManager: WIT icon legend not available");
