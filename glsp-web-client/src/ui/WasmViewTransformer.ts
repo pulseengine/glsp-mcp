@@ -146,9 +146,9 @@ export class WasmViewTransformer implements ViewTransformer {
                 properties: {
                     originalId: component.id,
                     componentType: 'main',
-                    category: component.properties?.category,
-                    status: component.properties?.status,
-                    componentPath: component.properties?.componentPath,
+                    category: (component as any).properties?.category,
+                    status: (component as any).properties?.status,
+                    componentPath: (component as any).properties?.componentPath,
                     originalInterfaces: component.interfaces // Store original interface data
                 }
             };
@@ -737,7 +737,7 @@ export class WasmViewTransformer implements ViewTransformer {
                 properties: {
                     interfaceId: interfaceNode.id,
                     parameters: func.parameters || [],
-                    returnType: func.returnType || 'void',
+                    returnType: func.return_type || 'void',
                     parameterCount: func.parameters?.length || 0
                 }
             };
@@ -775,7 +775,7 @@ export class WasmViewTransformer implements ViewTransformer {
         const nodes: Node[] = [];
         const edges: Edge[] = [];
         
-        iface.type?.forEach((type, typeIndex) => {
+        (iface as any).types?.forEach((type: any, typeIndex: number) => {
             const typeY = baseY + (typeIndex * verticalSpacing);
             
             const typeNode: Node = {
@@ -969,7 +969,7 @@ export class WasmViewTransformer implements ViewTransformer {
                         x: node.bounds?.x || 0, 
                         y: node.bounds?.y || 0 
                     },
-                    properties: node.properties || {}
+                    properties: (node as any).properties || {}
                 };
                 components.push(component);
             }
@@ -1002,6 +1002,7 @@ export class WasmViewTransformer implements ViewTransformer {
                     interfaces.push({
                         name: typeof iface === 'string' ? iface : iface.name || 'unknown',
                         type: 'import',
+                        interface_type: 'import',
                         functions: []
                     });
                 });
@@ -1013,7 +1014,8 @@ export class WasmViewTransformer implements ViewTransformer {
                 exports.forEach((iface: any) => {
                     interfaces.push({
                         name: typeof iface === 'string' ? iface : iface.name || 'unknown',
-                        type: 'export',  
+                        type: 'export',
+                        interface_type: 'export',
                         functions: []
                     });
                 });
@@ -1028,13 +1030,14 @@ export class WasmViewTransformer implements ViewTransformer {
                 return interfaceData.map((iface: any) => ({
                     name: iface.name,
                     type: iface.interface_type === 'export' ? 'export' : 'import',
+                    interface_type: iface.interface_type === 'export' ? 'export' : 'import',
                     functions: iface.functions?.map((func: any) => ({
                         name: func.name,
                         parameters: func.params?.map((p: any) => ({
                             name: p.name,
                             type: p.param_type
                         })) || [],
-                        returnType: func.returns?.[0]?.param_type || 'void'
+                        return_type: func.returns?.[0]?.param_type || 'void'
                     })) || [],
                     types: iface.type || []
                 }));
@@ -1067,7 +1070,7 @@ export class WasmViewTransformer implements ViewTransformer {
                         {
                             name: 'process',
                             parameters: [{ name: 'data', type: 'bytes' }],
-                            returnType: 'result'
+                            return_type: 'result'
                         }
                     ]
                 },

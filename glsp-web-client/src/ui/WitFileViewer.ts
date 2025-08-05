@@ -185,10 +185,10 @@ export class WitFileViewer {
         // Add types if any
         if (types.length > 0) {
             wit += `\n  // Types\n`;
-            types.forEach(type => {
+            types.forEach((type: any) => {
                 wit += `  record ${type.name} {\n`;
                 if (type.fields) {
-                    type.fields.forEach(field => {
+                    type.fields.forEach((field: any) => {
                         wit += `    ${field.name}: ${field.type},\n`;
                     });
                 }
@@ -199,7 +199,7 @@ export class WitFileViewer {
         // Add functions
         if (functions.length > 0) {
             wit += `\n  // Functions\n`;
-            functions.forEach(func => {
+            functions.forEach((func: any) => {
                 const params = (func.params || []).map(p => `${p.name}: ${p.param_type}`).join(', ');
                 const returns = func.returns && func.returns.length > 0 
                     ? ` -> ${func.returns[0].param_type}`
@@ -244,7 +244,7 @@ export class WitFileViewer {
                 iface.types.forEach(type => {
                     wit += `  record ${type.name} {\n`;
                     if (type.fields) {
-                        type.fields.forEach(field => {
+                        type.fields.forEach((field: any) => {
                             wit += `    ${field.name}: ${field.type},\n`;
                         });
                     }
