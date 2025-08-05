@@ -54,7 +54,6 @@ export class ComponentLibrarySection {
   
   // Service references for execution bridge
   private wasmRuntimeManager?: WasmRuntimeManager;
-  private interactionManager?: InteractionManager;
   private servicesInitialized = false;
   private onGroupDeleted?: (groupId: string) => void;
   private componentGroups: Map<string, ComponentGroupData> = new Map();
@@ -78,7 +77,6 @@ export class ComponentLibrarySection {
       
       // Get service references from the container
       this.wasmRuntimeManager = await getService<WasmRuntimeManager>('wasmRuntimeManager');
-      this.interactionManager = await getService<InteractionManager>('interactionManager');
       
       this.servicesInitialized = true;
       console.log('ComponentLibrarySection: Service connections initialized');

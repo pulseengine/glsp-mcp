@@ -1394,7 +1394,7 @@ export class AppController {
     }
   }*/
 
-  private async _addWitInterfaceNodesForComponent(
+  private async addWitInterfaceNodesForComponent(
     diagramId: string,
     component: any,
     startX: number,
@@ -1458,7 +1458,7 @@ export class AppController {
     }
   }
 
-  private async _createTestWitDiagram(): Promise<void> {
+  private async createTestWitDiagram(): Promise<void> {
     try {
       // Create a WIT interface diagram
       const diagramId = await this.diagramService.createNewDiagram(

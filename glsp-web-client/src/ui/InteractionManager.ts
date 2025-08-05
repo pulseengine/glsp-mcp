@@ -1322,6 +1322,12 @@ function sleep(ms) {
       clearTimeout(this.autoSaveTimeout);
     }
 
+    // Check if auto-save is already pending
+    if (this._pendingAutoSave) {
+      console.log("Auto-save already pending, skipping duplicate request");
+      return;
+    }
+
     // Check if we're in interface view mode - skip auto-save since it's a transformed view
     if (this.viewModeManager) {
       const currentViewMode = this.viewModeManager.getCurrentViewMode();
