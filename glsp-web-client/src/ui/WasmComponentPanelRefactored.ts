@@ -1045,29 +1045,29 @@ export class WasmComponentPanel extends FloatingPanel {
         }
     }
 
-    private displayWitAnalysisResults(overview: { summary?: { imports?: number; exports?: number; types?: number; dependencies?: number } }, typesData: { types?: Array<{ name: string; kind: string }> }, dependenciesData: { dependencies?: Array<{ name: string; version?: string }> }): void {
+    private displayWitAnalysisResults(overview: { summary?: { imports?: number; exports?: number; types?: number; dependencies?: number }; interfaces?: unknown[] }, typesData: { types?: Array<{ name: string; kind: string }> }, dependenciesData: { dependencies?: Array<{ name: string; version?: string }> }): void {
         const analysisContent = this.contentElement.querySelector('.wit-analysis-content') as HTMLElement;
         if (!analysisContent) return;
 
         const summary = overview.summary || {};
-        const interfaces = overview.interfaces || [];
+        const interfaces = (overview as any).interfaces || [];
         const types = typesData.types || [];
-        const dependencies = dependenciesData.nodes || [];
+        const dependencies = (dependenciesData as any).nodes || [];
 
         analysisContent.innerHTML = `
             <div class="wit-analysis-results">
                 <!-- Summary Cards -->
                 <div class="wit-summary-cards">
                     <div class="summary-card">
-                        <div class="card-value">${summary.totalInterfaces || 0}</div>
+                        <div class="card-value">${(summary as any).totalInterfaces || interfaces.length}</div>
                         <div class="card-label">Total Interfaces</div>
                     </div>
                     <div class="summary-card">
-                        <div class="card-value">${summary.totalImports || 0}</div>
+                        <div class="card-value">${summary.imports || 0}</div>
                         <div class="card-label">Imports</div>
                     </div>
                     <div class="summary-card">
-                        <div class="card-value">${summary.totalExports || 0}</div>
+                        <div class="card-value">${summary.exports || 0}</div>
                         <div class="card-label">Exports</div>
                     </div>
                     <div class="summary-card">
@@ -1081,7 +1081,7 @@ export class WasmComponentPanel extends FloatingPanel {
                     <h5>📋 Interfaces</h5>
                     <div class="interfaces-list">
                         ${interfaces.length > 0 ? 
-                            interfaces.map((iface) => `
+                            interfaces.map((iface: any) => `
                                 <div class="interface-item">
                                     <div class="interface-header">
                                         <span class="interface-name">${iface.name}</span>
@@ -1105,8 +1105,8 @@ export class WasmComponentPanel extends FloatingPanel {
                         ${types.length > 0 ? 
                             types.slice(0, 10).map((type) => `
                                 <div class="type-item">
-                                    <span class="type-name">${type.type}</span>
-                                    <span class="type-usage">${type.usedIn}</span>
+                                    <span class="type-name">${type.name}</span>
+                                    <span class="type-usage">${type.kind}</span>
                                 </div>
                             `).join('') : 
                             '<p class="no-data">No types found</p>'
@@ -1120,7 +1120,7 @@ export class WasmComponentPanel extends FloatingPanel {
                     <h5>🔗 Components</h5>
                     <div class="dependencies-list">
                         ${dependencies.length > 0 ? 
-                            dependencies.map((dep) => `
+                            dependencies.map((dep: any) => `
                                 <div class="dependency-item">
                                     <span class="dependency-name">${dep.id}</span>
                                     <div class="dependency-stats">

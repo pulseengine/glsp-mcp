@@ -174,7 +174,7 @@ export class WasmViewTransformer implements ViewTransformer {
                         interfaceType: interfaceLayout.type,
                         parentComponent: component.id,
                         functions: interfaceData?.functions || [],
-                        types: interfaceData?.types || []
+                        types: interfaceData?.type || []
                     }
                 };
                 umlElements.push(interfaceComponent);
@@ -556,7 +556,7 @@ export class WasmViewTransformer implements ViewTransformer {
                     witElements.push(...functionElements.nodes, ...functionElements.edges);
 
                     // Create type nodes if interface has types
-                    if (iface.types && iface.types.length > 0) {
+                    if (iface.type && iface.type.length > 0) {
                         const typeElements = this.createTypeNodes(
                             iface,
                             interfaceNode,
@@ -626,7 +626,7 @@ export class WasmViewTransformer implements ViewTransformer {
                     witElements.push(...functionElements.nodes, ...functionElements.edges);
 
                     // Create type nodes if interface has types
-                    if (iface.types && iface.types.length > 0) {
+                    if (iface.type && iface.type.length > 0) {
                         const typeElements = this.createTypeNodes(
                             iface,
                             interfaceNode,
@@ -696,9 +696,9 @@ export class WasmViewTransformer implements ViewTransformer {
                 componentId,
                 interfaceType: iface.type,
                 functionCount: iface.functions?.length || 0,
-                typeCount: iface.types?.length || 0,
+                typeCount: iface.type?.length || 0,
                 functions: iface.functions || [],
-                types: iface.types || []
+                types: iface.type || []
             }
         };
     }
@@ -775,7 +775,7 @@ export class WasmViewTransformer implements ViewTransformer {
         const nodes: Node[] = [];
         const edges: Edge[] = [];
         
-        iface.types?.forEach((type, typeIndex) => {
+        iface.type?.forEach((type, typeIndex) => {
             const typeY = baseY + (typeIndex * verticalSpacing);
             
             const typeNode: Node = {
@@ -1036,7 +1036,7 @@ export class WasmViewTransformer implements ViewTransformer {
                         })) || [],
                         returnType: func.returns?.[0]?.param_type || 'void'
                     })) || [],
-                    types: iface.types || []
+                    types: iface.type || []
                 }));
             } else if (typeof interfaceData === 'number') {
                 // If interfaces is a count, create mock interfaces
