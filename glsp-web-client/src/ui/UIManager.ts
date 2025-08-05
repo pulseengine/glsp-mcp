@@ -2339,7 +2339,7 @@ export class UIManager {
         }
       });
 
-      this.propertiesSection.addPropertyGroup({
+      this.propertiesSection?.addPropertyGroup({
         id: "wit-exports",
         label: "WIT Exports",
         properties: exportProperties,
@@ -2353,11 +2353,11 @@ export class UIManager {
         key: `dep_${index}`,
         label: dep.package,
         value: dep.version || "latest",
-        type: "text",
+        type: "text" as const,
         readonly: true,
       }));
 
-      this.propertiesSection.addPropertyGroup({
+      this.propertiesSection?.addPropertyGroup({
         id: "wit-dependencies",
         label: "WIT Dependencies",
         properties: depProperties,
@@ -2452,7 +2452,7 @@ export class UIManager {
           // On mobile, ensure sidebar is collapsed by default
           if (!this.sidebar.isCollapsed()) {
             console.log("UIManager: Auto-collapsing sidebar for mobile");
-            this.sidebar.collapse();
+            this.sidebar.toggleCollapse();
           }
         }
       }
@@ -2515,12 +2515,12 @@ export class UIManager {
 
       if (isCollapsed) {
         console.log("UIManager: Expanding sidebar for mobile menu");
-        this.sidebar.expand();
+        this.sidebar.toggleCollapse(); // Will expand since it's currently collapsed
         // On mobile, add overlay to close sidebar when clicking outside
         this.addMobileMenuOverlay();
       } else {
         console.log("UIManager: Collapsing sidebar for mobile menu");
-        this.sidebar.collapse();
+        this.sidebar.toggleCollapse(); // Will collapse since it's currently expanded
         this.removeMobileMenuOverlay();
       }
     } else {
@@ -2625,7 +2625,7 @@ export class UIManager {
       !this.sidebar.isCollapsed()
     ) {
       console.log("UIManager: Force closing mobile menu");
-      this.sidebar.collapse();
+      this.sidebar.toggleCollapse(); // Will collapse since we checked it's not collapsed
       this.removeMobileMenuOverlay();
     }
   }
@@ -2657,7 +2657,9 @@ export class UIManager {
           "mobile-menu-overlay",
         );
         if (!mobileMenuOverlay) {
-          this.sidebar.collapse();
+          if (!this.sidebar.isCollapsed()) {
+            this.sidebar.toggleCollapse(); // Only collapse if not already collapsed
+          }
         }
       }
     }
