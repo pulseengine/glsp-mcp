@@ -1549,25 +1549,25 @@ export class UIManager {
             {
               key: "x",
               label: "X Position",
-              value: Math.round(properties.bounds.x || 0),
+              value: Math.round((properties as any).bounds?.x || 0),
               type: "number",
             },
             {
               key: "y",
               label: "Y Position",
-              value: Math.round(properties.bounds.y || 0),
+              value: Math.round((properties as any).bounds?.y || 0),
               type: "number",
             },
             {
               key: "width",
               label: "Width",
-              value: Math.round(properties.bounds.width || 100),
+              value: Math.round((properties as any).bounds?.width || 100),
               type: "number",
             },
             {
               key: "height",
               label: "Height",
-              value: Math.round(properties.bounds.height || 50),
+              value: Math.round((properties as any).bounds?.height || 50),
               type: "number",
             },
           ],
@@ -1641,11 +1641,11 @@ export class UIManager {
             },
           );
 
-          if (properties.witInfo.worldName) {
+          if ((properties as any).witInfo?.worldName) {
             wasmProperties.push({
               key: "worldName",
               label: "World",
-              value: properties.witInfo.worldName,
+              value: (properties as any).witInfo.worldName,
               type: "text",
               readonly: true,
             });
@@ -1751,8 +1751,8 @@ export class UIManager {
           {
             key: "routingPoints",
             label: "Routing Points",
-            value: properties.routingPoints
-              ? properties.routingPoints.length
+            value: (properties as any).routingPoints
+              ? (properties as any).routingPoints.length
               : 0,
             type: "number",
             readonly: true,
@@ -1792,8 +1792,8 @@ export class UIManager {
       category: this.categorizeWasmComponent(component),
       description: component.description || "WASM Component",
       icon: this.getWasmComponentIcon(component),
-      version: component.version,
-      status: component.status || "available",
+      version: (component as any).version || "1.0.0",
+      status: ((component as any).status as "error" | "loading" | "available") || "available",
       path: component.path, // Include the path
       interfaces: component.interfaces, // Include interfaces
       onSelect: () => {
@@ -2087,7 +2087,7 @@ export class UIManager {
         {
           onConfirm: (value) => {
             dialog.close();
-            resolve(value || null);
+            resolve(typeof value === 'string' ? value : null);
           },
           onCancel: () => {
             dialog.close();
@@ -2271,7 +2271,7 @@ export class UIManager {
   private addWitInterfacesSection(witInfo: WitInterfaceInfo): void {
     // Add imports section
     if (witInfo.imports && witInfo.imports.length > 0) {
-      const importProperties = [];
+      const importProperties: any[] = [];
       witInfo.imports.forEach((iface, index: number) => {
         importProperties.push({
           key: `import_${index}`,
@@ -2300,7 +2300,7 @@ export class UIManager {
         }
       });
 
-      this.propertiesSection.addPropertyGroup({
+      this.propertiesSection?.addPropertyGroup({
         id: "wit-imports",
         label: "WIT Imports",
         properties: importProperties,
@@ -2310,7 +2310,7 @@ export class UIManager {
 
     // Add exports section
     if (witInfo.exports && witInfo.exports.length > 0) {
-      const exportProperties = [];
+      const exportProperties: any[] = [];
       witInfo.exports.forEach((iface, index) => {
         exportProperties.push({
           key: `export_${index}`,
