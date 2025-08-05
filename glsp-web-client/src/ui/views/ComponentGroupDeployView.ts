@@ -592,7 +592,7 @@ export class ComponentGroupDeployView {
 
   private updateConfigValue(key: string, value: unknown): void {
     const keys = key.split(".");
-    let target: Record<string, unknown> = this.config as Record<
+    let target: Record<string, unknown> = this.config as unknown as Record<
       string,
       unknown
     >;

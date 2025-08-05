@@ -34,7 +34,7 @@ export class ViewModeManager {
     private diagramService: DiagramService;
     private renderer: CanvasRenderer;
     private transformers: Map<string, ViewTransformer> = new Map();
-    private viewModeListeners: Array<(mode: string) => void> = [];
+    private viewModeListeners: Array<(mode: string, previousMode?: string) => void> = [];
     private lastTransformationResult?: ViewTransformationResult;
     
     // Available view modes
@@ -194,7 +194,7 @@ export class ViewModeManager {
                 
                 // Convert array to elements map
                 result.transformedElements.forEach(element => {
-                    transformedDiagram.elements[element.id] = element;
+                    (transformedDiagram.elements as Record<string, any>)[element.id] = element;
                 });
                 
                 // Update the renderer with the transformed diagram

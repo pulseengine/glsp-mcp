@@ -495,7 +495,7 @@ export class WasmComponentPanel extends FloatingPanel {
             <div class="component-description">${component.description}</div>
             <div class="component-meta">
                 <span class="interface-count">${component.interfaces} interfaces</span>
-                ${component.lastSeen ? `<span class="last-seen">Last seen: ${component.lastSeen}</span>` : ''}
+                ${(component as any).lastSeen ? `<span class="last-seen">Last seen: ${(component as any).lastSeen}</span>` : ''}
             </div>
         `;
 
@@ -628,12 +628,12 @@ export class WasmComponentPanel extends FloatingPanel {
         
         element.innerHTML = `
             <div class="component-header">
-                <div class="component-name">${component.metadata?.name || 'Unknown'}</div>
+                <div class="component-name">${(component as any).metadata?.name || 'Unknown'}</div>
                 <div class="component-status loaded">🔧</div>
             </div>
             <div class="component-description">Client-side transpiled component</div>
             <div class="component-meta">
-                <span class="size-info">${this.formatFileSize(component.metadata?.size || 0)}</span>
+                <span class="size-info">${this.formatFileSize((component as any).metadata?.size || 0)}</span>
                 <span class="type-info">Transpiled</span>
             </div>
         `;
@@ -771,7 +771,13 @@ export class WasmComponentPanel extends FloatingPanel {
         return element;
     }
 
-    private setupDiagramComponentEvents(element: HTMLElement, component: import('../wasm/WasmComponentManager.js').WasmComponent): void {
+    private setupDiagramComponentEvents(element: HTMLElement, component: {
+        elementId: string;
+        name: string;
+        status: string;
+        isLoaded: boolean;
+        isTranspiled: boolean;
+    }): void {
         // Load button
         const loadBtn = element.querySelector('.load-btn') as HTMLButtonElement;
         loadBtn?.addEventListener('click', () => this.handleLoadComponent(component.elementId));
