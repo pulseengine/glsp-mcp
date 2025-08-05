@@ -590,6 +590,14 @@ export class AIAssistantPanel extends FloatingPanel {
     }
   }
 
+  public getCurrentModel(): string {
+    return this._currentModel;
+  }
+
+  public getAvailableModels(): string[] {
+    return [...this._availableModels];
+  }
+
   public updateModelSelection(models: string[], currentModel: string): void {
     this._availableModels = models;
     this._currentModel = currentModel;
@@ -602,11 +610,11 @@ export class AIAssistantPanel extends FloatingPanel {
       modelSelect.innerHTML = '<option value="">Select model...</option>';
 
       // Add model options
-      models.forEach((model) => {
+      this._availableModels.forEach((model) => {
         const option = document.createElement("option");
         option.value = model;
         option.textContent = model;
-        option.selected = model === currentModel;
+        option.selected = model === this._currentModel;
         modelSelect.appendChild(option);
       });
     }
