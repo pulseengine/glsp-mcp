@@ -1,0 +1,28 @@
+{
+  "id": "c3d46e5c-4b61-4e91-a1c5-dcbd02eb9b06",
+  "name": "New bpmn Diagram",
+  "diagram_type": "bpmn",
+  "revision": 4,
+  "created_at": "2025-07-31T13:26:35.922496817Z",
+  "updated_at": "2025-07-31T13:26:35.922501635Z",
+  "nodes": [
+    {
+      "id": "721ed35b-2681-4462-8d57-ee3067ccbee5",
+      "node_type": "task",
+      "label": "New task",
+      "properties": {
+        "label": "New task"
+      }
+    },
+    {
+      "id": "df6d03d4-e95b-4df1-824e-77f78a0eaa2b",
+      "node_type": "task",
+      "label": "New task",
+      "properties": {
+        "label": "New task"
+      }
+    }
+  ],
+  "edges": [],
+  "metadata": {}
+}

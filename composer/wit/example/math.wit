@@ -1,0 +1,11 @@
+package example:math
+
+interface math {
+  record point {
+    x: f64,
+    y: f64,
+  }
+
+  distance-from-origin: func(p: point) -> f64
+}
+

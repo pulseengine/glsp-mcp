@@ -1,0 +1,11 @@
+{
+  "name": "wasm-composer-project",
+  "version": "1.0.0",
+  "scripts": {
+    "build:wasm": "cargo build --target wasm32-unknown-unknown --release",
+    "build": " npm run build:wasm"
+  },
+  "devDependencies": {
+    "wit-bindgen": "^0.20.0"
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "id": "2812a3bd-1a13-4d0c-b094-ab2fc19754f0",
+  "name": "Amt-Test-Diagram-5",
+  "diagram_type": "workflow",
+  "revision": 27,
+  "created_at": "2025-08-13T10:16:16.640490081Z",
+  "updated_at": "2025-08-13T10:16:16.640493993Z",
+  "nodes": [
+    {
+      "id": "61a739da-275c-477b-a313-ad9c15fdd081",
+      "node_type": "task",
+      "label": "amt-composer:simple",
+      "properties": {
+        "label": "amt-composer:simple"
+      }
+    },
+    {
+      "id": "817ab002-f881-496c-8989-0ae0b0e8fd87",
+      "node_type": "task",
+      "label": "amt-composer:simple/guest-main",
+      "properties": {
+        "label": "amt-composer:simple/guest-main"
+      }
+    },
+    {
+      "id": "680db224-9509-4fb9-bed6-5d18d76666e1",
+      "node_type": "sequence-flow",
+      "label": null,
+      "properties": {
+        "sourceId": "61a739da-275c-477b-a313-ad9c15fdd081",
+        "targetId": "39e2d522-aaf5-46df-aa3b-c16c7a161877"
+      }
+    },
+    {
+      "id": "39e2d522-aaf5-46df-aa3b-c16c7a161877",
+      "node_type": "task",
+      "label": "amt-composer:simple/host-goodies",
+      "properties": {
+        "label": "amt-composer:simple/host-goodies"
+      }
+    },
+    {
+      "id": "22b78303-3c5c-4c54-aaf9-3b218ad56333",
+      "node_type": "task",
+      "label": "amt-composer:simple/host-goodies-types",
+      "properties": {
+        "label": "amt-composer:simple/host-goodies-types"
+      }
+    },
+    {
+      "id": "2ef40357-7eed-4f36-b407-2236f173016a",
+      "node_type": "task",
+      "label": "amt-compose:bridge/fallible@0.1.0",
+      "properties": {
+        "label": "amt-compose:bridge/fallible@0.1.0"
+      }
+    },
+    {
+      "id": "5e4be02d-5e24-4106-94a8-9fa7133d6577",
+      "node_type": "task",
+      "label": "amt-compose:bridge@0.1.0",
+      "properties": {
+        "label": "amt-compose:bridge@0.1.0"
+      }
+    },
+    {
+      "id": "57554197-62f0-425d-8340-4013c1dc290e",
+      "node_type": "task",
+      "label": "amt-composer:simple/inter-guest-types",
+      "properties": {
+        "label": "amt-composer:simple/inter-guest-types"
+      }
+    },
+    {
+      "id": "cde6a93c-8b58-4d39-b68c-89f0144d95ba",
+      "node_type": "task",
+      "label": "amt-composer:simple/inter-guest",
+      "properties": {
+        "label": "amt-composer:simple/inter-guest"
+      }
+    },
+    {
+      "id": "6d171654-8ef3-47f4-acaf-d0d443e9a88e",
+      "node_type": "sequence-flow",
+      "label": null,
+      "properties": {
+        "sourceId": "61a739da-275c-477b-a313-ad9c15fdd081",
+        "targetId": "817ab002-f881-496c-8989-0ae0b0e8fd87"
+      }
+    },
+    {
+      "id": "d20bff32-a459-4d77-b9a4-04b0b57e8076",
+      "node_type": "sequence-flow",
+      "label": null,
+      "properties": {
+        "sourceId": "61a739da-275c-477b-a313-ad9c15fdd081",
+        "targetId": "57554197-62f0-425d-8340-4013c1dc290e"
+      }
+    },
+    {
+      "id": "b97e3535-c6c9-4301-9e67-ed7690c63d6c",
+      "node_type": "sequence-flow",
+      "label": null,
+      "properties": {
+        "sourceId": "61a739da-275c-477b-a313-ad9c15fdd081",
+        "targetId": "cde6a93c-8b58-4d39-b68c-89f0144d95ba"
+      }
+    },
+    {
+      "id": "2ef16370-8ec9-4051-9127-b95bc71627f3",
+      "node_type": "sequence-flow",
+      "label": null,
+      "properties": {
+        "targetId": "22b78303-3c5c-4c54-aaf9-3b218ad56333",
+        "sourceId": "61a739da-275c-477b-a313-ad9c15fdd081"
+      }
+    }
+  ],
+  "edges": [],
+  "metadata": {}
+}

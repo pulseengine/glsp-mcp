@@ -230,4 +230,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**🎯 Ready to revolutionize diagram creation with AI?** Start the system and create your first AI-generated diagram in under 2 minutes! 🚀
+

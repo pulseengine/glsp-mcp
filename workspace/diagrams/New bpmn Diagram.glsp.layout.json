@@ -1,0 +1,30 @@
+{
+  "diagram_id": "c3d46e5c-4b61-4e91-a1c5-dcbd02eb9b06",
+  "revision": 4,
+  "updated_at": "2025-07-31T13:26:35.922501635Z",
+  "elements": {
+    "721ed35b-2681-4462-8d57-ee3067ccbee5": {
+      "bounds": {
+        "x": 556.0,
+        "y": -276.0,
+        "width": 100.0,
+        "height": 50.0
+      },
+      "z_index": null,
+      "visible": true,
+      "style": {}
+    },
+    "df6d03d4-e95b-4df1-824e-77f78a0eaa2b": {
+      "bounds": {
+        "x": 165.0,
+        "y": -337.0,
+        "width": 100.0,
+        "height": 50.0
+      },
+      "z_index": null,
+      "visible": true,
+      "style": {}
+    }
+  },
+  "viewport": null
+}
