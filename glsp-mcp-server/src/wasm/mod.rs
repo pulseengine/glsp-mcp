@@ -14,7 +14,7 @@
 
 mod execution_engine;
 mod filesystem_watcher;
-mod graphics_renderer;
+pub mod graphics_renderer;
 mod pipeline;
 mod security_scanner;
 mod sensor_bridge;

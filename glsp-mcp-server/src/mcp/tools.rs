@@ -1,3 +1,17 @@
+// Copyright (c) 2024 GLSP-Rust Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use crate::database::dataset::{DatasetManager, SensorSelector};
 use crate::database::{BoxedDatasetManager, SensorQuery};
 use crate::mcp::protocol::{CallToolParams, CallToolResult, TextContent, Tool};
@@ -1148,6 +1162,85 @@ impl DiagramTools {
             "detect_sensor_gaps",
         ];
 
+        // Add graphics rendering tools
+        tools.push(Tool {
+            name: "render_wasm_graphics".to_string(),
+            description: Some("Render graphics output from a WASM component".to_string()),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "componentId": {
+                        "type": "string",
+                        "description": "ID of the WASM component to render graphics from"
+                    },
+                    "method": {
+                        "type": "string",
+                        "description": "Method name to call for rendering (default: 'render')",
+                        "default": "render"
+                    },
+                    "width": {
+                        "type": "number",
+                        "description": "Canvas width in pixels",
+                        "minimum": 1,
+                        "maximum": 1920
+                    },
+                    "height": {
+                        "type": "number",
+                        "description": "Canvas height in pixels",
+                        "minimum": 1,
+                        "maximum": 1080
+                    },
+                    "inputData": {
+                        "type": "object",
+                        "description": "Input data to pass to the graphics component"
+                    },
+                    "outputFormat": {
+                        "type": "string",
+                        "enum": ["svg", "png", "canvas_commands"],
+                        "default": "svg",
+                        "description": "Desired output format"
+                    }
+                },
+                "required": ["componentId", "width", "height"]
+            }),
+        });
+
+        tools.push(Tool {
+            name: "stream_wasm_graphics".to_string(),
+            description: Some(
+                "Stream real-time graphics updates from a WASM component".to_string(),
+            ),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "componentId": {
+                        "type": "string",
+                        "description": "ID of the WASM component to stream graphics from"
+                    },
+                    "updateIntervalMs": {
+                        "type": "number",
+                        "description": "Update interval in milliseconds",
+                        "minimum": 16,
+                        "maximum": 1000,
+                        "default": 33
+                    },
+                    "width": {
+                        "type": "number",
+                        "description": "Canvas width in pixels",
+                        "minimum": 1,
+                        "maximum": 1920
+                    },
+                    "height": {
+                        "type": "number",
+                        "description": "Canvas height in pixels",
+                        "minimum": 1,
+                        "maximum": 1080
+                    }
+                },
+                "required": ["componentId", "width", "height"]
+            }),
+        });
+
         tools.retain(|tool| !converted_to_resources.contains(&tool.name.as_str()));
         tools
     }
@@ -1208,6 +1301,9 @@ impl DiagramTools {
             "validate_component_group" => self.validate_component_group(params.arguments).await,
             "list_component_groups" => self.list_component_groups(params.arguments).await,
             "deploy_component_group" => self.deploy_component_group(params.arguments).await,
+            // Graphics rendering tools
+            "render_wasm_graphics" => self.render_wasm_graphics(params.arguments).await,
+            "stream_wasm_graphics" => self.stream_wasm_graphics(params.arguments).await,
             _ => Ok(CallToolResult {
                 content: vec![TextContent {
                     content_type: "text".to_string(),
@@ -3776,6 +3872,163 @@ impl DiagramTools {
                 text: response,
             }],
             is_error: Some(!result.success),
+        })
+    }
+
+    /// Render graphics output from a WASM component
+    async fn render_wasm_graphics(&mut self, args: Option<Value>) -> Result<CallToolResult> {
+        let args = args.ok_or_else(|| anyhow::anyhow!("Missing arguments"))?;
+
+        let component_id = args
+            .get("componentId")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow::anyhow!("Missing componentId"))?;
+
+        let method = args
+            .get("method")
+            .and_then(|v| v.as_str())
+            .unwrap_or("render");
+
+        let width = args
+            .get("width")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow::anyhow!("Missing width"))? as u32;
+
+        let height = args
+            .get("height")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow::anyhow!("Missing height"))? as u32;
+
+        let output_format = args
+            .get("outputFormat")
+            .and_then(|v| v.as_str())
+            .unwrap_or("svg");
+
+        // Initialize graphics renderer with proper configuration
+        let graphics_config = crate::wasm::graphics_renderer::GraphicsConfig {
+            max_width: width.max(1920),
+            max_height: height.max(1080),
+            max_fps: 30,
+            allowed_formats: vec![
+                crate::wasm::graphics_renderer::ImageFormat::Png,
+                crate::wasm::graphics_renderer::ImageFormat::WebP,
+            ],
+            gpu_acceleration: false,
+            render_timeout_ms: 5000,
+        };
+
+        let renderer = crate::wasm::graphics_renderer::WasmGraphicsRenderer::new(graphics_config);
+
+        // Render the graphics
+        let input_data = args
+            .get("inputData")
+            .map(|v| serde_json::to_vec(v).unwrap_or_default())
+            .unwrap_or_default();
+
+        let graphics_output = renderer
+            .render_component(component_id, method, &input_data)
+            .await?;
+
+        // Convert to requested format and return
+        match output_format {
+            "svg" => {
+                if let crate::wasm::graphics_renderer::GraphicsOutput::Svg { content, .. } =
+                    graphics_output
+                {
+                    Ok(CallToolResult {
+                        content: vec![TextContent {
+                            content_type: "image/svg+xml".to_string(),
+                            text: content,
+                        }],
+                        is_error: Some(false),
+                    })
+                } else {
+                    Ok(CallToolResult {
+                        content: vec![TextContent {
+                            content_type: "application/json".to_string(),
+                            text: serde_json::to_string(&graphics_output)?,
+                        }],
+                        is_error: Some(false),
+                    })
+                }
+            }
+            "canvas_commands" => Ok(CallToolResult {
+                content: vec![TextContent {
+                    content_type: "application/json".to_string(),
+                    text: serde_json::to_string(&graphics_output)?,
+                }],
+                is_error: Some(false),
+            }),
+            _ => Ok(CallToolResult {
+                content: vec![TextContent {
+                    content_type: "application/json".to_string(),
+                    text: serde_json::to_string(&graphics_output)?,
+                }],
+                is_error: Some(false),
+            }),
+        }
+    }
+
+    /// Stream real-time graphics updates from a WASM component
+    async fn stream_wasm_graphics(&mut self, args: Option<Value>) -> Result<CallToolResult> {
+        let args = args.ok_or_else(|| anyhow::anyhow!("Missing arguments"))?;
+
+        let component_id = args
+            .get("componentId")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow::anyhow!("Missing componentId"))?;
+
+        let update_interval_ms = args
+            .get("updateIntervalMs")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(33); // ~30 FPS default
+
+        let width = args
+            .get("width")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow::anyhow!("Missing width"))? as u32;
+
+        let height = args
+            .get("height")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow::anyhow!("Missing height"))? as u32;
+
+        // Initialize graphics renderer
+        let graphics_config = crate::wasm::graphics_renderer::GraphicsConfig {
+            max_width: width.max(1920),
+            max_height: height.max(1080),
+            max_fps: (1000.0 / update_interval_ms as f64).min(60.0) as u32,
+            allowed_formats: vec![
+                crate::wasm::graphics_renderer::ImageFormat::Png,
+                crate::wasm::graphics_renderer::ImageFormat::WebP,
+            ],
+            gpu_acceleration: false,
+            render_timeout_ms: update_interval_ms.min(1000),
+        };
+
+        let renderer = crate::wasm::graphics_renderer::WasmGraphicsRenderer::new(graphics_config);
+
+        // Initialize streaming graphics renderer
+        let streaming_result =
+            renderer.setup_streaming(component_id.to_string(), update_interval_ms);
+
+        let response = match streaming_result {
+            Ok(_) => format!(
+                "Graphics streaming initialized for component '{}' at {}x{} resolution, updating every {}ms",
+                component_id, width, height, update_interval_ms
+            ),
+            Err(e) => format!(
+                "Failed to initialize graphics streaming for component '{}': {}",
+                component_id, e
+            ),
+        };
+
+        Ok(CallToolResult {
+            content: vec![TextContent {
+                content_type: "text".to_string(),
+                text: response,
+            }],
+            is_error: Some(false),
         })
     }
 }
