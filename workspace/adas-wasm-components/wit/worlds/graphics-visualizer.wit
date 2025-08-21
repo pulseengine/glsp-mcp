@@ -9,19 +9,19 @@ world graphics-visualizer {
     import wasi:graphics-context/graphics-context;
     // Note: When wasi-gfx is fully available, we'd import:
     // import wasi:webgpu/webgpu;
-    
+
     // Import ADAS data interfaces
     import adas:data/data-flow;
     import adas:common-types/types;
-    
+
     // Import standard interfaces
     import adas:diagnostics/health-monitoring;
     import adas:diagnostics/performance-monitoring;
     import adas:control/system-control;
-    
+
     // Export graphics visualization interface
     export adas:graphics/graphics-visualizer;
-    
+
     // Export standard component interfaces
     export adas:diagnostics/health-monitoring;
     export adas:diagnostics/performance-monitoring;

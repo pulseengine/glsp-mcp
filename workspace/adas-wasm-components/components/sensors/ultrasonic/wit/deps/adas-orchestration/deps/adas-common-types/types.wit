@@ -10,7 +10,7 @@ interface types {
     /// Uses f64 for high precision GPS/mapping coordinates
     record position3d {
         x: f64,  // Forward (meters)
-        y: f64,  // Left (meters) 
+        y: f64,  // Left (meters)
         z: f64,  // Up (meters)
         coordinate-frame: coordinate-frame,
     }
@@ -99,7 +99,7 @@ interface types {
         // Vulnerable road users
         pedestrian,
         cyclist,
-        // Infrastructure  
+        // Infrastructure
         traffic-sign,
         traffic-light,
         road-marking,

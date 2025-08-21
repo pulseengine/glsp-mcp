@@ -103,7 +103,7 @@ Functional Requirement Template
       :component_type: core
       :rationale: Why this requirement exists
       :verification: How this requirement will be tested
-      
+
       Detailed description of the requirement with clear acceptance criteria.
 
 MCP Protocol Requirement Template
@@ -118,7 +118,7 @@ MCP Protocol Requirement Template
       :mcp_operation: create_diagram
       :rationale: Protocol compliance requirement
       :verification: Protocol conformance testing
-      
+
       Detailed MCP protocol requirement specification.
 
 WASM Component Requirement Template
@@ -133,7 +133,7 @@ WASM Component Requirement Template
       :wasm_component: object-detection
       :rationale: Component functionality requirement
       :verification: Component integration testing
-      
+
       Detailed WASM component requirement specification.
 
 AI Integration Requirement Template
@@ -148,7 +148,7 @@ AI Integration Requirement Template
       :ai_capability: natural_language_processing
       :rationale: AI functionality requirement
       :verification: AI performance testing
-      
+
       Detailed AI integration requirement specification.
 
 Database Requirement Template
@@ -163,7 +163,7 @@ Database Requirement Template
       :database_backend: postgresql
       :rationale: Data persistence requirement
       :verification: Database performance testing
-      
+
       Detailed database requirement specification.
 
 Simulation Requirement Template
@@ -178,7 +178,7 @@ Simulation Requirement Template
       :simulation_type: time_driven
       :rationale: Simulation capability requirement
       :verification: Simulation validation testing
-      
+
       Detailed simulation requirement specification.
 
 UI/Frontend Requirement Template
@@ -193,7 +193,7 @@ UI/Frontend Requirement Template
       :ui_component: canvas_renderer
       :rationale: User interface requirement
       :verification: UI/UX testing
-      
+
       Detailed UI/frontend requirement specification.
 
 Safety Requirement Template
@@ -208,7 +208,7 @@ Safety Requirement Template
       :risk_level: high
       :safety_impact: Critical system safety requirement
       :verification: Safety validation testing
-      
+
       Detailed safety requirement specification.
 
 Requirement Review Process

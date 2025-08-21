@@ -8,6 +8,7 @@ import {
 } from "./runtime/ExecutionEngine.js";
 import { ComponentUploadPanel } from "./ui/ComponentUploadPanel.js";
 import { ComponentUploadService } from "../services/ComponentUploadService.js";
+import { ValidationService } from "../services/ValidationService.js";
 import { WasmComponentPanel } from "../ui/WasmComponentPanelRefactored.js";
 import { McpService } from "../services/McpService.js";
 import { DiagramService } from "../services/DiagramService.js";
@@ -69,8 +70,9 @@ export class WasmRuntimeManager extends WasmComponentManager {
     // Create upload panel
     this.uploadPanel = new ComponentUploadPanel(
       this.uploadService,
-      (componentId) => this.onComponentUploadComplete(componentId),
-      (error) => this.onComponentUploadError(error),
+      new ValidationService(this.mcpService),
+      (componentId: string) => this.onComponentUploadComplete(componentId),
+      (error: string) => this.onComponentUploadError(error),
     );
 
     // Create enhanced floating palette
@@ -367,22 +369,34 @@ export class WasmRuntimeManager extends WasmComponentManager {
     const components = this.registry.getLoadedComponents();
     const componentArray = components.map((metadata) => ({
       id: metadata.hash,
-      metadata,
-      isLoaded: true,
+      name: metadata.name,
+      path: "",
+      description: metadata.description || "",
+      status: "loaded" as const,
+      fileExists: true,
+      dependencies: [],
+      metadata: {
+        hash: metadata.hash,
+        size: metadata.size,
+        interfaces: metadata.interfaces || [],
+        exports: metadata.exports || [],
+        imports: metadata.imports || [],
+      },
+      interfaces: [],
     }));
 
     this.enhancedPalette.updateClientSideComponents(componentArray);
 
     // Update transpiled components in palette
     const transpiledComponents = componentArray.map((comp) => ({
-      name: comp.metadata.name,
+      name: comp.name,
       interfaces: comp.metadata.exports || [],
       source: "Client Upload",
     }));
     this.enhancedPalette.updateTranspiledComponents(transpiledComponents);
 
     // Generate test harnesses for transpiled components
-    const testHarnesses = this.generateTestHarnesses(componentArray);
+    const testHarnesses = this.generateTestHarnesses(components);
     this.enhancedPalette.updateTestHarnesses(testHarnesses);
   }
 
@@ -430,7 +444,7 @@ export class WasmRuntimeManager extends WasmComponentManager {
   }
 
   private generateTestHarnesses(
-    components: import("./WasmComponentManager.js").WasmComponent[],
+    components: import("./transpiler/WasmTranspiler.js").ComponentMetadata[],
   ): Array<{
     interfaceName: string;
     componentName: string;
@@ -443,8 +457,8 @@ export class WasmRuntimeManager extends WasmComponentManager {
     }> = [];
 
     components.forEach((comp) => {
-      if (comp.metadata.exports) {
-        comp.metadata.exports.forEach((exportInterface: string) => {
+      if (comp.exports) {
+        comp.exports.forEach((exportInterface: string) => {
           // Extract actual methods from component metadata
           const actualMethods = this.extractMethodsFromInterface(
             comp,
@@ -463,7 +477,7 @@ export class WasmRuntimeManager extends WasmComponentManager {
   }
 
   private extractMethodsFromInterface(
-    comp: import("./WasmComponentManager.js").WasmComponent,
+    comp: import("./transpiler/WasmTranspiler.js").ComponentMetadata,
     interfaceName: string,
   ): string[] {
     // Try to extract actual method names from the interface
@@ -473,10 +487,10 @@ export class WasmRuntimeManager extends WasmComponentManager {
     // If the component has detailed interface information, use it
     if (comp.interfaces) {
       const matchingInterface = comp.interfaces.find(
-        (iface) => iface.name === interfaceName,
+        (iface) => iface === interfaceName,
       );
-      if (matchingInterface && matchingInterface.functions) {
-        return matchingInterface.functions.map((func) => func.name);
+      if (matchingInterface) {
+        return [`${interfaceName}_main`, `${interfaceName}_execute`];
       }
     }
 

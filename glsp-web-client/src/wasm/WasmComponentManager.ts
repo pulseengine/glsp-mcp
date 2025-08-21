@@ -19,7 +19,7 @@ import {
   SecurityAnalysis as ServiceSecurityAnalysis,
 } from "../services/ValidationService.js";
 import { CanvasRenderer } from "../renderer/canvas-renderer.js";
-import { WasmComponent, WasmInterface } from "../types/wasm-component.js";
+import { WasmComponent } from "../types/wasm-component.js";
 
 // Re-export types for backward compatibility
 export type { WasmComponent, WasmInterface } from "../types/wasm-component.js";
@@ -31,11 +31,7 @@ import { GraphicsBridge, GraphicsAPI } from "./graphics/GraphicsBridge.js";
 // Graphics components are now handled by GraphicsComponentPalette
 // import { GraphicsComponentFactory } from './graphics/WasmGraphicsComponent.js'; // Ready for graphics component factory
 
-interface SecurityAnalysis {
-  safe: boolean;
-  warnings: string[];
-  restrictions: string[];
-}
+// SecurityAnalysis interface moved to ValidationService
 
 interface ComponentUpdateData {
   componentId: string;
@@ -339,31 +335,25 @@ export class WasmComponentManager {
     const mcpClient = this.mcpService.getClient();
 
     // Listen for component updates
-    mcpClient.addStreamListener(
-      "wasm_component_update",
-      (data: ComponentUpdateData) => {
-        console.log("WasmComponentManager: Component update received:", data);
-        this.handleComponentUpdate(data);
-      },
-    );
+    mcpClient.addStreamListener("wasm_component_update", (data: unknown) => {
+      console.log("WasmComponentManager: Component update received:", data);
+      this.handleComponentUpdate(data as ComponentUpdateData);
+    });
 
     // Listen for component discovery
     mcpClient.addStreamListener(
       "wasm_component_discovered",
-      (data: Record<string, unknown>) => {
+      (data: unknown) => {
         console.log("WasmComponentManager: New component discovered:", data);
-        this.handleComponentDiscovered(data);
+        this.handleComponentDiscovered(data as Record<string, unknown>);
       },
     );
 
     // Listen for component removal
-    mcpClient.addStreamListener(
-      "wasm_component_removed",
-      (data: Record<string, unknown>) => {
-        console.log("WasmComponentManager: Component removed:", data);
-        this.handleComponentRemoved(data);
-      },
-    );
+    mcpClient.addStreamListener("wasm_component_removed", (data: unknown) => {
+      console.log("WasmComponentManager: Component removed:", data);
+      this.handleComponentRemoved(data as Record<string, unknown>);
+    });
 
     // Setup validation streaming
     this.validationService.setupValidationStreaming();
@@ -373,12 +363,16 @@ export class WasmComponentManager {
    * Handle component update from streaming
    */
   private handleComponentUpdate(data: ComponentUpdateData): void {
-    if (data.component) {
-      const component = data.component as WasmComponent;
-      this.componentsCache.set(component.name, component);
+    if (data.componentId) {
+      const component = this.componentsCache.get(data.componentId);
+      if (component) {
+        // Update component status
+        component.metadata = { ...component.metadata, status: data.status };
+        this.componentsCache.set(component.name, component);
 
-      // Notify UI of update
-      this.notifyComponentUpdate("updated", component);
+        // Notify UI of update
+        this.notifyComponentUpdate("updated", component);
+      }
     }
   }
 
@@ -400,17 +394,22 @@ export class WasmComponentManager {
    */
   private handleComponentRemoved(data: Record<string, unknown>): void {
     if (data.component_name) {
-      this.componentsCache.delete(data.component_name);
+      this.componentsCache.delete(data.component_name as string);
 
       // Notify UI of removal
-      this.notifyComponentUpdate("removed", { name: data.component_name });
+      this.notifyComponentUpdate("removed", {
+        name: data.component_name as string,
+      } as WasmComponent);
     }
   }
 
   /**
    * Notify UI components of changes
    */
-  private notifyComponentUpdate(type: string, component: WasmComponent): void {
+  private notifyComponentUpdate(
+    type: string,
+    component: WasmComponent | { name: string },
+  ): void {
     const event = new CustomEvent("wasm-component-update", {
       detail: { type, component },
     });
@@ -445,7 +444,7 @@ export class WasmComponentManager {
     total: number;
     loaded: number;
     failed: number;
-  }> {
+  } | null> {
     try {
       const result = await this.mcpService.callTool(
         "get_component_statistics",
@@ -453,7 +452,8 @@ export class WasmComponentManager {
       );
 
       if (result && result.content && result.content[0]) {
-        return JSON.parse(result.content[0].text);
+        const stats = JSON.parse(result.content[0].text!);
+        return stats;
       }
 
       return null;
@@ -636,6 +636,7 @@ export class WasmComponentManager {
 
       // Create mock element for rendering
       const mockElement = {
+        id: `thumbnail-${component.name}`,
         label: component.name,
         properties: {
           componentName: component.name,
@@ -851,6 +852,7 @@ export class WasmComponentManager {
 
     // Create element for rendering
     const element = {
+      id: `render-${component.name}`,
       label: component.name,
       properties: {
         componentName: component.name,
@@ -884,7 +886,7 @@ export class WasmComponentManager {
 
   // Helper methods
 
-  private async getComponentSize(component: WasmComponent): Promise<number> {
+  private async getComponentSize(_component: WasmComponent): Promise<number> {
     // TODO: Get actual file size from backend
     return Math.floor(Math.random() * 1000000) + 50000; // Mock size for now
   }

@@ -2,14 +2,14 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Add click-to-zoom functionality to PlantUML diagrams
     const plantUMLImages = document.querySelectorAll('.plantuml img');
-    
+
     plantUMLImages.forEach(function(img) {
         img.addEventListener('click', function() {
             if (img.classList.contains('zoomed')) {
                 // Remove zoom
                 img.classList.remove('zoomed');
                 document.body.style.overflow = 'auto';
-                
+
                 // Remove overlay
                 const overlay = document.querySelector('.zoom-overlay');
                 if (overlay) {
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add zoom
                 img.classList.add('zoomed');
                 document.body.style.overflow = 'hidden';
-                
+
                 // Add overlay
                 const overlay = document.createElement('div');
                 overlay.className = 'zoom-overlay';
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // Handle escape key to close zoom
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
-    
+
     // Improve diagram container scrolling
     const plantUMLContainers = document.querySelectorAll('.plantuml');
     plantUMLContainers.forEach(function(container) {
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
             img.addEventListener('load', function() {
                 if (img.scrollWidth > container.clientWidth) {
                     container.classList.add('scrollable');
-                    
+
                     // Add scroll hint
                     const scrollHint = document.createElement('div');
                     scrollHint.className = 'scroll-hint';
@@ -67,17 +67,17 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
-    
+
     // Smooth scrolling for large diagrams
     plantUMLContainers.forEach(function(container) {
         let isScrolling = false;
-        
+
         container.addEventListener('mousedown', function(e) {
             if (e.target.tagName === 'IMG') {
                 isScrolling = true;
                 let startX = e.clientX;
                 let scrollLeft = container.scrollLeft;
-                
+
                 function handleMouseMove(e) {
                     if (!isScrolling) return;
                     e.preventDefault();
@@ -85,13 +85,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     const walk = (x - startX) * 2;
                     container.scrollLeft = scrollLeft - walk;
                 }
-                
+
                 function handleMouseUp() {
                     isScrolling = false;
                     document.removeEventListener('mousemove', handleMouseMove);
                     document.removeEventListener('mouseup', handleMouseUp);
                 }
-                
+
                 document.addEventListener('mousemove', handleMouseMove);
                 document.addEventListener('mouseup', handleMouseUp);
             }
@@ -106,35 +106,35 @@ style.textContent = `
         cursor: grab;
         user-select: none;
     }
-    
+
     .plantuml.scrollable:active {
         cursor: grabbing;
     }
-    
+
     .scroll-hint {
         animation: fadeIn 0.5s ease-in-out;
     }
-    
+
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
     }
-    
+
     /* Better scrollbar styling */
     .plantuml::-webkit-scrollbar {
         height: 8px;
     }
-    
+
     .plantuml::-webkit-scrollbar-track {
         background: #f1f1f1;
         border-radius: 4px;
     }
-    
+
     .plantuml::-webkit-scrollbar-thumb {
         background: #888;
         border-radius: 4px;
     }
-    
+
     .plantuml::-webkit-scrollbar-thumb:hover {
         background: #555;
     }

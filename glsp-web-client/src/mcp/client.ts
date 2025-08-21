@@ -787,6 +787,13 @@ export class McpClient {
         parsedData,
       );
 
+      // Check if this is an MCP notification
+      if (eventType === "notification" || parsedData.method) {
+        // Route MCP notifications through the notification handler
+        this.__handleNotification(parsedData as McpNotification);
+      }
+
+      // Continue with regular stream listeners
       const listeners = this.streamListeners.get(eventType);
       if (listeners) {
         listeners.forEach((listener) => {

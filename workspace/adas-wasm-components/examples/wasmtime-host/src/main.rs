@@ -3,17 +3,17 @@ use clap::{Arg, Command};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
-use sysinfo::{System, SystemExt, CpuExt};
+use sysinfo::{CpuExt, System, SystemExt};
 use tokio::time;
-use tracing::{info, warn, error, debug};
-use wasmtime::{Config, Engine, Store, Component, Linker};
+use tracing::{debug, error, info, warn};
+use wasmtime::{Component, Config, Engine, Linker, Store};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
 
 /// ADAS Wasmtime Host Application
-/// 
+///
 /// This application loads and executes the composed ADAS WebAssembly component
 /// using wasmtime with proper WASI and component model support.
-/// 
+///
 /// Features:
 /// - Component lifecycle management
 /// - Real-time performance monitoring
@@ -25,13 +25,13 @@ use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
 struct AdasConfig {
     /// System configuration
     pub system: SystemConfig,
-    
+
     /// Performance settings
     pub performance: PerformanceConfig,
-    
+
     /// Safety settings
     pub safety: SafetyConfig,
-    
+
     /// Logging configuration
     pub logging: LoggingConfig,
 }
@@ -45,16 +45,16 @@ struct SystemConfig {
     pub enable_control: bool,
     pub enable_safety: bool,
     pub enable_communication: bool,
-    
+
     /// FEO timing (milliseconds)
     pub cycle_time_ms: u32,
     pub safety_margin_ms: u32,
     pub max_jitter_ms: u32,
-    
+
     /// Resource limits
     pub max_memory_mb: u32,
     pub max_cpu_cores: u32,
-    
+
     /// AI configuration
     pub object_detection_model: String,
     pub behavior_prediction_model: String,
@@ -66,12 +66,12 @@ struct PerformanceConfig {
     /// Performance monitoring
     pub enable_monitoring: bool,
     pub monitoring_interval_ms: u32,
-    
+
     /// Performance targets
     pub target_fps: f32,
     pub max_cpu_usage: f32,
     pub max_memory_usage_mb: u32,
-    
+
     /// Optimization settings
     pub enable_optimization: bool,
     pub gc_interval_ms: u32,
@@ -83,7 +83,7 @@ struct SafetyConfig {
     pub safety_level: String, // "critical", "warning", "nominal", "optimal"
     pub emergency_response_enabled: bool,
     pub watchdog_timeout_ms: u32,
-    
+
     /// Fault tolerance
     pub max_faults_per_cycle: u32,
     pub fault_recovery_enabled: bool,
@@ -115,17 +115,17 @@ struct PerformanceMetrics {
     pub avg_cycle_time_ms: f32,
     pub max_cycle_time_ms: u32,
     pub jitter_ms: i32,
-    
+
     /// Resource metrics
     pub cpu_usage_percent: f32,
     pub memory_usage_mb: u32,
     pub memory_usage_percent: f32,
-    
+
     /// System metrics
     pub uptime_seconds: u64,
     pub cycles_executed: u64,
     pub errors_count: u32,
-    
+
     /// AI metrics (if available)
     pub ai_fps: Option<f32>,
     pub detection_rate: Option<f32>,
@@ -183,38 +183,44 @@ impl AdasHost {
     /// Create a new ADAS host
     pub async fn new(component_path: PathBuf, config: AdasConfig) -> Result<Self> {
         info!("🚀 Initializing ADAS Wasmtime Host");
-        
+
         // Configure wasmtime engine
         let mut wasmtime_config = Config::new();
         wasmtime_config.wasm_component_model(true);
         wasmtime_config.async_support(true);
         wasmtime_config.consume_fuel(true);
-        
+
         // Enable WASI-NN for AI components
         wasmtime_config.wasm_simd(true);
         wasmtime_config.wasm_relaxed_simd(true);
-        
+
         // Memory and resource limits
         wasmtime_config.memory_init_cow(true);
         wasmtime_config.memory_guaranteed_dense_image_size(1024 * 1024); // 1MB
-        
-        let engine = Engine::new(&wasmtime_config)
-            .context("Failed to create wasmtime engine")?;
-        
+
+        let engine = Engine::new(&wasmtime_config).context("Failed to create wasmtime engine")?;
+
         // Load the composed ADAS component
-        info!("📦 Loading ADAS component from: {}", component_path.display());
-        let component_bytes = std::fs::read(&component_path)
-            .with_context(|| format!("Failed to read component file: {}", component_path.display()))?;
-        
+        info!(
+            "📦 Loading ADAS component from: {}",
+            component_path.display()
+        );
+        let component_bytes = std::fs::read(&component_path).with_context(|| {
+            format!(
+                "Failed to read component file: {}",
+                component_path.display()
+            )
+        })?;
+
         let component = Component::new(&engine, component_bytes)
             .context("Failed to create component from bytes")?;
-        
+
         info!("✅ Component loaded successfully");
         info!("📊 Component size: {} bytes", component_bytes.len());
-        
+
         // Initialize system monitoring
         let system_info = System::new_all();
-        
+
         Ok(Self {
             engine,
             component,
@@ -223,123 +229,134 @@ impl AdasHost {
             start_time: Instant::now(),
         })
     }
-    
+
     /// Run the ADAS system
     pub async fn run(&mut self) -> Result<()> {
         info!("🏁 Starting ADAS system execution");
-        
+
         // Create WASI context
-        let wasi_ctx = WasiCtxBuilder::new()
-            .inherit_stdio()
-            .inherit_env()
-            .build();
-        
+        let wasi_ctx = WasiCtxBuilder::new().inherit_stdio().inherit_env().build();
+
         // Create store with WASI context
         let mut store = Store::new(&self.engine, wasi_ctx);
-        
+
         // Set fuel limit for controlled execution
         store.set_fuel(u64::MAX).context("Failed to set fuel")?;
-        
+
         // Create linker and add WASI
         let mut linker = Linker::new(&self.engine);
-        wasmtime_wasi::add_to_linker_async(&mut linker)
-            .context("Failed to add WASI to linker")?;
-        
+        wasmtime_wasi::add_to_linker_async(&mut linker).context("Failed to add WASI to linker")?;
+
         // Instantiate the component
         info!("🔧 Instantiating ADAS component...");
-        let instance = linker.instantiate_async(&mut store, &self.component).await
+        let instance = linker
+            .instantiate_async(&mut store, &self.component)
+            .await
             .context("Failed to instantiate component")?;
-        
+
         info!("✅ Component instantiated successfully");
-        
+
         // Get the main system interface
         let init_system = instance
             .get_typed_func::<(), ()>(&mut store, "init-system")
             .context("Failed to get init-system function")?;
-        
+
         let execute_cycle = instance
             .get_typed_func::<(), ()>(&mut store, "execute-cycle")
             .context("Failed to get execute-cycle function")?;
-        
+
         // Initialize the system
         info!("🔄 Initializing ADAS system...");
-        init_system.call_async(&mut store, ()).await
+        init_system
+            .call_async(&mut store, ())
+            .await
             .context("Failed to initialize system")?;
-        
+
         info!("✅ ADAS system initialized");
-        
+
         // Start performance monitoring
         let mut performance_monitor = self.start_performance_monitoring();
-        
+
         // Main execution loop
         let mut cycle_count = 0u64;
         let mut error_count = 0u32;
         let cycle_duration = Duration::from_millis(self.config.system.cycle_time_ms as u64);
-        
+
         info!("🔄 Starting Fixed Execution Order (FEO) pipeline");
-        info!("⏱️  Target cycle time: {}ms", self.config.system.cycle_time_ms);
-        
+        info!(
+            "⏱️  Target cycle time: {}ms",
+            self.config.system.cycle_time_ms
+        );
+
         loop {
             let cycle_start = Instant::now();
-            
+
             // Execute one FEO cycle
             match execute_cycle.call_async(&mut store, ()).await {
                 Ok(_) => {
                     cycle_count += 1;
                     let cycle_time = cycle_start.elapsed();
-                    
+
                     // Check for timing violations
                     let cycle_time_ms = cycle_time.as_millis() as u32;
-                    if cycle_time_ms > self.config.system.cycle_time_ms + self.config.system.max_jitter_ms {
-                        warn!("⚠️  Cycle timing violation: {}ms (target: {}ms)", 
-                              cycle_time_ms, self.config.system.cycle_time_ms);
+                    if cycle_time_ms
+                        > self.config.system.cycle_time_ms + self.config.system.max_jitter_ms
+                    {
+                        warn!(
+                            "⚠️  Cycle timing violation: {}ms (target: {}ms)",
+                            cycle_time_ms, self.config.system.cycle_time_ms
+                        );
                     }
-                    
+
                     if cycle_count % 100 == 0 {
-                        info!("📊 Executed {} cycles, avg time: {:.2}ms", 
-                              cycle_count, cycle_time_ms);
+                        info!(
+                            "📊 Executed {} cycles, avg time: {:.2}ms",
+                            cycle_count, cycle_time_ms
+                        );
                     }
-                },
+                }
                 Err(e) => {
                     error_count += 1;
                     error!("❌ Cycle execution failed: {}", e);
-                    
+
                     if error_count > self.config.safety.max_faults_per_cycle {
                         error!("🚨 Too many errors, stopping system");
                         break;
                     }
-                    
+
                     if self.config.safety.fault_recovery_enabled {
                         warn!("🔄 Attempting fault recovery...");
                         // Add fault recovery logic here
                     }
                 }
             }
-            
+
             // Update performance monitoring
             if let Some(ref mut monitor) = performance_monitor {
-                monitor.update_metrics(cycle_count, error_count, cycle_start.elapsed()).await;
+                monitor
+                    .update_metrics(cycle_count, error_count, cycle_start.elapsed())
+                    .await;
             }
-            
+
             // Wait for next cycle
             let elapsed = cycle_start.elapsed();
             if elapsed < cycle_duration {
                 time::sleep(cycle_duration - elapsed).await;
             }
-            
+
             // Check for shutdown conditions
             if self.should_shutdown() {
                 info!("🛑 Shutdown requested");
                 break;
             }
         }
-        
+
         info!("🏁 ADAS system execution completed");
         info!("📊 Total cycles: {}, errors: {}", cycle_count, error_count);
-        
+
         Ok(())
     }
-    
+
     /// Start performance monitoring
     fn start_performance_monitoring(&mut self) -> Option<PerformanceMonitor> {
         if self.config.performance.enable_monitoring {
@@ -348,22 +365,22 @@ impl AdasHost {
             None
         }
     }
-    
+
     /// Check if system should shutdown
     fn should_shutdown(&self) -> bool {
         // Add shutdown logic (e.g., signal handling, time limits, etc.)
         false
     }
-    
+
     /// Get current performance metrics
     pub fn get_performance_metrics(&mut self) -> PerformanceMetrics {
         self.system_info.refresh_all();
-        
+
         let uptime = self.start_time.elapsed().as_secs();
         let cpu_usage = self.system_info.global_cpu_info().cpu_usage();
         let memory_usage = self.system_info.used_memory();
         let total_memory = self.system_info.total_memory();
-        
+
         PerformanceMetrics {
             cycle_time_ms: self.config.system.cycle_time_ms,
             avg_cycle_time_ms: 0.0, // Would be calculated from actual measurements
@@ -373,10 +390,10 @@ impl AdasHost {
             memory_usage_mb: (memory_usage / 1024 / 1024) as u32,
             memory_usage_percent: (memory_usage as f32 / total_memory as f32) * 100.0,
             uptime_seconds: uptime,
-            cycles_executed: 0,     // Would be tracked during execution
-            errors_count: 0,        // Would be tracked during execution
-            ai_fps: None,           // Would be provided by AI components
-            detection_rate: None,   // Would be provided by detection components
+            cycles_executed: 0,        // Would be tracked during execution
+            errors_count: 0,           // Would be tracked during execution
+            ai_fps: None,              // Would be provided by AI components
+            detection_rate: None,      // Would be provided by detection components
             prediction_accuracy: None, // Would be provided by prediction components
         }
     }
@@ -397,20 +414,24 @@ impl PerformanceMonitor {
             metrics_history: Vec::new(),
         }
     }
-    
+
     async fn update_metrics(&mut self, cycle_count: u64, error_count: u32, cycle_time: Duration) {
         let now = Instant::now();
         let interval = Duration::from_millis(self.config.monitoring_interval_ms as u64);
-        
+
         if now.duration_since(self.last_update) >= interval {
             // Update metrics
             debug!("📊 Updating performance metrics");
             self.last_update = now;
-            
+
             // Log performance if enabled
             if self.config.enable_monitoring {
-                info!("📈 Performance: cycles={}, errors={}, cycle_time={:.2}ms", 
-                      cycle_count, error_count, cycle_time.as_secs_f32() * 1000.0);
+                info!(
+                    "📈 Performance: cycles={}, errors={}, cycle_time={:.2}ms",
+                    cycle_count,
+                    error_count,
+                    cycle_time.as_secs_f32() * 1000.0
+                );
             }
         }
     }
@@ -423,10 +444,9 @@ fn load_config(config_path: Option<PathBuf>) -> Result<AdasConfig> {
             info!("📋 Loading configuration from: {}", path.display());
             let config_str = std::fs::read_to_string(&path)
                 .with_context(|| format!("Failed to read config file: {}", path.display()))?;
-            
-            toml::from_str(&config_str)
-                .context("Failed to parse configuration file")
-        },
+
+            toml::from_str(&config_str).context("Failed to parse configuration file")
+        }
         None => {
             info!("📋 Using default configuration");
             Ok(AdasConfig::default())
@@ -437,7 +457,7 @@ fn load_config(config_path: Option<PathBuf>) -> Result<AdasConfig> {
 /// Initialize logging
 fn init_logging(config: &LoggingConfig) -> Result<()> {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-    
+
     let level = match config.level.as_str() {
         "trace" => tracing::Level::TRACE,
         "debug" => tracing::Level::DEBUG,
@@ -446,12 +466,12 @@ fn init_logging(config: &LoggingConfig) -> Result<()> {
         "error" => tracing::Level::ERROR,
         _ => tracing::Level::INFO,
     };
-    
-    let subscriber = tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer().with_target(false));
-    
+
+    let subscriber =
+        tracing_subscriber::registry().with(tracing_subscriber::fmt::layer().with_target(false));
+
     subscriber.init();
-    
+
     Ok(())
 }
 
@@ -461,48 +481,54 @@ async fn main() -> Result<()> {
     let matches = Command::new("adas-wasmtime-host")
         .version("0.1.0")
         .about("ADAS WebAssembly Component Host using Wasmtime")
-        .arg(Arg::new("component")
-            .help("Path to the ADAS WebAssembly component")
-            .required(true)
-            .index(1))
-        .arg(Arg::new("config")
-            .short('c')
-            .long("config")
-            .value_name("FILE")
-            .help("Configuration file path"))
-        .arg(Arg::new("verbose")
-            .short('v')
-            .long("verbose")
-            .action(clap::ArgAction::SetTrue)
-            .help("Enable verbose logging"))
+        .arg(
+            Arg::new("component")
+                .help("Path to the ADAS WebAssembly component")
+                .required(true)
+                .index(1),
+        )
+        .arg(
+            Arg::new("config")
+                .short('c')
+                .long("config")
+                .value_name("FILE")
+                .help("Configuration file path"),
+        )
+        .arg(
+            Arg::new("verbose")
+                .short('v')
+                .long("verbose")
+                .action(clap::ArgAction::SetTrue)
+                .help("Enable verbose logging"),
+        )
         .get_matches();
-    
+
     let component_path = PathBuf::from(matches.get_one::<String>("component").unwrap());
     let config_path = matches.get_one::<String>("config").map(PathBuf::from);
-    
+
     // Load configuration
     let mut config = load_config(config_path)?;
-    
+
     // Override log level if verbose
     if matches.get_flag("verbose") {
         config.logging.level = "debug".to_string();
     }
-    
+
     // Initialize logging
     init_logging(&config.logging)?;
-    
+
     info!("🚀 Starting ADAS Wasmtime Host v0.1.0");
     info!("📦 Component: {}", component_path.display());
-    
+
     // Verify component file exists
     if !component_path.exists() {
         error!("❌ Component file not found: {}", component_path.display());
         return Err(anyhow::anyhow!("Component file not found"));
     }
-    
+
     // Create and run ADAS host
     let mut host = AdasHost::new(component_path, config).await?;
-    
+
     // Handle graceful shutdown
     let ctrl_c = tokio::signal::ctrl_c();
     tokio::select! {
@@ -516,7 +542,7 @@ async fn main() -> Result<()> {
             info!("🛑 Received shutdown signal");
         }
     }
-    
+
     info!("👋 ADAS Wasmtime Host shutdown complete");
     Ok(())
 }

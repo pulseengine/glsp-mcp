@@ -128,6 +128,12 @@ export class AppController {
     // Setup UI event handlers
     this.setupUIEventHandlers();
 
+    // Activate advanced interaction management
+    this._interactionManager.setupEventHandlers();
+    this._interactionManager.setUIManager(this.uiManager);
+    this._interactionManager.setViewModeManager(this.viewModeManager);
+    console.log("AppController: Advanced interaction system activated");
+
     // Setup AI model selection
     await this.setupAIModelSelection();
 
@@ -138,6 +144,9 @@ export class AppController {
     this.wasmRuntimeManager.setHeaderIconManager(
       this.uiManager.getHeaderIconManager(),
     );
+
+    // Initialize WASM component palette with MCP service
+    await this.uiManager.initializeWasmComponentPalette(this.mcpService);
 
     // Initialize edge creation type
     const initialEdgeCreationType = this.uiManager.getCurrentEdgeCreationType();

@@ -1,6 +1,8 @@
 // Object Detection AI Component using WASI-NN
 use object_detection_ai_bindings::exports::adas::object_detection::{
-    detection_engine::{self, Config, Resolution, Detection, BoundingBox, FrameResult, Status, Stats},
+    detection_engine::{
+        self, BoundingBox, Config, Detection, FrameResult, Resolution, Stats, Status,
+    },
     diagnostics::{self, Health, TestResult},
 };
 
@@ -40,7 +42,10 @@ impl Default for ObjectDetectionState {
                 confidence_threshold: 0.5,
                 nms_threshold: 0.4,
                 max_detections: 100,
-                input_resolution: Resolution { width: 640, height: 640 },
+                input_resolution: Resolution {
+                    width: 640,
+                    height: 640,
+                },
                 classes_enabled: vec![
                     "person".to_string(),
                     "bicycle".to_string(),
@@ -81,18 +86,19 @@ fn get_timestamp_ms() -> u64 {
 fn load_yolo_model() -> Result<(Graph, GraphExecutionContext), String> {
     // Load the embedded YOLOv5n model
     let model_bytes = include_bytes!("../models/yolov5n.onnx");
-    
+
     // Create graph builders - WASI-NN expects a list of byte arrays
     let graph_builders = vec![model_bytes.to_vec()];
-    
+
     // Load the graph using WASI-NN
     let graph = graph::load(&graph_builders, GraphEncoding::Onnx, ExecutionTarget::Cpu)
         .map_err(|e| format!("Failed to load ONNX model: {:?}", e))?;
-    
+
     // Initialize execution context
-    let context = graph.init_execution_context()
+    let context = graph
+        .init_execution_context()
         .map_err(|e| format!("Failed to create execution context: {:?}", e))?;
-    
+
     Ok((graph, context))
 }
 
@@ -101,41 +107,44 @@ fn create_input_tensor(image_data: &str, width: u32, height: u32) -> Result<Tens
     // For now, simulate image processing - in real implementation,
     // this would decode the image_data string and convert to tensor
     let pixel_count = (width * height * 3) as usize;
-    
+
     // Create dummy RGB image data (in real implementation, decode from image_data)
     let dummy_image = vec![128u8; pixel_count];
-    
+
     // Convert to NCHW format and normalize
     let tensor_data = utils::image_hwc_to_nchw(&dummy_image, height, width, true);
-    
+
     // Convert f32 to bytes
-    let tensor_bytes: Vec<u8> = tensor_data.iter()
-        .flat_map(|&f| f.to_le_bytes())
-        .collect();
-    
+    let tensor_bytes: Vec<u8> = tensor_data.iter().flat_map(|&f| f.to_le_bytes()).collect();
+
     // Create tensor with NCHW dimensions: [batch=1, channels=3, height, width]
     let dimensions = vec![1, 3, height, width];
-    
+
     Tensor::new(&dimensions, TensorType::Fp32, &tensor_bytes)
         .map_err(|e| format!("Failed to create input tensor: {:?}", e))
 }
 
 // Process YOLO output tensor to detections
-fn process_yolo_output(output_tensor: &Tensor, confidence_threshold: f32, input_width: u32, input_height: u32) -> Result<Vec<Detection>, String> {
+fn process_yolo_output(
+    output_tensor: &Tensor,
+    confidence_threshold: f32,
+    input_width: u32,
+    input_height: u32,
+) -> Result<Vec<Detection>, String> {
     // Get tensor data
     let tensor_data = output_tensor.data();
     let dimensions = output_tensor.dimensions();
-    
+
     // Convert bytes back to f32
     if tensor_data.len() % 4 != 0 {
         return Err("Invalid tensor data size".to_string());
     }
-    
+
     let float_data: Vec<f32> = tensor_data
         .chunks_exact(4)
         .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
         .collect();
-    
+
     // Use utility function to parse YOLO detections
     let utils_detections = utils::parse_yolo_detections(
         &float_data,
@@ -144,7 +153,7 @@ fn process_yolo_output(output_tensor: &Tensor, confidence_threshold: f32, input_
         input_width,
         input_height,
     );
-    
+
     // Convert to component detection format
     let mut detections = Vec::new();
     for (i, det) in utils_detections.iter().enumerate() {
@@ -153,12 +162,12 @@ fn process_yolo_output(output_tensor: &Tensor, confidence_threshold: f32, input_
         } else {
             format!("class_{}", det.class_id)
         };
-        
+
         // Generate dummy feature vector
         let features: Vec<f32> = (0..128)
             .map(|j| (i as f32 * 0.1 + j as f32 * 0.01).sin())
             .collect();
-        
+
         detections.push(Detection {
             object_id: i as u32,
             class_name,
@@ -173,7 +182,7 @@ fn process_yolo_output(output_tensor: &Tensor, confidence_threshold: f32, input_
             timestamp: get_timestamp_ms(),
         });
     }
-    
+
     Ok(detections)
 }
 
@@ -184,7 +193,7 @@ impl detection_engine::Guest for Component {
     fn initialize(cfg: Config) -> Result<(), String> {
         STATE.with(|state| {
             let mut s = state.borrow_mut();
-            
+
             // Validate configuration
             if cfg.confidence_threshold < 0.0 || cfg.confidence_threshold > 1.0 {
                 return Err("Invalid confidence threshold (must be 0.0-1.0)".to_string());
@@ -195,21 +204,31 @@ impl detection_engine::Guest for Component {
             if cfg.max_detections == 0 || cfg.max_detections > 1000 {
                 return Err("Invalid max detections (must be 1-1000)".to_string());
             }
-            
+
             // Validate input dimensions for YOLO
-            let dims = [1, 3, cfg.input_resolution.height, cfg.input_resolution.width];
+            let dims = [
+                1,
+                3,
+                cfg.input_resolution.height,
+                cfg.input_resolution.width,
+            ];
             utils::validate_yolo_input_dimensions(&dims)
                 .map_err(|e| format!("Invalid input resolution: {}", e))?;
-            
-            println!("Object Detection: Initializing YOLO model '{}', {}x{} resolution, {} classes", 
-                cfg.model_name, cfg.input_resolution.width, cfg.input_resolution.height, cfg.classes_enabled.len());
-            
+
+            println!(
+                "Object Detection: Initializing YOLO model '{}', {}x{} resolution, {} classes",
+                cfg.model_name,
+                cfg.input_resolution.width,
+                cfg.input_resolution.height,
+                cfg.classes_enabled.len()
+            );
+
             s.config = cfg;
             s.status = Status::Initializing;
             s.frames_processed = 0;
             s.total_detections = 0;
             s.processing_times.clear();
-            
+
             // Load YOLO model using WASI-NN
             match load_yolo_model() {
                 Ok((graph, context)) => {
@@ -232,20 +251,20 @@ impl detection_engine::Guest for Component {
     fn start() -> Result<(), String> {
         STATE.with(|state| {
             let mut s = state.borrow_mut();
-            
+
             if matches!(s.status, Status::Active) {
                 return Err("Object detection already active".to_string());
             }
-            
+
             if s.model_graph.is_none() || s.execution_context.is_none() {
                 return Err("Model not loaded".to_string());
             }
-            
+
             println!("Object Detection: Starting YOLO inference with WASI-NN");
             s.status = Status::Active;
             s.start_time = get_timestamp_ms();
             s.last_frame_time = s.start_time;
-            
+
             Ok(())
         })
     }
@@ -253,14 +272,14 @@ impl detection_engine::Guest for Component {
     fn stop() -> Result<(), String> {
         STATE.with(|state| {
             let mut s = state.borrow_mut();
-            
+
             if !matches!(s.status, Status::Active) {
                 return Err("Object detection not active".to_string());
             }
-            
+
             println!("Object Detection: Stopping YOLO inference");
             s.status = Status::Inactive;
-            
+
             Ok(())
         })
     }
@@ -268,34 +287,37 @@ impl detection_engine::Guest for Component {
     fn process_frame(image_data: String) -> Result<FrameResult, String> {
         STATE.with(|state| {
             let mut s = state.borrow_mut();
-            
+
             if !matches!(s.status, Status::Active) {
                 return Err("Object detection not active".to_string());
             }
-            
+
             let now = get_timestamp_ms();
             let processing_start = now;
             s.frames_processed += 1;
             s.last_frame_time = now;
-            
+
             // Get execution context
-            let context = s.execution_context.as_ref()
+            let context = s
+                .execution_context
+                .as_ref()
                 .ok_or("Execution context not available")?;
-            
+
             // Create input tensor from image data
             let input_tensor = create_input_tensor(
                 &image_data,
                 s.config.input_resolution.width,
                 s.config.input_resolution.height,
             )?;
-            
+
             // Prepare named tensor for inference
             let inputs = vec![("images".to_string(), input_tensor)];
-            
+
             // Run inference using WASI-NN
-            let outputs = context.compute(&inputs)
+            let outputs = context
+                .compute(&inputs)
                 .map_err(|e| format!("WASI-NN inference failed: {:?}", e))?;
-            
+
             // Process output tensor
             let detections = if let Some((_, output_tensor)) = outputs.first() {
                 process_yolo_output(
@@ -307,25 +329,25 @@ impl detection_engine::Guest for Component {
             } else {
                 return Err("No output tensor received from WASI-NN".to_string());
             };
-            
+
             // Filter detections by enabled classes
             let filtered_detections: Vec<Detection> = detections
                 .into_iter()
                 .filter(|det| s.config.classes_enabled.contains(&det.class_name))
                 .take(s.config.max_detections as usize)
                 .collect();
-            
+
             s.total_detections += filtered_detections.len() as u64;
-            
+
             // Calculate processing time
             let processing_time = (get_timestamp_ms() - processing_start) as f32;
             s.processing_times.push(processing_time);
-            
+
             // Keep only last 100 processing times for average calculation
             if s.processing_times.len() > 100 {
                 s.processing_times.remove(0);
             }
-            
+
             // Update health based on performance
             if processing_time > 100.0 {
                 s.health = Health::Degraded;
@@ -334,17 +356,21 @@ impl detection_engine::Guest for Component {
             } else {
                 s.health = Health::Healthy;
             }
-            
+
             let result = FrameResult {
                 detections: filtered_detections,
                 processing_time_ms: processing_time,
                 frame_number: s.frames_processed,
                 timestamp: now,
             };
-            
-            println!("Object Detection: Processed frame {}, {} detections, {:.1}ms", 
-                s.frames_processed, result.detections.len(), processing_time);
-            
+
+            println!(
+                "Object Detection: Processed frame {}, {} detections, {:.1}ms",
+                s.frames_processed,
+                result.detections.len(),
+                processing_time
+            );
+
             Ok(result)
         })
     }
@@ -361,22 +387,24 @@ impl detection_engine::Guest for Component {
             } else {
                 0.0
             };
-            
+
             let average_processing_time = if !s.processing_times.is_empty() {
                 s.processing_times.iter().sum::<f32>() / s.processing_times.len() as f32
             } else {
                 0.0
             };
-            
+
             Stats {
                 frames_processed: s.frames_processed,
                 total_detections: s.total_detections,
                 average_processing_time_ms: average_processing_time,
                 cpu_percent: 65.0 + (elapsed_sec * 0.03).sin() * 15.0,
                 memory_mb: 2048,
-                gpu_percent: if s.model_graph.is_some() { 
-                    80.0 + (elapsed_sec * 0.02).cos() * 10.0 
-                } else { 0.0 },
+                gpu_percent: if s.model_graph.is_some() {
+                    80.0 + (elapsed_sec * 0.02).cos() * 10.0
+                } else {
+                    0.0
+                },
             }
         })
     }
@@ -401,22 +429,25 @@ impl diagnostics::Guest for Component {
 
     fn run_diagnostics() -> Vec<TestResult> {
         let mut results = vec![];
-        
+
         STATE.with(|state| {
             let s = state.borrow();
-            
+
             // Test 1: Model loading
             results.push(TestResult {
                 name: "wasi_nn_model_loading".to_string(),
                 passed: s.model_graph.is_some(),
                 message: if s.model_graph.is_some() {
-                    format!("YOLO model '{}' loaded successfully via WASI-NN", s.config.model_name)
+                    format!(
+                        "YOLO model '{}' loaded successfully via WASI-NN",
+                        s.config.model_name
+                    )
                 } else {
                     "WASI-NN model not loaded".to_string()
                 },
                 duration_ms: 50.0,
             });
-            
+
             // Test 2: Execution context
             results.push(TestResult {
                 name: "wasi_nn_execution_context".to_string(),
@@ -428,7 +459,7 @@ impl diagnostics::Guest for Component {
                 },
                 duration_ms: 30.0,
             });
-            
+
             // Test 3: Processing performance
             let performance_ok = s.processing_times.iter().all(|&t| t < 100.0);
             results.push(TestResult {
@@ -441,9 +472,14 @@ impl diagnostics::Guest for Component {
                 },
                 duration_ms: 20.0,
             });
-            
+
             // Test 4: Input validation
-            let dims = [1, 3, s.config.input_resolution.height, s.config.input_resolution.width];
+            let dims = [
+                1,
+                3,
+                s.config.input_resolution.height,
+                s.config.input_resolution.width,
+            ];
             let input_valid = utils::validate_yolo_input_dimensions(&dims).is_ok();
             results.push(TestResult {
                 name: "input_validation".to_string(),
@@ -455,7 +491,7 @@ impl diagnostics::Guest for Component {
                 },
                 duration_ms: 15.0,
             });
-            
+
             // Test 5: Class detection capability
             results.push(TestResult {
                 name: "class_detection".to_string(),
@@ -464,7 +500,7 @@ impl diagnostics::Guest for Component {
                 duration_ms: 10.0,
             });
         });
-        
+
         results
     }
 
@@ -472,11 +508,19 @@ impl diagnostics::Guest for Component {
         STATE.with(|state| {
             let s = state.borrow();
             let stats = <Component as detection_engine::Guest>::get_stats();
-            
+
             let enabled_classes = s.config.classes_enabled.join(", ");
-            let model_status = if s.model_graph.is_some() { "Loaded via WASI-NN" } else { "Not loaded" };
-            let context_status = if s.execution_context.is_some() { "Available" } else { "Not available" };
-            
+            let model_status = if s.model_graph.is_some() {
+                "Loaded via WASI-NN"
+            } else {
+                "Not loaded"
+            };
+            let context_status = if s.execution_context.is_some() {
+                "Available"
+            } else {
+                "Not available"
+            };
+
             format!(
                 r#"Object Detection AI Diagnostic Report (WASI-NN)
 =================================================

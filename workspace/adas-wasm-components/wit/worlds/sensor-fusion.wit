@@ -7,13 +7,13 @@ world sensor-fusion-component {
     import adas:orchestration/execution-control;
     import adas:orchestration/data-flow;
     import adas:orchestration/resource-management;
-    
+
     // Import common types
     import adas:common-types/types;
-    
+
     // Import sensor data interfaces
     import adas:data/sensor-data;
-    
+
     // Export fusion control and data interfaces
     export adas:control/sensor-control;
     export adas:data/sensor-data as fusion-data;

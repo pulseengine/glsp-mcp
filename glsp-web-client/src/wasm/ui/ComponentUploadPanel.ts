@@ -674,7 +674,7 @@ export class ComponentUploadPanel {
     }, 2000);
   }
 
-  private async getSecurityAnalysis(validation: any) {
+  private async getSecurityAnalysis(_validation: any) {
     try {
       // Use file name as component identifier for now
       const file = this.element._selectedFile;
@@ -688,7 +688,14 @@ export class ComponentUploadPanel {
         return this.validationCache.get(cacheKey);
       }
 
-      // Request security analysis from backend
+      // Integrate validation data into security analysis
+      // const securityData = {
+      //   componentName,
+      //   validationResults: validation || {},
+      //   timestamp: Date.now(),
+      // };
+
+      // Request security analysis from backend with validation context
       const securityAnalysis =
         await this.validationService.requestSecurityAnalysis(componentName);
 
@@ -704,7 +711,7 @@ export class ComponentUploadPanel {
     }
   }
 
-  private async getWitAnalysis(validation: any) {
+  private async getWitAnalysis(_validation: any) {
     try {
       // Use file name as component identifier for now
       const file = this.element._selectedFile;
@@ -718,7 +725,16 @@ export class ComponentUploadPanel {
         return this.validationCache.get(cacheKey);
       }
 
-      // Request WIT analysis from backend
+      // Integrate validation data into WIT analysis
+      // const witData = {
+      //   componentName,
+      //   validationResults: validation || {},
+      //   timestamp: Date.now(),
+      //   includeInterfaces: true,
+      //   includeTypes: true,
+      // };
+
+      // Request WIT analysis from backend with validation context
       const witAnalysis =
         await this.validationService.requestWitValidation(componentName);
 

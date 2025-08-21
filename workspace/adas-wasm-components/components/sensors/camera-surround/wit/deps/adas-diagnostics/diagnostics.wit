@@ -8,7 +8,7 @@ interface health-monitoring {
         test-result,
         timestamp
     };
-    
+
     /// Component health report
     record health-report {
         component-id: string,
@@ -17,33 +17,33 @@ interface health-monitoring {
         last-diagnostic: option<diagnostic-result>,
         timestamp: timestamp,
     }
-    
+
     record subsystem-health {
         subsystem-name: string,
         status: health-status,
         details: string,
     }
-    
+
     record diagnostic-result {
         test-results: list<test-execution>,
         overall-score: f32,
         recommendations: list<string>,
         timestamp: timestamp,
     }
-    
+
     record test-execution {
         test-name: string,
         test-result: test-result,
         details: string,
         execution-time-ms: f32,
     }
-    
+
     /// Get current health status
     get-health: func() -> health-report;
-    
+
     /// Run full diagnostic
     run-diagnostic: func() -> result<diagnostic-result, string>;
-    
+
     /// Get last diagnostic result
     get-last-diagnostic: func() -> option<diagnostic-result>;
 }
@@ -54,7 +54,7 @@ interface performance-monitoring {
         performance-metrics,
         timestamp
     };
-    
+
     /// Extended performance metrics
     record extended-performance {
         base-metrics: performance-metrics,
@@ -62,14 +62,14 @@ interface performance-monitoring {
         resource-usage: resource-usage,
         timestamp: timestamp,
     }
-    
+
     record metric {
         name: string,
         value: f64,
         unit: string,
         description: string,
     }
-    
+
     record resource-usage {
         cpu-cores-used: f32,
         memory-allocated-mb: u32,
@@ -79,13 +79,13 @@ interface performance-monitoring {
         gpu-utilization: f32,
         gpu-memory-mb: u32,
     }
-    
+
     /// Get current performance metrics
     get-performance: func() -> extended-performance;
-    
+
     /// Get performance history
     get-performance-history: func(duration-seconds: u32) -> list<extended-performance>;
-    
+
     /// Reset performance counters
     reset-counters: func();
 }
@@ -93,7 +93,7 @@ interface performance-monitoring {
 /// Fault detection interface - error reporting and recovery
 interface fault-detection {
     use adas:common-types/types.{timestamp};
-    
+
     /// Fault report
     record fault-report {
         fault-id: string,
@@ -105,7 +105,7 @@ interface fault-detection {
         recovery-actions: list<recovery-action>,
         context: fault-context,
     }
-    
+
     enum fault-severity {
         info,
         warning,
@@ -113,7 +113,7 @@ interface fault-detection {
         critical,
         catastrophic,
     }
-    
+
     enum fault-category {
         hardware,
         software,
@@ -123,14 +123,14 @@ interface fault-detection {
         safety,
         security,
     }
-    
+
     record recovery-action {
         action-type: recovery-type,
         description: string,
         automatic: bool,
         estimated-time-seconds: u32,
     }
-    
+
     enum recovery-type {
         restart-component,
         reset-state,
@@ -139,32 +139,32 @@ interface fault-detection {
         emergency-stop,
         manual-intervention,
     }
-    
+
     record fault-context {
         operation-mode: string,
         inputs: list<string>,
         state-variables: list<state-variable>,
         recent-events: list<string>,
     }
-    
+
     record state-variable {
         name: string,
         value: string,
         variable-type: string,
     }
-    
+
     /// Report a fault
     report-fault: func(fault: fault-report);
-    
+
     /// Get active faults
     get-active-faults: func() -> list<fault-report>;
-    
+
     /// Get fault history
     get-fault-history: func(duration-seconds: u32) -> list<fault-report>;
-    
+
     /// Acknowledge fault (mark as handled)
     acknowledge-fault: func(fault-id: string) -> result<_, string>;
-    
+
     /// Trigger recovery action
     trigger-recovery: func(fault-id: string, action-type: recovery-type) -> result<_, string>;
 }

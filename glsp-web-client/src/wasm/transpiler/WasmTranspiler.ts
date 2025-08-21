@@ -320,8 +320,19 @@ export class WasmTranspiler {
       const _imports = WebAssembly.Module.imports(module);
       const _exports = WebAssembly.Module.exports(module);
 
+      // Analyze imports for security implications
+      const importAnalysis = this.analyzeImports(_imports);
+      const exportAnalysis = this.analyzeExports(_exports);
+
       const scanResult = await this.securityScanner.scanComponent(wasmBytes);
-      return this.securityScanner.generateReport(scanResult);
+      const baseReport = this.securityScanner.generateReport(scanResult);
+
+      // Enhance report with dependency analysis
+      return this.enhanceSecurityReportWithDependencies(
+        baseReport,
+        importAnalysis,
+        exportAnalysis,
+      );
     } catch (error) {
       return `Failed to generate security report: ${
         error instanceof Error ? error.message : "Unknown error"
@@ -685,7 +696,7 @@ export class WasmTranspiler {
     return "unknown";
   }
 
-  private inferGlobalType(module: string, name: string): string {
+  private inferGlobalType(_module: string, name: string): string {
     if (name.includes("stack")) return "i32";
     if (name.includes("heap")) return "i32";
     if (name.includes("memory")) return "i32";
@@ -704,6 +715,58 @@ export class WasmTranspiler {
     if (name.includes("stack")) return "i32";
     if (name.includes("heap")) return "i32";
     return "unknown";
+  }
+
+  /**
+   * Enhance security report with dependency analysis
+   */
+  private enhanceSecurityReportWithDependencies(
+    baseReport: string,
+    importAnalysis: WasmImport[],
+    exportAnalysis: WasmExport[],
+  ): string {
+    const dependencies = this.analyzeDependencies(importAnalysis);
+
+    let enhancedReport = baseReport + "\n\n=== DEPENDENCY ANALYSIS ===\n";
+
+    // Analyze imports for security risks
+    const criticalImports = importAnalysis.filter(
+      (imp) =>
+        imp.module === "env" ||
+        imp.name.includes("unsafe") ||
+        imp.name.includes("alloc"),
+    );
+
+    if (criticalImports.length > 0) {
+      enhancedReport += "\n⚠️  CRITICAL IMPORTS DETECTED:\n";
+      criticalImports.forEach((imp) => {
+        enhancedReport += `  - ${imp.module}.${imp.name} (${imp.kind})\n`;
+      });
+    }
+
+    // Analyze exports for security implications
+    const exposedFunctions = exportAnalysis.filter(
+      (exp) => exp.kind === "function",
+    );
+    if (exposedFunctions.length > 0) {
+      enhancedReport += "\n📤 EXPORTED FUNCTIONS:\n";
+      exposedFunctions.forEach((exp) => {
+        enhancedReport += `  - ${exp.name} ${exp.signature || ""}\n`;
+      });
+    }
+
+    // Dependency status
+    const missingDeps = dependencies.filter((dep) => dep.status === "missing");
+    if (missingDeps.length > 0) {
+      enhancedReport += "\n❌ MISSING DEPENDENCIES:\n";
+      missingDeps.forEach((dep) => {
+        enhancedReport += `  - ${dep.name} (${dep.imports.length} imports)\n`;
+      });
+    }
+
+    enhancedReport += `\n📊 SUMMARY: ${importAnalysis.length} imports, ${exportAnalysis.length} exports, ${dependencies.length} dependencies\n`;
+
+    return enhancedReport;
   }
 
   /**

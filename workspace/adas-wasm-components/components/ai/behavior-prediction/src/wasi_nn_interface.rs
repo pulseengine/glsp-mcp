@@ -32,36 +32,36 @@ impl WasiNNInference {
             context_handle: None,
             model_loaded: false,
         };
-        
+
         inference.load_model()?;
         Ok(inference)
     }
-    
+
     /// Load ONNX model through WASI-NN
     fn load_model(&mut self) -> Result<(), String> {
         println!("Loading Social-LSTM ONNX model: {}", self.config.model_path);
-        
+
         // In real implementation, this would:
         // 1. Read the ONNX model file
         // 2. Create WASI-NN graph from model bytes
         // 3. Initialize execution context
-        
+
         // Simulate model loading
         if !self.config.model_path.is_empty() {
             self.graph_handle = Some(1); // Mock handle
             self.context_handle = Some(1); // Mock handle
             self.model_loaded = true;
-            
+
             println!("Social-LSTM model loaded successfully");
             println!("Model inputs: {:?}", self.config.input_names);
             println!("Model outputs: {:?}", self.config.output_names);
-            
+
             Ok(())
         } else {
             Err("Invalid model path".to_string())
         }
     }
-    
+
     /// Run inference on batch of trajectories
     pub fn predict_batch(
         &self,
@@ -71,30 +71,31 @@ impl WasiNNInference {
         if !self.model_loaded {
             return Err("Model not loaded".to_string());
         }
-        
+
         let batch_size = trajectory_tensor.shape()[0];
         let seq_len = trajectory_tensor.shape()[1];
         let _coord_dim = trajectory_tensor.shape()[2];
-        
+
         println!("Running Social-LSTM inference:");
         println!("  Batch size: {}", batch_size);
         println!("  Sequence length: {}", seq_len);
         println!("  Social tensor shape: {:?}", social_tensor.shape());
-        
+
         // In real implementation, this would:
         // 1. Convert ndarray tensors to WASI-NN tensor format
         // 2. Set input tensors in execution context
         // 3. Run inference
         // 4. Extract output tensors
         // 5. Convert back to ndarray format
-        
+
         // For now, generate realistic predictions using physics-based simulation
-        let predictions = self.simulate_social_lstm_predictions(trajectory_tensor, social_tensor)?;
-        
+        let predictions =
+            self.simulate_social_lstm_predictions(trajectory_tensor, social_tensor)?;
+
         println!("Generated {} trajectory predictions", predictions.len());
         Ok(predictions)
     }
-    
+
     /// Simulate Social-LSTM predictions (for testing without actual model)
     fn simulate_social_lstm_predictions(
         &self,
@@ -105,107 +106,115 @@ impl WasiNNInference {
         let seq_len = trajectory_tensor.shape()[1];
         let prediction_steps = 12; // 1.2 seconds at 0.1s intervals
         let dt = 0.1;
-        
+
         let mut predictions = Vec::new();
-        
+
         for batch_idx in 0..batch_size {
             let mut prediction = Array2::zeros((prediction_steps, 2));
-            
+
             // Extract recent trajectory for this agent
             let agent_trajectory = trajectory_tensor.slice(ndarray::s![batch_idx, .., ..]);
-            
+
             // Get last two points to estimate velocity
-            let last_point = [agent_trajectory[[seq_len-1, 0]], agent_trajectory[[seq_len-1, 1]]];
+            let last_point = [
+                agent_trajectory[[seq_len - 1, 0]],
+                agent_trajectory[[seq_len - 1, 1]],
+            ];
             let prev_point = if seq_len > 1 {
-                [agent_trajectory[[seq_len-2, 0]], agent_trajectory[[seq_len-2, 1]]]
+                [
+                    agent_trajectory[[seq_len - 2, 0]],
+                    agent_trajectory[[seq_len - 2, 1]],
+                ]
             } else {
                 last_point
             };
-            
+
             // Calculate current velocity
             let mut velocity = [
                 (last_point[0] - prev_point[0]) / dt,
                 (last_point[1] - prev_point[1]) / dt,
             ];
-            
+
             // Apply social forces from neighboring agents
             let social_influence = self.calculate_social_forces(batch_idx, &social_tensor);
-            
+
             let mut current_pos = last_point;
-            
+
             for step in 0..prediction_steps {
                 // Apply social influence to velocity
                 velocity[0] += social_influence[0] * dt * 0.1; // Damped social influence
                 velocity[1] += social_influence[1] * dt * 0.1;
-                
+
                 // Apply some randomness and physics constraints
                 let noise_factor = 0.02 * (step as f64 / prediction_steps as f64); // Increasing uncertainty
                 velocity[0] += (rand_deterministic(batch_idx, step, 0) - 0.5) * noise_factor;
                 velocity[1] += (rand_deterministic(batch_idx, step, 1) - 0.5) * noise_factor;
-                
+
                 // Limit velocity (simple physics constraint)
                 let speed = (velocity[0].powi(2) + velocity[1].powi(2)).sqrt();
-                if speed > 5.0 { // Max 5 m/s
+                if speed > 5.0 {
+                    // Max 5 m/s
                     velocity[0] = velocity[0] / speed * 5.0;
                     velocity[1] = velocity[1] / speed * 5.0;
                 }
-                
+
                 // Update position
                 current_pos[0] += velocity[0] * dt;
                 current_pos[1] += velocity[1] * dt;
-                
+
                 // Store relative prediction (relative to starting point)
                 prediction[[step, 0]] = current_pos[0] - last_point[0];
                 prediction[[step, 1]] = current_pos[1] - last_point[1];
-                
+
                 // Apply slight decay to velocity (friction)
                 velocity[0] *= 0.98;
                 velocity[1] *= 0.98;
             }
-            
+
             predictions.push(prediction);
         }
-        
+
         Ok(predictions)
     }
-    
+
     /// Calculate social forces from neighboring agents
     fn calculate_social_forces(&self, agent_idx: usize, social_tensor: &Array4<f64>) -> [f64; 2] {
         let grid_h = social_tensor.shape()[1];
         let grid_w = social_tensor.shape()[2];
         let _embedding_size = social_tensor.shape()[3];
-        
+
         let mut force_x = 0.0;
         let mut force_y = 0.0;
-        
+
         // Simple social force calculation based on grid occupancy
         for i in 0..grid_h {
             for j in 0..grid_w {
-                let occupancy = social_tensor.slice(ndarray::s![agent_idx, i, j, ..])
+                let occupancy = social_tensor
+                    .slice(ndarray::s![agent_idx, i, j, ..])
                     .iter()
                     .sum::<f64>();
-                
+
                 if occupancy > 0.1 {
                     // Calculate repulsive force from this grid cell
                     let center_i = grid_h as f64 / 2.0;
                     let center_j = grid_w as f64 / 2.0;
-                    
+
                     let dx = j as f64 - center_j;
                     let dy = i as f64 - center_i;
                     let distance = (dx.powi(2) + dy.powi(2)).sqrt().max(0.1);
-                    
+
                     // Repulsive force proportional to occupancy and inversely to distance
                     let force_magnitude = occupancy * 0.1 / distance.powi(2);
-                    
+
                     force_x -= dx / distance * force_magnitude;
                     force_y -= dy / distance * force_magnitude;
                 }
             }
         }
-        
+
         [force_x, force_y]
     }
-    
+
     /// Run inference on single trajectory (convenience method)
     pub fn predict_single(
         &self,
@@ -215,29 +224,37 @@ impl WasiNNInference {
         // Reshape to batch format
         let batch_trajectory = trajectory.insert_axis(ndarray::Axis(0));
         let batch_social = social_context.insert_axis(ndarray::Axis(0));
-        
+
         let predictions = self.predict_batch(batch_trajectory, batch_social)?;
-        
-        predictions.into_iter().next()
+
+        predictions
+            .into_iter()
+            .next()
             .ok_or_else(|| "No prediction generated".to_string())
     }
-    
+
     /// Get model metadata
     pub fn get_model_info(&self) -> HashMap<String, String> {
         let mut info = HashMap::new();
         info.insert("model_path".to_string(), self.config.model_path.clone());
         info.insert("model_loaded".to_string(), self.model_loaded.to_string());
-        info.insert("input_count".to_string(), self.config.input_names.len().to_string());
-        info.insert("output_count".to_string(), self.config.output_names.len().to_string());
-        
+        info.insert(
+            "input_count".to_string(),
+            self.config.input_names.len().to_string(),
+        );
+        info.insert(
+            "output_count".to_string(),
+            self.config.output_names.len().to_string(),
+        );
+
         if let Some(graph_handle) = self.graph_handle {
             info.insert("graph_handle".to_string(), graph_handle.to_string());
         }
-        
+
         if let Some(context_handle) = self.context_handle {
             info.insert("context_handle".to_string(), context_handle.to_string());
         }
-        
+
         info
     }
 }
@@ -256,39 +273,38 @@ impl Drop for WasiNNInference {
 
 /// Deterministic random number generator for testing
 fn rand_deterministic(seed1: usize, seed2: usize, seed3: usize) -> f64 {
-    let combined = (seed1.wrapping_mul(1103515245)
+    let combined = (seed1
+        .wrapping_mul(1103515245)
         .wrapping_add(seed2.wrapping_mul(134775813))
         .wrapping_add(seed3.wrapping_mul(1664525))
-        .wrapping_add(1013904223)) % 2147483647;
-    
+        .wrapping_add(1013904223))
+        % 2147483647;
+
     combined as f64 / 2147483647.0
 }
 
 /// Helper functions for tensor conversion (placeholder for real WASI-NN integration)
 pub mod tensor_utils {
     use super::*;
-    
+
     /// Convert ndarray to WASI-NN tensor format
     pub fn ndarray_to_wasi_tensor(arr: &Array2<f64>) -> Result<Vec<u8>, String> {
         // In real implementation, would convert to proper WASI-NN tensor format
         let flat_data: Vec<f32> = arr.iter().map(|&x| x as f32).collect();
         Ok(bytemuck::cast_slice(&flat_data).to_vec())
     }
-    
+
     /// Convert WASI-NN tensor to ndarray
-    pub fn wasi_tensor_to_ndarray(
-        data: &[u8],
-        shape: &[usize],
-    ) -> Result<Array2<f64>, String> {
+    pub fn wasi_tensor_to_ndarray(data: &[u8], shape: &[usize]) -> Result<Array2<f64>, String> {
         let float_data: &[f32] = bytemuck::try_cast_slice(data)
             .map_err(|e| format!("Failed to cast tensor data: {}", e))?;
-        
+
         let double_data: Vec<f64> = float_data.iter().map(|&x| x as f64).collect();
-        
+
         if shape.len() != 2 {
             return Err("Only 2D tensors supported".to_string());
         }
-        
+
         Array2::from_shape_vec((shape[0], shape[1]), double_data)
             .map_err(|e| format!("Failed to reshape tensor: {}", e))
     }
@@ -297,7 +313,7 @@ pub mod tensor_utils {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_model_config_creation() {
         let config = ModelConfig {
@@ -305,11 +321,11 @@ mod tests {
             input_names: vec!["trajectory".to_string(), "social_tensor".to_string()],
             output_names: vec!["prediction".to_string()],
         };
-        
+
         assert_eq!(config.input_names.len(), 2);
         assert_eq!(config.output_names.len(), 1);
     }
-    
+
     #[test]
     fn test_wasi_nn_inference_creation() {
         let config = ModelConfig {
@@ -317,21 +333,21 @@ mod tests {
             input_names: vec!["input".to_string()],
             output_names: vec!["output".to_string()],
         };
-        
+
         let inference = WasiNNInference::new(config);
         assert!(inference.is_ok());
     }
-    
+
     #[test]
     fn test_deterministic_random() {
         let val1 = rand_deterministic(1, 2, 3);
         let val2 = rand_deterministic(1, 2, 3);
         assert_eq!(val1, val2); // Should be deterministic
-        
+
         let val3 = rand_deterministic(1, 2, 4);
         assert_ne!(val1, val3); // Different seed should give different result
     }
-    
+
     #[test]
     fn test_social_force_calculation() {
         let config = ModelConfig {
@@ -339,10 +355,10 @@ mod tests {
             input_names: vec!["input".to_string()],
             output_names: vec!["output".to_string()],
         };
-        
+
         let inference = WasiNNInference::new(config).unwrap();
         let social_tensor = Array4::zeros((1, 4, 4, 8));
-        
+
         let forces = inference.calculate_social_forces(0, &social_tensor);
         assert_eq!(forces, [0.0, 0.0]); // No forces with empty tensor
     }

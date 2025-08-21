@@ -11,51 +11,51 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-apple-darwin,aarch64-apple-darwin
-      
+
       - name: Install web client dependencies
         working-directory: ./glsp-web-client
         run: npm ci
-      
+
       - name: Build web client
         working-directory: ./glsp-web-client
         run: npx vite build
-      
+
       - name: Install Tauri dependencies
         working-directory: ./glsp-tauri
         run: npm ci
-      
+
       - name: Build universal binary
         working-directory: ./glsp-tauri
         run: |
           # Build for both architectures
           npx tauri build --target aarch64-apple-darwin
           npx tauri build --target x86_64-apple-darwin
-          
+
           # Create universal binary manually
           mkdir -p universal-build
-          
+
           # Extract binaries
           cp "../target/aarch64-apple-darwin/release/glsp-desktop" universal-build/glsp-desktop-arm64
           cp "../target/x86_64-apple-darwin/release/glsp-desktop" universal-build/glsp-desktop-x64
-          
+
           # Create universal binary
           lipo -create -output universal-build/glsp-desktop \
             universal-build/glsp-desktop-arm64 \
             universal-build/glsp-desktop-x64
-          
+
           # Verify
           lipo -info universal-build/glsp-desktop
-      
+
       - name: Upload universal binary
         uses: actions/upload-artifact@v3
         with:

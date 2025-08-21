@@ -1,5 +1,5 @@
 //! ADAS WebAssembly Components Build System
-//! 
+//!
 //! A Rust-based build orchestrator for ADAS components that replaces shell scripts
 //! with a type-safe, cross-platform, and efficient build system.
 
@@ -26,13 +26,13 @@ pub use validation::{ValidationResult, Validator};
 pub struct AdasBuildSystem {
     /// Build configuration
     config: BuildConfig,
-    
+
     /// Discovered components
     components: Vec<Component>,
-    
+
     /// Build pipeline
     pipeline: BuildPipeline,
-    
+
     /// Component validator
     validator: Validator,
 }
@@ -42,20 +42,20 @@ impl AdasBuildSystem {
     pub fn new(workspace_root: impl AsRef<Path>) -> Result<Self> {
         let workspace_root = workspace_root.as_ref();
         info!("Initializing ADAS build system at: {}", workspace_root.display());
-        
+
         // Load build configuration
         let config = BuildConfig::load(workspace_root)?;
-        
+
         // Discover components
         let components = component::discover_components(workspace_root)?;
         info!("Discovered {} components", components.len());
-        
+
         // Create build pipeline
         let pipeline = BuildPipeline::new(&config, &components)?;
-        
+
         // Create validator
         let validator = Validator::new(&config);
-        
+
         Ok(Self {
             config,
             components,
@@ -63,25 +63,25 @@ impl AdasBuildSystem {
             validator,
         })
     }
-    
+
     /// Build all components
     pub async fn build_all(&mut self, profile: BuildProfile) -> Result<BuildResult> {
         info!("Building all components with profile: {:?}", profile);
-        
+
         // Validate components first
         self.validate_all()?;
-        
+
         // Execute build pipeline
         let result = self.pipeline.execute(profile).await?;
-        
-        info!("Build completed: {} succeeded, {} failed", 
+
+        info!("Build completed: {} succeeded, {} failed",
             result.successful_components.len(),
             result.failed_components.len()
         );
-        
+
         Ok(result)
     }
-    
+
     /// Build specific components
     pub async fn build_components(
         &mut self,
@@ -89,27 +89,27 @@ impl AdasBuildSystem {
         profile: BuildProfile,
     ) -> Result<BuildResult> {
         info!("Building components: {:?} with profile: {:?}", component_names, profile);
-        
+
         // Filter components
         let components: Vec<_> = self.components
             .iter()
             .filter(|c| component_names.contains(&c.name))
             .cloned()
             .collect();
-        
+
         if components.is_empty() {
             anyhow::bail!("No matching components found");
         }
-        
+
         // Create filtered pipeline
         let mut pipeline = BuildPipeline::new(&self.config, &components)?;
-        
+
         // Execute build
         let result = pipeline.execute(profile).await?;
-        
+
         Ok(result)
     }
-    
+
     /// Compose components using WAC
     #[cfg(feature = "wac-composition")]
     pub async fn compose_components(
@@ -118,44 +118,44 @@ impl AdasBuildSystem {
         composition_config: Option<CompositionConfig>,
     ) -> Result<()> {
         info!("Composing components to: {}", output_path.as_ref().display());
-        
+
         let config = composition_config.unwrap_or_else(|| {
             CompositionConfig::from_workspace(&self.config)
         });
-        
+
         let composer = WacComposer::new(&self.config, config)?;
         composer.compose(&self.components, output_path).await?;
-        
+
         info!("Composition completed successfully");
         Ok(())
     }
-    
+
     /// Validate all components
     pub fn validate_all(&self) -> Result<Vec<ValidationResult>> {
         info!("Validating all components");
-        
+
         let mut results = Vec::new();
         let mut has_errors = false;
-        
+
         for component in &self.components {
             let result = self.validator.validate_component(component)?;
-            
+
             if result.has_errors() {
                 has_errors = true;
                 warn!("Component {} has validation errors", component.name);
             }
-            
+
             results.push(result);
         }
-        
+
         if has_errors {
             anyhow::bail!("Validation failed for one or more components");
         }
-        
+
         info!("All components validated successfully");
         Ok(results)
     }
-    
+
     /// Get build status
     pub fn status(&self) -> BuildStatus {
         BuildStatus {
@@ -165,11 +165,11 @@ impl AdasBuildSystem {
             available_profiles: vec![BuildProfile::Debug, BuildProfile::Release],
         }
     }
-    
+
     /// Clean build artifacts
     pub async fn clean(&self, deep: bool) -> Result<()> {
         info!("Cleaning build artifacts (deep: {})", deep);
-        
+
         // Clean target directory
         let target_dir = self.config.workspace_root.join("target");
         if target_dir.exists() {
@@ -181,18 +181,18 @@ impl AdasBuildSystem {
                 self.clean_wasm_files(&target_dir).await?;
             }
         }
-        
+
         // Clean deps directory
         let deps_dir = self.config.workspace_root.join("deps");
         if deps_dir.exists() {
             tokio::fs::remove_dir_all(&deps_dir).await
                 .context("Failed to remove deps directory")?;
         }
-        
+
         info!("Clean completed");
         Ok(())
     }
-    
+
     /// Generate build report
     pub fn generate_report(&self, format: ReportFormat) -> Result<String> {
         match format {
@@ -201,9 +201,9 @@ impl AdasBuildSystem {
             ReportFormat::Html => self.generate_html_report(),
         }
     }
-    
+
     // Private helper methods
-    
+
     fn components_by_category(&self) -> HashMap<ComponentCategory, usize> {
         let mut map = HashMap::new();
         for component in &self.components {
@@ -211,16 +211,16 @@ impl AdasBuildSystem {
         }
         map
     }
-    
+
     async fn clean_wasm_files(&self, target_dir: &Path) -> Result<()> {
         use tokio::fs;
         use futures::stream::{self, StreamExt};
-        
+
         let wasm_pattern = target_dir.join("**/*.wasm");
         let paths: Vec<_> = glob::glob(wasm_pattern.to_str().unwrap())?
             .filter_map(Result::ok)
             .collect();
-        
+
         let results: Vec<_> = stream::iter(paths)
             .map(|path| async move {
                 fs::remove_file(&path).await
@@ -229,14 +229,14 @@ impl AdasBuildSystem {
             .buffer_unordered(10)
             .collect()
             .await;
-        
+
         for result in results {
             result?;
         }
-        
+
         Ok(())
     }
-    
+
     fn generate_json_report(&self) -> Result<String> {
         let report = BuildReport {
             timestamp: chrono::Utc::now(),
@@ -245,27 +245,27 @@ impl AdasBuildSystem {
             components: self.components.clone(),
             configuration: self.config.clone(),
         };
-        
+
         serde_json::to_string_pretty(&report)
             .context("Failed to generate JSON report")
     }
-    
+
     fn generate_markdown_report(&self) -> Result<String> {
         let mut report = String::new();
         report.push_str("# ADAS Build System Report\n\n");
-        
+
         report.push_str(&format!("**Workspace**: `{}`\n", self.config.workspace_root.display()));
         report.push_str(&format!("**Total Components**: {}\n\n", self.components.len()));
-        
+
         report.push_str("## Components by Category\n\n");
         for (category, count) in self.components_by_category() {
             report.push_str(&format!("- **{:?}**: {} components\n", category, count));
         }
-        
+
         report.push_str("\n## Component List\n\n");
         report.push_str("| Name | Category | Safety Level | Dependencies |\n");
         report.push_str("|------|----------|--------------|-------------|\n");
-        
+
         for component in &self.components {
             report.push_str(&format!(
                 "| {} | {:?} | {} | {} |\n",
@@ -275,14 +275,14 @@ impl AdasBuildSystem {
                 component.dependencies.len()
             ));
         }
-        
+
         Ok(report)
     }
-    
+
     fn generate_html_report(&self) -> Result<String> {
         // Simple HTML report - could be enhanced with charts, etc.
         let markdown = self.generate_markdown_report()?;
-        
+
         // Convert markdown to HTML (simplified version)
         let html = format!(
             r#"<!DOCTYPE html>
@@ -304,7 +304,7 @@ impl AdasBuildSystem {
                 .replace("**", "<strong>").replace("**", "</strong>")
                 .replace("\n\n", "</p><p>")
         );
-        
+
         Ok(html)
     }
 }
@@ -338,7 +338,7 @@ pub enum ReportFormat {
 
 impl std::str::FromStr for ReportFormat {
     type Err = anyhow::Error;
-    
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "json" => Ok(ReportFormat::Json),
@@ -353,12 +353,12 @@ impl std::str::FromStr for ReportFormat {
 mod tests {
     use super::*;
     use tempfile::TempDir;
-    
+
     #[tokio::test]
     async fn test_build_system_creation() {
         let temp_dir = TempDir::new().unwrap();
         let result = AdasBuildSystem::new(temp_dir.path());
-        
+
         // Should handle missing workspace gracefully
         assert!(result.is_err());
     }

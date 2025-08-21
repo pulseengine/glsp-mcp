@@ -44,7 +44,7 @@ cpu_usage_percent = 15
 [configuration]
 supported_localization_methods = [
     "gnss_only",
-    "gnss_imu", 
+    "gnss_imu",
     "lidar_map",
     "visual_odometry",
     "sensor_fusion"
@@ -73,7 +73,7 @@ input_sensors = [
 
 output_topics = [
     "localization_result",
-    "pose_with_covariance", 
+    "pose_with_covariance",
     "velocity_estimate",
     "localization_status"
 ]
@@ -91,14 +91,14 @@ integration_tests = true
 hardware_in_loop_tested = true
 simulation_environments = [
     "carla",
-    "lgsvl", 
+    "lgsvl",
     "gazebo",
     "unity"
 ]
 
 benchmark_datasets = [
     "kitti",
-    "nuscenes", 
+    "nuscenes",
     "apollo_scape",
     "argoverse"
 ]

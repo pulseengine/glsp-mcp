@@ -5,30 +5,30 @@
   "private": true,
   "scripts": {
     "install:all": "npm install && cd glsp-web-client && npm install && cd ../glsp-tauri && npm install",
-    
+
     "dev:web": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "cd glsp-mcp-server && cargo run --bin server",
     "dev:client": "cd glsp-web-client && npm run dev",
-    
+
     "dev:desktop": "cd glsp-tauri && npm run dev",
-    
+
     "build:web": "cd glsp-web-client && npm run build",
     "build:server": "cd glsp-mcp-server && cargo build --release",
     "build:desktop": "cd glsp-tauri && npm run build",
-    
+
     "build:desktop:all": "npm run build:desktop:win && npm run build:desktop:mac && npm run build:desktop:linux",
     "build:desktop:win": "cd glsp-tauri && npm run build:win",
-    "build:desktop:mac": "cd glsp-tauri && npm run build:mac", 
+    "build:desktop:mac": "cd glsp-tauri && npm run build:mac",
     "build:desktop:linux": "cd glsp-tauri && npm run build:linux",
-    
+
     "test:frontend": "cd glsp-web-client && npm test",
     "test:backend": "cd glsp-mcp-server && cargo test",
     "test:all": "npm run test:backend && npm run test:frontend",
-    
+
     "lint:frontend": "cd glsp-web-client && npm run lint",
     "lint:backend": "cd glsp-mcp-server && cargo clippy",
     "lint:all": "npm run lint:backend && npm run lint:frontend",
-    
+
     "clean": "cd glsp-mcp-server && cargo clean && cd ../glsp-web-client && rm -rf dist node_modules && cd ../glsp-tauri && rm -rf node_modules"
   },
   "keywords": [

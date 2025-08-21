@@ -72,7 +72,7 @@ trajectory_optimization = [
 state_machine_states = [
     "lane_following",
     "lane_change_left",
-    "lane_change_right", 
+    "lane_change_right",
     "merging",
     "overtaking",
     "parking",
@@ -115,7 +115,7 @@ optimization_objectives = [
 [constraints]
 kinematic_constraints = [
     "max_velocity",
-    "max_acceleration", 
+    "max_acceleration",
     "max_steering_angle",
     "wheelbase_length"
 ]
@@ -178,14 +178,14 @@ supported_scenarios = [
 weather_conditions = [
     "clear",
     "rain",
-    "snow", 
+    "snow",
     "fog",
     "ice"
 ]
 
 traffic_densities = [
     "light",
-    "moderate", 
+    "moderate",
     "heavy",
     "congested"
 ]
@@ -217,7 +217,7 @@ simulation_environments = [
 
 benchmark_scenarios = [
     "nhtsa_scenarios",
-    "euro_ncap_scenarios", 
+    "euro_ncap_scenarios",
     "pegasus_scenarios"
 ]
 

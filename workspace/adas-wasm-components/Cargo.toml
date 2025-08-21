@@ -7,44 +7,44 @@ resolver = "2"
 members = [
     # Metadata support
     "component-metadata",
-    
+
     # Sensor Layer
     "components/sensors/camera-front",
-    "components/sensors/camera-surround", 
+    "components/sensors/camera-surround",
     "components/sensors/radar-front",
     "components/sensors/radar-corner",
     "components/sensors/lidar",
     "components/sensors/ultrasonic",
-    
-    # AI Processing Layer  
+
+    # AI Processing Layer
     "components/ai/object-detection",
     "components/ai/behavior-prediction",
-    
+
     # Fusion & Perception Layer
     "components/fusion/sensor-fusion",
-    "components/fusion/perception-fusion", 
+    "components/fusion/perception-fusion",
     "components/fusion/tracking-prediction",
-    
+
     # Planning & Control Layer
     "components/control/planning-decision",
     "components/control/vehicle-control",
-    
+
     # Input Layer
     "components/input/video-decoder",
-    
+
     # Integration Layer
     "components/integration/video-ai-pipeline",
-    
+
     # System Layer
     "components/system/safety-monitor",
-    "components/system/can-gateway", 
+    "components/system/can-gateway",
     "components/system/hmi-interface",
     "components/system/domain-controller",
     "components/system/feo-demo",
-    
+
     # Graphics Layer
     "components/graphics/adas-visualizer",
-    
+
     # Orchestration Layer
     "components/orchestrator",
 ]
@@ -105,7 +105,7 @@ feo_enabled = ["video-decoder", "object-detection", "feo-demo"]
 features = [
     "Fixed Execution Order (FEO)",
     "WebAssembly Component Model",
-    "ASIL-B Safety Patterns", 
+    "ASIL-B Safety Patterns",
     "Real Video Processing",
     "YOLOv5n Object Detection",
     "Automotive ECU Simulation",

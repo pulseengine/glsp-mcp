@@ -437,6 +437,9 @@ export class SidebarComponent {
 
       // Create hover tooltip for collapsed state
       this.element.title = "WASM Components - Click to expand";
+
+      // Create floating expand button functionality
+      this.createFloatingExpandButton();
     }
 
     // Dispatch collapse event for other components to listen to

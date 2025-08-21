@@ -471,7 +471,7 @@ export class CanvasRenderer {
         "handleClick: Interface linking mode - checking for connector at",
         position,
       );
-      const interfaceConnector = this.getInterfaceConnectorAt(position);
+      const interfaceConnector = this._findInterfaceConnector(position);
       console.log(
         "handleClick: Interface connector result:",
         interfaceConnector,
@@ -540,7 +540,7 @@ export class CanvasRenderer {
 
       case InteractionMode.CreateEdge: {
         // Check for interface connector first (for precise snapping)
-        const interfaceConnector = this.getInterfaceConnectorAt(position);
+        const interfaceConnector = this._findInterfaceConnector(position);
 
         if (interfaceConnector) {
           // Handle edge creation with interface connectors
@@ -710,7 +710,7 @@ export class CanvasRenderer {
       this.render();
     } else {
       // Check for interface connector hover first
-      const interfaceConnector = this.getInterfaceConnectorAt(position);
+      const interfaceConnector = this._findInterfaceConnector(position);
 
       if (interfaceConnector) {
         // Update hovered connector for visual highlighting
@@ -771,7 +771,7 @@ export class CanvasRenderer {
       // Update edge preview if creating edge
       if (this.edgeCreationSource) {
         // Check for interface connector near the mouse for snapping
-        const nearbyConnector = this.getInterfaceConnectorAt(position);
+        const nearbyConnector = this._findInterfaceConnector(position);
         if (nearbyConnector) {
           // Snap to connector position
           this.edgePreviewTarget = nearbyConnector.connectorPosition;
@@ -2251,7 +2251,7 @@ export class CanvasRenderer {
     };
 
     // Check if target is compatible (if it's an interface connector)
-    const targetConnector = this.getInterfaceConnectorAt(
+    const targetConnector = this._findInterfaceConnector(
       this.edgePreviewTarget,
     );
     let isCompatible = true;
@@ -2638,116 +2638,6 @@ export class CanvasRenderer {
     }
 
     return false;
-  }
-
-  private getInterfaceConnectorAt(position: Position):
-    | {
-        element: ModelElement;
-        interface: ComponentInterface;
-        side: "left" | "right";
-        connectorPosition: Position;
-      }
-    | undefined {
-    if (!this.currentDiagram) return undefined;
-
-    // Check each WASM component for interface connectors using V2 renderer logic
-    for (const element of Object.values(this.currentDiagram.elements)) {
-      if (!element.bounds) continue;
-
-      const nodeType = element.type || element.element_type || "";
-
-      if (
-        !this.isWasmComponentType(nodeType) ||
-        nodeType === "import-interface" ||
-        nodeType === "export-interface"
-      ) {
-        continue;
-      }
-
-      const interfaces =
-        (element.properties?.interfaces as ComponentInterface[]) || [];
-      if (interfaces.length === 0) continue;
-
-      // Use the V2 renderer's port detection method
-      const portInfo = WasmComponentRendererV2.getPortAtPosition(
-        element,
-        element.bounds,
-        position,
-      );
-
-      if (portInfo) {
-        console.log(
-          "getInterfaceConnectorAt: Port found, creating connector:",
-          portInfo,
-        );
-        // Calculate the actual connector position for the found port
-        const interfaces = (element.properties?.interfaces as any[]) || [];
-
-        // Handle both interface count (number) and interface array
-        let actualInterfaces: ComponentInterface[] = [];
-
-        if (typeof interfaces === "number") {
-          // If interfaces is a number (count), create placeholder interfaces
-          actualInterfaces = Array.from({ length: interfaces }, (_, i) => ({
-            name: `interface-${i + 1}`,
-            interface_type: (i % 2 === 0 ? "import" : "export") as
-              | "import"
-              | "export",
-            type: (i % 2 === 0 ? "import" : "export") as "import" | "export",
-            direction: (i % 2 === 0 ? "import" : "export") as
-              | "import"
-              | "export",
-            functions: [],
-          }));
-        } else if (Array.isArray(interfaces)) {
-          // If interfaces is already an array, use it directly
-          actualInterfaces = interfaces as ComponentInterface[];
-        }
-
-        const inputs = actualInterfaces.filter(
-          (i) =>
-            i.interface_type === "import" ||
-            i.type === "import" ||
-            (i as any).direction === "input",
-        );
-        const outputs = actualInterfaces.filter(
-          (i) =>
-            i.interface_type === "export" ||
-            i.type === "export" ||
-            (i as any).direction === "output",
-        );
-
-        const isInput = portInfo.type === "input";
-        const portArray = isInput ? inputs : outputs;
-        const portIndex = portArray.findIndex((p) => p === portInfo.port);
-
-        if (portIndex >= 0) {
-          // Calculate position using V2 renderer constants
-          const headerHeight = 40; // V2 HEADER_HEIGHT
-          const portSpacing = 24; // V2 PORT_SPACING
-          const startY = element.bounds.y + headerHeight + 20;
-
-          const x = isInput
-            ? element.bounds.x
-            : element.bounds.x + element.bounds.width;
-          const y = startY + portIndex * portSpacing;
-
-          const connector = {
-            element,
-            interface: portInfo.port as ComponentInterface,
-            side: (isInput ? "left" : "right") as "left" | "right",
-            connectorPosition: { x, y } as Position,
-          };
-          console.log(
-            "getInterfaceConnectorAt: Returning connector:",
-            connector,
-          );
-          return connector;
-        }
-      }
-    }
-
-    return undefined;
   }
 
   private showInterfaceTooltip(

@@ -1,13 +1,13 @@
 /// Standardized Vehicle Component World
-/// All vehicle control components (steering, braking, acceleration) use this world  
+/// All vehicle control components (steering, braking, acceleration) use this world
 world vehicle-component {
     /// Import orchestration for FEO compliance and resource management
     import adas:orchestration/execution-control;
     import adas:orchestration/resource-management;
-    
+
     /// Import planning data for execution
     import adas:data/planning-data;
-    
+
     /// Export standardized vehicle interfaces
     export adas:control/vehicle-control;
     export adas:diagnostics/health-monitoring;

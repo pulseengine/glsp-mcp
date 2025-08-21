@@ -9,7 +9,7 @@ interface sensor-control {
         timing-constraints,
         sensor-specification
     };
-    
+
     /// Generic sensor configuration
     record sensor-config {
         power-mode: power-mode,
@@ -17,32 +17,32 @@ interface sensor-control {
         specification: sensor-specification,
         calibration-enabled: bool,
     }
-    
+
     enum power-mode {
         low-power,
         standard,
         high-performance,
         emergency,
     }
-    
+
     /// Generic sensor status
     type sensor-status = health-status;
-    
+
     /// Initialize sensor with configuration
     initialize: func(config: sensor-config) -> result<_, string>;
-    
+
     /// Start sensor operation
     start: func() -> result<_, string>;
-    
+
     /// Stop sensor operation
     stop: func() -> result<_, string>;
-    
+
     /// Update sensor configuration
     update-config: func(config: sensor-config) -> result<_, string>;
-    
+
     /// Get sensor status
     get-status: func() -> sensor-status;
-    
+
     /// Get performance metrics
     get-performance: func() -> performance-metrics;
 }
@@ -54,7 +54,7 @@ interface ai-control {
         performance-metrics,
         timing-constraints
     };
-    
+
     /// AI model configuration
     record ai-config {
         model-path: string,
@@ -63,7 +63,7 @@ interface ai-control {
         confidence-threshold: f32,
         timing: timing-constraints,
     }
-    
+
     enum model-type {
         classification,
         detection,
@@ -72,32 +72,32 @@ interface ai-control {
         prediction,
         custom,
     }
-    
+
     enum inference-backend {
         cpu,
         gpu,
         npu,
         auto,
     }
-    
+
     /// AI system status
     type ai-status = health-status;
-    
+
     /// Load AI model
     load-model: func(config: ai-config) -> result<_, string>;
-    
+
     /// Start AI inference
     start-inference: func() -> result<_, string>;
-    
+
     /// Stop AI inference
     stop-inference: func() -> result<_, string>;
-    
+
     /// Update AI configuration
     update-config: func(config: ai-config) -> result<_, string>;
-    
+
     /// Get AI status
     get-status: func() -> ai-status;
-    
+
     /// Get performance metrics
     get-performance: func() -> performance-metrics;
 }
@@ -105,16 +105,16 @@ interface ai-control {
 /// Vehicle control interface - standardized vehicle actuation
 interface vehicle-control {
     use adas:common-types/types.{timestamp};
-    
+
     /// Vehicle control command
     record control-command {
         throttle: f32,        // 0.0 to 1.0
-        brake: f32,           // 0.0 to 1.0  
+        brake: f32,           // 0.0 to 1.0
         steering-angle: f32,  // Radians, + is right
         gear: gear-position,
         timestamp: timestamp,
     }
-    
+
     enum gear-position {
         park,
         reverse,
@@ -123,10 +123,10 @@ interface vehicle-control {
         sport,
         manual,
     }
-    
+
     /// Send control command to vehicle
     send-command: func(command: control-command) -> result<_, string>;
-    
+
     /// Emergency stop
     emergency-stop: func() -> result<_, string>;
 }

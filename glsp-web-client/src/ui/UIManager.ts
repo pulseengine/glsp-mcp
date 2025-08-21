@@ -25,6 +25,7 @@ import {
 import { ComponentLibrarySection } from "./sidebar/sections/ComponentLibrarySection.js";
 import { DiagramControlsSection } from "./sidebar/sections/DiagramControlsSection.js";
 import { GraphicsComponentPalette } from "./sidebar/sections/GraphicsComponentPalette.js";
+import { WasmComponentPalette } from "../diagrams/wasm-component-palette.js";
 import { ThemeController } from "./ThemeController.js";
 import { WasmComponent } from "../types/wasm-component.js";
 import {
@@ -86,6 +87,7 @@ export class UIManager {
   private propertiesSection?: PropertiesSection;
   private componentLibrarySection?: ComponentLibrarySection;
   private graphicsComponentPalette?: GraphicsComponentPalette;
+  private wasmComponentPalette?: WasmComponentPalette;
   private workspaceSelector?: WorkspaceSelector;
 
   constructor() {
@@ -158,6 +160,47 @@ export class UIManager {
   public getHeaderIconManager(): HeaderIconManager {
     return this.headerIconManager;
   }
+
+  /**
+   * Initialize WASM component palette once MCP service is available
+   */
+  public async initializeWasmComponentPalette(mcpClient: any): Promise<void> {
+    try {
+      console.log("UIManager: Initializing WASM component palette...");
+
+      this.wasmComponentPalette = new WasmComponentPalette(mcpClient);
+
+      // Replace placeholder with actual palette
+      if (this._wasmPaletteElement && this.wasmComponentPalette) {
+        const paletteElement = (this.wasmComponentPalette as any)
+          .element as HTMLElement;
+        this._wasmPaletteElement.innerHTML = "";
+        this._wasmPaletteElement.appendChild(paletteElement);
+
+        // Make sure it's visible (WasmComponentPalette starts hidden)
+        paletteElement.style.display = "block";
+
+        console.log(
+          "UIManager: WASM component palette initialized successfully",
+        );
+      }
+    } catch (error) {
+      console.error(
+        "UIManager: Failed to initialize WASM component palette:",
+        error,
+      );
+
+      // Show error message in placeholder
+      if (this._wasmPaletteElement) {
+        this._wasmPaletteElement.innerHTML = `
+          <div class="wasm-palette-error">
+            <p>⚠️ WASM Component Palette</p>
+            <p>Failed to initialize</p>
+          </div>
+        `;
+      }
+    }
+  }
   public isComponentLibraryReady(): boolean {
     return !!this.componentLibrarySection;
   }
@@ -225,6 +268,21 @@ export class UIManager {
       showPreview: true,
     });
 
+    // WASM component palette will be initialized after MCP service is available
+    this._wasmPaletteElement = document.createElement("div");
+    this._wasmPaletteElement.innerHTML = `
+      <div class="wasm-palette-placeholder">
+        <p>WASM Component Palette</p>
+        <p>Initializing...</p>
+      </div>
+    `;
+    this._wasmPaletteElement.style.cssText = `
+      padding: 16px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 14px;
+    `;
+
     // Initialize workspace selector
     const env = detectEnvironment();
     if (env.isDesktop) {
@@ -255,6 +313,19 @@ export class UIManager {
     console.log("UIManager: Toolbox section added");
     this.sidebar.addSection(this.graphicsComponentPalette.createSection());
     console.log("UIManager: Graphics component palette added");
+
+    // Add WASM component palette section
+    this.sidebar.addSection({
+      id: "wasm-palette",
+      title: "WASM Components",
+      icon: "⚙️",
+      collapsible: true,
+      collapsed: false,
+      order: 2.6, // After graphics palette, before properties
+      content: this._wasmPaletteElement,
+    });
+    console.log("UIManager: WASM component palette added");
+
     this.sidebar.addSection(this.propertiesSection.createSection());
     console.log("UIManager: Properties section added");
     this.sidebar.addSection(this.componentLibrarySection.createSection());
@@ -783,154 +854,6 @@ export class UIManager {
             <ul id="diagram-list"></ul>
         `;
     return list;
-  }
-
-  /** @deprecated - Use AIAssistantPanel instead */
-  private _createAIPanel(): HTMLElement {
-    const panel = document.createElement("div");
-    panel.className = "ai-assistant";
-    panel.innerHTML = `
-            <div class="ai-header">
-                <div class="ai-title">
-                    <div class="ai-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                            <path d="M12 2L2 7L12 12L22 7L12 2Z"/>
-                            <path d="M2 17L12 22L22 17"/>
-                            <path d="M2 12L12 17L22 12"/>
-                        </svg>
-                    </div>
-                    WASM Assistant
-                </div>
-                <div class="ai-header-actions">
-                    <button class="ai-minimize-btn" title="Minimize">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            <div class="ai-status-bar" id="ai-status-display">
-                <span id="ai-connection-status" style="color: var(--accent-error);">Offline</span>
-                <div class="ai-model-section">
-                    <select id="ai-model-select">
-                        <option value="">Loading models...</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="ai-chat" id="ai-chat">
-                <div class="ai-message">
-                    <div class="message-avatar">AI</div>
-                    <div class="message-content">
-                        Hello! I can help you design and optimize your WebAssembly component architecture. What would you like to build?
-                    </div>
-                </div>
-            </div>
-
-            <div class="ai-input">
-                <input type="text" class="ai-prompt" id="ai-prompt" placeholder="Ask about WASM components, optimization, or architecture...">
-                <button id="ai-send-btn" style="background: var(--accent-wasm); border: none; color: white; padding: 10px 20px; border-radius: var(--radius-sm); cursor: pointer;">
-                    Send
-                </button>
-            </div>
-
-            <div class="ai-quick-actions" style="padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="quick-action-btn" data-action="create" style="background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px;">
-                    📝 Create Diagram
-                </button>
-                <button class="quick-action-btn" data-action="analyze" style="background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px;">
-                    🔍 Analyze
-                </button>
-                <button class="quick-action-btn" data-action="optimize" style="background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px;">
-                    ⚡ Optimize
-                </button>
-                <button class="quick-action-btn" data-action="test" style="background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px;">
-                    🧪 Test
-                </button>
-            </div>
-        `;
-
-    // Setup drag functionality
-    this.setupAIPanelDragging(panel);
-
-    return panel;
-  }
-
-  private setupAIPanelDragging(panel: HTMLElement): void {
-    const header = panel.querySelector(".ai-header") as HTMLElement;
-    const minimizeBtn = panel.querySelector(".ai-minimize-btn") as HTMLElement;
-    let isDragging = false;
-    let startX = 0;
-    let startY = 0;
-    let startLeft = 0;
-    let startTop = 0;
-
-    // Make header draggable (but not the minimize button)
-    header.style.cursor = "move";
-
-    // Minimize button handler
-    minimizeBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      panel.classList.toggle("minimized");
-      const icon = minimizeBtn.querySelector("svg");
-      if (panel.classList.contains("minimized")) {
-        icon?.setAttribute("style", "transform: rotate(180deg);");
-      } else {
-        icon?.setAttribute("style", "transform: rotate(0deg);");
-      }
-    });
-
-    // Drag handlers
-    header.addEventListener("mousedown", (e) => {
-      // Don't drag if clicking on minimize button
-      if ((e.target as HTMLElement).closest(".ai-minimize-btn")) {
-        return;
-      }
-
-      isDragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
-
-      const rect = panel.getBoundingClientRect();
-      startLeft = rect.left;
-      startTop = rect.top;
-
-      // Change cursor for the whole document while dragging
-      document.body.style.cursor = "move";
-      document.body.style.userSelect = "none";
-
-      e.preventDefault();
-    });
-
-    document.addEventListener("mousemove", (e) => {
-      if (!isDragging) return;
-
-      const deltaX = e.clientX - startX;
-      const deltaY = e.clientY - startY;
-
-      let newLeft = startLeft + deltaX;
-      let newTop = startTop + deltaY;
-
-      // Constrain to viewport
-      const maxLeft = window.innerWidth - panel.offsetWidth;
-      const maxTop = window.innerHeight - panel.offsetHeight;
-
-      newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-      newTop = Math.max(0, Math.min(newTop, maxTop));
-
-      panel.style.left = newLeft + "px";
-      panel.style.top = newTop + "px";
-      panel.style.right = "auto";
-      panel.style.bottom = "auto";
-    });
-
-    document.addEventListener("mouseup", () => {
-      if (isDragging) {
-        isDragging = false;
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-      }
-    });
   }
 
   private setupKeyboardShortcuts(): void {

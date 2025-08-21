@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Add zoom functionality to PlantUML diagrams
     const diagrams = document.querySelectorAll('.figure img[src*=".svg"]');
-    
+
     diagrams.forEach(function(img) {
         img.style.cursor = 'zoom-in';
         img.addEventListener('click', function() {
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // Add interactive tooltips for ADAS components
     const adasComponents = document.querySelectorAll('.adas-component');
     adasComponents.forEach(function(component) {
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // Add ASIL level highlighting
     const asilElements = document.querySelectorAll('[class*="asil-"]');
     asilElements.forEach(function(element) {
@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // Add collapsible behavior to large diagrams
     const largeDiagrams = document.querySelectorAll('.figure');
     largeDiagrams.forEach(function(figure) {
@@ -49,11 +49,11 @@ document.addEventListener('DOMContentLoaded', function() {
             toggleButton.textContent = 'Toggle Full Size';
             toggleButton.className = 'btn btn-sm btn-outline-primary';
             toggleButton.style.marginTop = '0.5rem';
-            
+
             let isCollapsed = true;
             img.style.maxHeight = '400px';
             img.style.overflow = 'hidden';
-            
+
             toggleButton.addEventListener('click', function() {
                 if (isCollapsed) {
                     img.style.maxHeight = 'none';
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 isCollapsed = !isCollapsed;
             });
-            
+
             figure.appendChild(toggleButton);
         }
     });

@@ -47,7 +47,7 @@ gpu_usage_percent = 70
 [ai_models]
 object_detection_models = [
     "yolov8",
-    "faster_rcnn", 
+    "faster_rcnn",
     "ssd_mobilenet",
     "efficientdet"
 ]
@@ -83,14 +83,14 @@ camera_types = [
 
 camera_resolutions = [
     "640x480",
-    "1280x720", 
+    "1280x720",
     "1920x1080",
     "2560x1440"
 ]
 
 lidar_types = [
     "mechanical_spinning",
-    "solid_state", 
+    "solid_state",
     "flash_lidar"
 ]
 
@@ -103,7 +103,7 @@ radar_types = [
 [detection_capabilities]
 object_classes = [
     "car",
-    "truck", 
+    "truck",
     "bus",
     "motorcycle",
     "bicycle",
@@ -163,7 +163,7 @@ benchmark_datasets = [
 
 evaluation_metrics = [
     "mAP",      # mean Average Precision
-    "MOTA",     # Multiple Object Tracking Accuracy  
+    "MOTA",     # Multiple Object Tracking Accuracy
     "IOU",      # Intersection over Union
     "FPS"       # Frames Per Second
 ]

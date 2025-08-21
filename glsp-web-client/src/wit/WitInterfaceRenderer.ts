@@ -1377,8 +1377,8 @@ export class WitInterfaceRenderer extends CanvasRenderer {
       // Update tooltip content
       this.updateTooltipContent(element);
 
-      // Position tooltip
-      this.updateTooltipPosition(mousePos);
+      // Position tooltip using stored mouse position
+      this.updateTooltipPosition(this.lastMousePosition || mousePos);
 
       // Show tooltip
       this.elementTooltip.classList.add("visible");
@@ -1454,6 +1454,40 @@ export class WitInterfaceRenderer extends CanvasRenderer {
     document.head.appendChild(style);
 
     return tooltip;
+  }
+
+  /**
+   * Update tooltip position based on mouse position
+   */
+  private updateTooltipPosition(mousePos: Position): void {
+    if (!this.elementTooltip) return;
+
+    // Get tooltip dimensions
+    const tooltipRect = this.elementTooltip.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Calculate position with offset from cursor
+    let x = mousePos.x + 15; // 15px offset from cursor
+    let y = mousePos.y - 10; // slight offset above cursor
+
+    // Adjust horizontal position if tooltip would go off-screen
+    if (x + tooltipRect.width > viewportWidth) {
+      x = mousePos.x - tooltipRect.width - 15; // flip to left side
+    }
+
+    // Adjust vertical position if tooltip would go off-screen
+    if (y + tooltipRect.height > viewportHeight) {
+      y = mousePos.y - tooltipRect.height - 15; // move above cursor
+    }
+
+    // Ensure tooltip doesn't go off top or left edges
+    x = Math.max(10, x);
+    y = Math.max(10, y);
+
+    // Apply position
+    this.elementTooltip.style.left = `${x}px`;
+    this.elementTooltip.style.top = `${y}px`;
   }
 
   /**
@@ -1578,6 +1612,11 @@ export class WitInterfaceRenderer extends CanvasRenderer {
       this.destroyIconLegend();
     }
 
+    // Only initialize legend if _showLegend is true
+    if (!this._showLegend) {
+      return;
+    }
+
     this.iconLegend = container
       ? WitIconLegend.createEmbeddedLegend({
           collapsible: true,
@@ -1593,10 +1632,10 @@ export class WitInterfaceRenderer extends CanvasRenderer {
         });
 
     if (container) {
-      this.legendContainer = container;
+      this._legendContainer = container;
       container.appendChild(this.iconLegend.getElement());
     } else {
-      this.legendContainer = document.body;
+      this._legendContainer = document.body;
       document.body.appendChild(this.iconLegend.getElement());
     }
 
@@ -1682,7 +1721,7 @@ export class WitInterfaceRenderer extends CanvasRenderer {
     if (this.iconLegend) {
       this.iconLegend.destroy();
       this.iconLegend = null;
-      this.legendContainer = null;
+      this._legendContainer = null;
     }
   }
 
@@ -1768,9 +1807,40 @@ export class WitInterfaceRenderer extends CanvasRenderer {
    */
   public isIconLegendVisible(): boolean {
     return (
+      this._showLegend &&
       this.iconLegend !== null &&
       !this.iconLegend.getElement().classList.contains("collapsed")
     );
+  }
+
+  /**
+   * Toggle legend visibility
+   */
+  public toggleLegendVisibility(): void {
+    this._showLegend = !this._showLegend;
+
+    if (this._showLegend) {
+      // Show legend - reinitialize if needed
+      if (!this.iconLegend) {
+        this.initializeIconLegend(this._legendContainer || undefined);
+      } else {
+        this.iconLegend.getElement().style.display = "block";
+      }
+    } else {
+      // Hide legend
+      if (this.iconLegend) {
+        this.iconLegend.getElement().style.display = "none";
+      }
+    }
+  }
+
+  /**
+   * Set legend visibility
+   */
+  public setLegendVisibility(visible: boolean): void {
+    if (this._showLegend !== visible) {
+      this.toggleLegendVisibility();
+    }
   }
 
   /**
@@ -1921,7 +1991,7 @@ export class WitInterfaceRenderer extends CanvasRenderer {
   /**
    * Handle mouse leave events
    */
-  private handleMouseLeave(event: MouseEvent): void {
+  private handleMouseLeave(_event: MouseEvent): void {
     this.setHoverState(null);
     this.lastMousePosition = null;
   }
@@ -2086,9 +2156,6 @@ export class WitInterfaceRenderer extends CanvasRenderer {
     this.clearRelatedHighlights();
 
     if (!element.metadata?.witType) return;
-
-    const witType = element.metadata.witType as WitElementType;
-    const elementName = element.label || element.id;
 
     // Find related elements based on WIT relationships
     Object.values(this.witDiagramModel?.elements || {}).forEach(

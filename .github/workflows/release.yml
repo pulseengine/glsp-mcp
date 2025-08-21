@@ -120,11 +120,11 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            
+
             // Upload DMG
             const dmgPath = path.join('target', 'release', 'bundle', 'dmg');
             const dmgFiles = fs.readdirSync(dmgPath).filter(f => f.endsWith('.dmg'));
-            
+
             for (const file of dmgFiles) {
               console.log(`Uploading ${file}...`);
               const data = fs.readFileSync(path.join(dmgPath, file));
@@ -145,20 +145,20 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            
+
             // For cross-compilation, check both possible paths
             let dmgPath = path.join('target', 'x86_64-apple-darwin', 'release', 'bundle', 'dmg');
             if (!fs.existsSync(dmgPath)) {
               dmgPath = path.join('target', 'release', 'bundle', 'dmg');
             }
-            
+
             if (!fs.existsSync(dmgPath)) {
               console.log('DMG directory not found at expected paths');
               return;
             }
-            
+
             const dmgFiles = fs.readdirSync(dmgPath).filter(f => f.endsWith('.dmg'));
-            
+
             for (const file of dmgFiles) {
               console.log(`Uploading ${file}...`);
               const data = fs.readFileSync(path.join(dmgPath, file));
@@ -179,7 +179,7 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            
+
             // Upload AppImage
             const appImagePath = path.join('target', 'release', 'bundle', 'appimage');
             if (fs.existsSync(appImagePath)) {
@@ -196,7 +196,7 @@ jobs:
                 });
               }
             }
-            
+
             // Upload deb
             const debPath = path.join('target', 'release', 'bundle', 'deb');
             if (fs.existsSync(debPath)) {
@@ -222,7 +222,7 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            
+
             // Upload MSI
             const msiPath = path.join('target', 'release', 'bundle', 'msi');
             if (fs.existsSync(msiPath)) {

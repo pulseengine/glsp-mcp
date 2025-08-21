@@ -19,7 +19,7 @@ def adas_component(
     **kwargs):
     """
     Standard ADAS component build with consistent configuration.
-    
+
     Args:
         name: Component name
         srcs: Rust source files
@@ -30,10 +30,10 @@ def adas_component(
         extra_srcs: Additional source files
         **kwargs: Additional arguments passed to rust_wasm_component_bindgen
     """
-    
+
     if not package_name:
         package_name = "adas:{}".format(name.replace("_", "-"))
-    
+
     # Create WIT library for the component
     wit_library(
         name = name + "_wit",
@@ -41,10 +41,10 @@ def adas_component(
         deps = wit_deps,
         package_name = package_name,
     )
-    
+
     # Standard component dependencies (simplified)
     standard_deps = deps
-    
+
     # Build the component
     rust_wasm_component_bindgen(
         name = name,
@@ -55,7 +55,7 @@ def adas_component(
         crate_features = kwargs.pop("crate_features", []),
         **kwargs
     )
-    
+
     # Add test target
     rust_wasm_component_test(
         name = name + "_test",
@@ -70,7 +70,7 @@ def adas_ai_component(
     **kwargs):
     """
     AI component with WASI-NN integration and model embedding.
-    
+
     Args:
         name: Component name
         srcs: Rust source files
@@ -78,20 +78,20 @@ def adas_ai_component(
         model_files: ONNX or other model files to embed
         **kwargs: Additional arguments passed to adas_component
     """
-    
+
     # AI-specific WIT dependencies
     ai_wit_deps = kwargs.pop("wit_deps", []) + [
         "//wit/wasi-nn:wasi_nn_interfaces",
     ]
-    
+
     # AI-specific Rust dependencies
     ai_deps = kwargs.pop("deps", []) + [
         "//adas-build/wasi-nn:lib",
     ]
-    
+
     # Model files should be data dependencies, not source files
     data_deps = kwargs.pop("data", []) + model_files
-    
+
     adas_component(
         name = name,
         srcs = srcs,
@@ -111,7 +111,7 @@ def adas_sensor_component(
     **kwargs):
     """
     Sensor component with standard sensor interfaces and data flow.
-    
+
     Args:
         name: Component name
         srcs: Rust source files
@@ -119,18 +119,18 @@ def adas_sensor_component(
         sensor_type: Type of sensor (camera, radar, lidar, ultrasonic)
         **kwargs: Additional arguments passed to adas_component
     """
-    
+
     # Sensor-specific WIT dependencies
     sensor_wit_deps = kwargs.pop("wit_deps", []) + [
         "//wit/interfaces/adas-data:data",
         "//wit/interfaces/adas-diagnostics:diagnostics",
     ]
-    
+
     # Sensor-specific dependencies based on type
     sensor_deps = kwargs.pop("deps", [])
     if sensor_type in ["camera"]:
         sensor_deps.append("@workspace//image")
-    
+
     adas_component(
         name = name,
         srcs = srcs,
@@ -148,7 +148,7 @@ def adas_system_component(
     **kwargs):
     """
     System component with diagnostics and optional safety features.
-    
+
     Args:
         name: Component name
         srcs: Rust source files
@@ -156,18 +156,18 @@ def adas_system_component(
         safety_critical: Enable additional safety validations
         **kwargs: Additional arguments passed to adas_component
     """
-    
+
     # System-specific WIT dependencies
     system_wit_deps = kwargs.pop("wit_deps", []) + [
         "//wit/interfaces/adas-system:system",
         "//wit/interfaces/adas-diagnostics:diagnostics",
     ]
-    
+
     # Safety-critical features
     crate_features = kwargs.pop("crate_features", [])
     if safety_critical:
         crate_features.append("safety-critical")
-    
+
     adas_component(
         name = name,
         srcs = srcs,
@@ -186,7 +186,7 @@ def adas_component_group(
     **kwargs):
     """
     Group multiple ADAS components into a composed system.
-    
+
     Args:
         name: Group name
         components: Dictionary of component name -> target mappings
@@ -195,10 +195,10 @@ def adas_component_group(
         use_symlinks: Use symlinks for faster development builds
         **kwargs: Additional arguments passed to wac_compose
     """
-    
+
     if not composition_file:
         composition_file = name + ".wac"
-    
+
     wac_compose(
         name = name,
         components = components,
@@ -215,23 +215,23 @@ def adas_test_suite(
     **kwargs):
     """
     Create a comprehensive test suite for ADAS components.
-    
+
     Args:
         name: Test suite name
         components: List of component targets to test
         integration_tests: Additional integration test targets
         **kwargs: Additional arguments
     """
-    
+
     all_tests = []
-    
+
     # Add individual component tests
     for component in components:
         all_tests.append(component + "_test")
-    
+
     # Add integration tests
     all_tests.extend(integration_tests)
-    
+
     # Create test suite target
     native.test_suite(
         name = name,
@@ -276,7 +276,7 @@ def adas_fusion_component(name, srcs, wit_world, **kwargs):
         "//wit/interfaces/adas-data:data",
         "//wit/interfaces/adas-control:control",
     ]
-    
+
     return adas_component(
         name = name,
         srcs = srcs,
@@ -291,7 +291,7 @@ def adas_control_component(name, srcs, wit_world, **kwargs):
         "//wit/interfaces/adas-control:control",
         "//wit/interfaces/adas-system:system",
     ]
-    
+
     return adas_component(
         name = name,
         srcs = srcs,

@@ -30,7 +30,7 @@ GLSP-MCP is a sophisticated AI-native graphical modeling platform that combines 
    :status: implemented
    :priority: critical
    :description: Multi-layered architecture with MCP protocol, WASM runtime, and AI integration
-   
+
    **MCP Protocol Layer**: JSON-RPC based communication for AI agents
    **WASM Component System**: 15+ production-ready ADAS components with sandboxing
    **AI Integration Layer**: Natural language processing and machine learning
@@ -61,7 +61,7 @@ System Architecture Layers
            [Prompts] as prompts
            [Transport] as transport
        }
-       
+
        package "Core Services & Components" {
            [Diagram Manager] as diagram_mgr
            [WASM Runtime] as wasm_runtime
@@ -84,13 +84,13 @@ System Architecture Layers
    ui --> canvas
    ui --> ai_client
    ai_client --> ollama_bridge
-   
+
    ' MCP Protocol connections
    ai_client --> transport : "MCP Protocol (JSON-RPC)"
    transport --> resources
    transport --> tools
    transport --> prompts
-   
+
    ' Backend service connections
    tools --> diagram_mgr
    tools --> wasm_runtime
@@ -98,7 +98,7 @@ System Architecture Layers
    wasm_runtime --> pipeline_engine
    wasm_runtime --> security
    sim_engine --> sensor_bridge
-   
+
    ' Database connections
    diagram_mgr --> postgres
    sensor_bridge --> influx
@@ -117,9 +117,9 @@ Core Components Detail
    :priority: critical
    :description: Full MCP 0.3.0 Protocol Support with comprehensive tool set
    :links: SIM_037, DB_041
-   
+
    The MCP server provides:
-   
+
    * **Multi-Transport Support**: HTTP, HTTP-streaming, WebSocket, stdio
    * **Async Architecture**: Built on Tokio for high performance
    * **Comprehensive Tool Set**: create_diagram, create_node, create_edge, delete_element, update_element, apply_layout, export_diagram
@@ -130,7 +130,7 @@ Core Components Detail
    :priority: critical
    :description: Advanced WebAssembly runtime with component model support
    :links: WASM_046, SIM_038
-   
+
    * **Wasmtime Integration**: Full wasmtime runtime for server-side execution
    * **Component Model Support**: WASI Preview 2 components
    * **Security Sandboxing**: Complete isolation with resource limits
@@ -142,7 +142,7 @@ Core Components Detail
    :priority: high
    :description: Multi-backend database support with factory pattern
    :links: DB_041, DB_042, DB_043
-   
+
    * **Supported Backends**: PostgreSQL, InfluxDB, Redis, SQLite, Mock
    * **Features**: Connection pooling, health monitoring, transaction support
    * **Dataset Management**: Abstraction layer for sensor data
@@ -156,13 +156,13 @@ Data Flow Architecture
 
    @startuml
    !theme plain
-   
+
    participant "User" as U
    participant "Frontend" as F
    participant "MCP Server" as M
    participant "Diagram Manager" as D
    participant "Database" as DB
-   
+
    U -> F: Create Diagram Request
    F -> M: MCP Tool Call (create_diagram)
    M -> D: Process Diagram Creation
@@ -171,7 +171,7 @@ Data Flow Architecture
    D -> M: Creation Result
    M -> F: MCP Response
    F -> U: Visual Update
-   
+
    @enduml
 
 .. uml::
@@ -179,13 +179,13 @@ Data Flow Architecture
 
    @startuml
    !theme plain
-   
+
    participant "Pipeline Engine" as PE
    participant "Security Scanner" as SS
    participant "WASM Runtime" as WR
    participant "Sensor Bridge" as SB
    participant "Database" as DB
-   
+
    PE -> SS: Security Scan
    SS -> WR: Component Loading
    WR -> SB: Request Sensor Data
@@ -195,7 +195,7 @@ Data Flow Architecture
    WR -> WR: Processing Logic
    WR -> PE: Output Data
    PE -> DB: Store Results
-   
+
    @enduml
 
 .. uml::
@@ -203,14 +203,14 @@ Data Flow Architecture
 
    @startuml
    !theme plain
-   
+
    participant "Simulation Config" as SC
    participant "Scenario Loader" as SL
    participant "Timing Controller" as TC
    participant "Sensor Data Replay" as SDR
    participant "Component Graph" as CG
    participant "Statistics" as ST
-   
+
    SC -> SL: Load Scenario
    SL -> TC: Pipeline Instantiation
    TC -> SDR: Time Synchronization
@@ -219,7 +219,7 @@ Data Flow Architecture
    CG -> ST: Result Collection
    ST -> TC: Performance Metrics
    TC -> SDR: Next Time Step
-   
+
    @enduml
 
 Component Composition
@@ -231,9 +231,9 @@ Component Composition
    :priority: high
    :description: Component composition using WebAssembly Component Model
    :links: WASM_046, SIM_039
-   
+
    The system uses the WebAssembly Component Model for composition:
-   
+
    1. **WIT Interfaces**: Type-safe component contracts
    2. **WAC Format**: WebAssembly Composition for linking
    3. **Bazel Build System**: Reproducible builds
@@ -244,7 +244,7 @@ Component Composition
 
    @startuml
    !theme plain
-   
+
    package "ADAS Complete System" {
        package "Sensors (6 types)" {
            [Camera Front] as cam_front
@@ -254,29 +254,29 @@ Component Composition
            [Radar Corner] as radar_corner
            [Ultrasonic] as ultrasonic
        }
-       
+
        package "AI Processing (2 models)" {
            [Object Detection] as obj_det
            [Behavior Prediction] as behavior_pred
        }
-       
+
        package "Fusion (3 stages)" {
            [Sensor Fusion] as sensor_fusion
            [Perception Fusion] as perception_fusion
            [Tracking Prediction] as tracking_pred
        }
-       
+
        package "Control (2 logic)" {
            [Planning Decision] as planning_decision
            [Vehicle Control] as vehicle_control
        }
-       
+
        package "Actuators (CAN/HMI)" {
            [CAN Gateway] as can_gateway
            [HMI Interface] as hmi_interface
        }
    }
-   
+
    ' Data flow
    cam_front -> obj_det
    cam_surround -> obj_det
@@ -284,18 +284,18 @@ Component Composition
    radar_front -> obj_det
    radar_corner -> obj_det
    ultrasonic -> obj_det
-   
+
    obj_det -> behavior_pred
    obj_det -> sensor_fusion
    behavior_pred -> perception_fusion
    sensor_fusion -> perception_fusion
    perception_fusion -> tracking_pred
-   
+
    tracking_pred -> planning_decision
    planning_decision -> vehicle_control
    vehicle_control -> can_gateway
    can_gateway -> hmi_interface
-   
+
    @enduml
 
 Performance Architecture
@@ -307,7 +307,7 @@ Performance Architecture
    :priority: high
    :description: High-performance async execution with resource management
    :links: SIM_040, DB_044
-   
+
    * **Tokio Runtime**: Multi-threaded async execution
    * **Thread Pool**: Dedicated pools for WASM execution
    * **Backpressure**: Automatic flow control
@@ -319,7 +319,7 @@ Performance Architecture
    :priority: medium
    :description: Multi-layer caching for performance optimization
    :links: DB_045
-   
+
    * **Redis Layer**: Hot data caching
    * **Component Cache**: Pre-loaded WASM modules
    * **Result Cache**: Computation memoization
@@ -334,7 +334,7 @@ Security Architecture
    :priority: critical
    :description: Multi-layered security approach
    :links: WASM_049, SIM_044
-   
+
    1. **Network Security**: TLS, authentication, authorization
    2. **WASM Sandboxing**: Complete isolation
    3. **Resource Limits**: Memory, CPU, I/O caps
@@ -347,7 +347,7 @@ Security Architecture
    :priority: critical
    :description: Comprehensive WASM component security
    :links: WASM_050
-   
+
    * **Capability-Based**: Explicit permission grants
    * **Static Analysis**: Pre-execution validation
    * **Runtime Monitoring**: Behavior tracking
@@ -358,33 +358,33 @@ Security Architecture
 
    @startuml
    !theme plain
-   
+
    package "Security Layers" {
        package "Network Security" {
            [TLS/SSL] as tls
            [Authentication] as auth
            [Authorization] as authz
        }
-       
+
        package "WASM Security" {
            [Capability Control] as caps
            [Resource Limits] as limits
            [Sandboxing] as sandbox
        }
-       
+
        package "Application Security" {
            [Input Validation] as validation
            [Static Analysis] as static
            [Runtime Monitoring] as runtime
        }
-       
+
        package "Data Security" {
            [Encryption at Rest] as enc_rest
            [Encryption in Transit] as enc_transit
            [Access Control] as access
        }
    }
-   
+
    ' Security flow
    tls --> auth
    auth --> authz
@@ -397,7 +397,7 @@ Security Architecture
    runtime --> enc_rest
    enc_rest --> enc_transit
    enc_transit --> access
-   
+
    @enduml
 
 Architecture Principles
@@ -503,7 +503,7 @@ Monitoring and Observability
    :status: implemented
    :priority: medium
    :description: Comprehensive metrics collection and monitoring
-   
+
    * **Performance Metrics**: Latency, throughput
    * **Resource Metrics**: CPU, memory, I/O
    * **Business Metrics**: Diagram operations
@@ -514,7 +514,7 @@ Monitoring and Observability
    :status: implemented
    :priority: medium
    :description: Structured logging with correlation tracking
-   
+
    * **JSON Format**: Machine-readable logs
    * **Log Levels**: Configurable verbosity
    * **Correlation IDs**: Request tracking
@@ -525,32 +525,32 @@ Monitoring and Observability
 
    @startuml
    !theme plain
-   
+
    package "Application Layer" {
        [GLSP-MCP Server] as app
        [WASM Runtime] as wasm
        [Database] as db
    }
-   
+
    package "Monitoring Layer" {
        [Metrics Collection] as metrics
        [Log Aggregation] as logs
        [Tracing] as tracing
        [Health Checks] as health
    }
-   
+
    package "Observability Stack" {
        [Prometheus] as prometheus
        [Grafana] as grafana
        [Jaeger] as jaeger
        [ELK Stack] as elk
    }
-   
+
    package "Alerting" {
        [Alert Manager] as alertmgr
        [Notification] as notify
    }
-   
+
    ' Monitoring flow
    app --> metrics
    wasm --> metrics
@@ -561,19 +561,19 @@ Monitoring and Observability
    app --> tracing
    wasm --> tracing
    app --> health
-   
+
    metrics --> prometheus
    logs --> elk
    tracing --> jaeger
    health --> prometheus
-   
+
    prometheus --> grafana
    prometheus --> alertmgr
    jaeger --> grafana
    elk --> grafana
-   
+
    alertmgr --> notify
-   
+
    @enduml
 
 Future Architecture Considerations
@@ -584,7 +584,7 @@ Future Architecture Considerations
    :status: planned
    :priority: low
    :description: Future architectural enhancements
-   
+
    1. **Distributed Execution**: Multi-node component execution
    2. **GPU Acceleration**: WASI-NN GPU support
    3. **Event Streaming**: Kafka/Pulsar integration
@@ -596,7 +596,7 @@ Future Architecture Considerations
    :status: planned
    :priority: medium
    :description: Long-term scalability improvements
-   
+
    1. **Microservices**: Service decomposition
    2. **Event Sourcing**: State management
    3. **CQRS**: Read/write separation
@@ -610,7 +610,7 @@ Integration Points
    :status: implemented
    :priority: high
    :description: AI system integration points
-   
+
    * **Ollama Bridge**: Local LLM integration
    * **MCP Protocol**: Universal AI compatibility
    * **Prompt Engineering**: Optimized prompts
@@ -621,7 +621,7 @@ Integration Points
    :status: implemented
    :priority: medium
    :description: External system integration capabilities
-   
+
    * **REST API**: HTTP/JSON interface
    * **WebSocket**: Real-time updates
    * **Database Connectors**: Multiple backends
@@ -635,7 +635,7 @@ Configuration Management
    :status: implemented
    :priority: medium
    :description: Configuration management system
-   
+
    * **Environment Variables**: Runtime configuration
    * **Config Files**: Complex settings
    * **Secret Management**: Secure credential storage
@@ -649,9 +649,9 @@ Deployment Patterns
    :status: implemented
    :priority: high
    :description: Containerized deployment support
-   
+
    Multi-stage Docker builds for optimization:
-   
+
    * **Builder Stage**: Rust compilation
    * **Frontend Stage**: TypeScript build
    * **Runtime Stage**: Minimal footprint
@@ -661,7 +661,7 @@ Deployment Patterns
    :status: planned
    :priority: medium
    :description: Kubernetes deployment and orchestration
-   
+
    * **Helm Charts**: Package management
    * **Service Mesh**: Inter-service communication
    * **Auto-scaling**: Load-based scaling

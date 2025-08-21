@@ -127,8 +127,8 @@ export class UMLComponentRenderer {
     const componentName = this.getComponentName(element);
     const stereotype = this.getStereotype(element, renderMode);
     const attributes = this.getMainComponentAttributes(element);
-    const methods: UMLMethod[] = []; // Main component doesn't show methods - they're in interfaces
-    const interfaces: UMLComponentInterface[] = []; // No inline interfaces in separate view
+    const methods = this.getMethods(element); // Get methods for complete UML rendering
+    const interfaces = this.__getInterfaces(element); // Get interfaces from element properties
 
     // Calculate compartment dimensions
     const compartments = this.calculateCompartments(
@@ -182,6 +182,32 @@ export class UMLComponentRenderer {
         context,
       );
       currentY += compartments.attributes.height;
+    }
+
+    // Methods compartment (if any methods exist)
+    if (compartments.methods && compartments.methods.height > 0) {
+      this.drawCompartmentSeparator(
+        bounds.x,
+        currentY,
+        bounds.width,
+        finalStyle,
+        ctx,
+      );
+      this.__drawMethodsCompartment(
+        bounds.x,
+        currentY,
+        bounds.width,
+        compartments.methods.height,
+        methods,
+        finalStyle,
+        context,
+      );
+      currentY += compartments.methods.height;
+    }
+
+    // Draw component interfaces (lollipops and sockets)
+    if (interfaces.length > 0) {
+      this.__drawComponentInterfaces(bounds, interfaces, finalStyle, context);
     }
   }
 

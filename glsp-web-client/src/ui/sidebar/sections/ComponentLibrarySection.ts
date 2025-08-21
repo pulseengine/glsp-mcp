@@ -9,7 +9,7 @@ import {
 } from "../../views/ComponentGroupDeployView.js";
 import { getService } from "../../../core/ServiceRegistration.js";
 import { WasmRuntimeManager } from "../../../wasm/WasmRuntimeManager.js";
-import { InteractionManager } from "../../InteractionManager.js"; // Ready for component interaction features
+// InteractionManager integration available via service container
 import { AdvancedComponentSearch } from "../../components/AdvancedComponentSearch.js";
 import { ComponentSearchResponse } from "../../../services/ComponentSearchService.js";
 
@@ -386,84 +386,7 @@ export class ComponentLibrarySection {
     return container;
   }
 
-  private createFilterBar(): HTMLElement {
-    const filterBar = document.createElement("div");
-    filterBar.className = "filter-bar";
-    filterBar.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        `;
-
-    // Search input
-    const searchInput = document.createElement("input");
-    searchInput.type = "text";
-    searchInput.placeholder = "Search components...";
-    searchInput.value = this.filter.search || "";
-    searchInput.style.cssText = `
-            padding: 8px 12px;
-            background: var(--bg-primary, #0F1419);
-            border: 1px solid var(--border-color, #2A3441);
-            border-radius: 6px;
-            color: var(--text-primary, #E6EDF3);
-            font-size: 13px;
-            transition: all 0.2s ease;
-        `;
-
-    searchInput.addEventListener("input", (e) => {
-      this.filter.search = (e.target as HTMLInputElement).value;
-      this.refresh();
-    });
-
-    searchInput.addEventListener("focus", () => {
-      searchInput.style.borderColor = "var(--accent-wasm, #654FF0)";
-    });
-
-    searchInput.addEventListener("blur", () => {
-      searchInput.style.borderColor = "var(--border-color, #2A3441)";
-    });
-
-    filterBar.appendChild(searchInput);
-
-    // Category filter
-    if (this.categories.size > 1) {
-      const categorySelect = document.createElement("select");
-      categorySelect.style.cssText = `
-                padding: 6px 12px;
-                background: var(--bg-primary, #0F1419);
-                border: 1px solid var(--border-color, #2A3441);
-                border-radius: 4px;
-                color: var(--text-primary, #E6EDF3);
-                font-size: 12px;
-                cursor: pointer;
-            `;
-
-      const allOption = document.createElement("option");
-      allOption.value = "";
-      allOption.textContent = "All Categories";
-      categorySelect.appendChild(allOption);
-
-      Array.from(this.categories)
-        .sort()
-        .forEach((category) => {
-          const option = document.createElement("option");
-          option.value = category;
-          option.textContent = category;
-          option.selected = this.filter.category === category;
-          categorySelect.appendChild(option);
-        });
-
-      categorySelect.addEventListener("change", (e) => {
-        this.filter.category =
-          (e.target as HTMLSelectElement).value || undefined;
-        this.refresh();
-      });
-
-      filterBar.appendChild(categorySelect);
-    }
-
-    return filterBar;
-  }
+  // createFilterBar method removed - superseded by createAdvancedSearchBar()
 
   /**
    * NEW: Create advanced search bar with server/client hybrid search

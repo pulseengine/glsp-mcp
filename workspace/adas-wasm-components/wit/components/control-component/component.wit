@@ -1,4 +1,4 @@
-/// ADAS Control Component World - Standardized world for planning/decision components  
+/// ADAS Control Component World - Standardized world for planning/decision components
 package adas:control-component;
 
 /// Control components handle planning and decision making
@@ -6,14 +6,14 @@ world control-component {
     /// System control and resource management
     import adas:orchestration/execution-control;
     import adas:orchestration/resource-management;
-    
+
     /// Import perception and planning data
     import adas:data/perception-data;
     import adas:data/planning-data;
-    
+
     /// Export planning decisions and trajectories
     export adas:data/planning-data;
-    
+
     /// Export diagnostics
     export adas:diagnostics/health-monitoring;
     export adas:diagnostics/performance-monitoring;

@@ -17,12 +17,12 @@ The GLSP-Rust system includes 15 production-ready ADAS (Advanced Driver Assistan
 
    @startuml
    !theme plain
-   
+
    package "AI Components" {
        [Object Detection] as obj_det
        [Behavior Prediction] as behavior_pred
    }
-   
+
    package "Sensor Components" {
        [Camera Front] as cam_front
        [Camera Surround] as cam_surround
@@ -31,35 +31,35 @@ The GLSP-Rust system includes 15 production-ready ADAS (Advanced Driver Assistan
        [Radar Corner] as radar_corner
        [Ultrasonic] as ultrasonic
    }
-   
+
    package "Fusion Components" {
        [Sensor Fusion] as sensor_fusion
        [Perception Fusion] as perception_fusion
        [Tracking Prediction] as tracking_pred
    }
-   
+
    package "Control Components" {
        [Vehicle Control] as vehicle_control
        [Planning Decision] as planning_decision
    }
-   
+
    package "System Components" {
        [Safety Monitor] as safety_monitor
        [Domain Controller] as domain_controller
        [CAN Gateway] as can_gateway
        [HMI Interface] as hmi_interface
    }
-   
+
    package "Graphics Components" {
        [ADAS Visualizer] as adas_visualizer
    }
-   
+
    package "Integration Components" {
        [Video Decoder] as video_decoder
        [Video AI Pipeline] as video_ai_pipeline
        [FEO Demo] as feo_demo
    }
-   
+
    ' Data flow connections
    cam_front --> obj_det
    cam_surround --> obj_det
@@ -67,26 +67,26 @@ The GLSP-Rust system includes 15 production-ready ADAS (Advanced Driver Assistan
    radar_front --> obj_det
    radar_corner --> obj_det
    ultrasonic --> obj_det
-   
+
    obj_det --> behavior_pred
    obj_det --> sensor_fusion
    behavior_pred --> perception_fusion
    sensor_fusion --> perception_fusion
    perception_fusion --> tracking_pred
-   
+
    tracking_pred --> planning_decision
    planning_decision --> vehicle_control
    vehicle_control --> can_gateway
-   
+
    safety_monitor --> domain_controller
    domain_controller --> can_gateway
    can_gateway --> hmi_interface
    hmi_interface --> adas_visualizer
-   
+
    video_decoder --> video_ai_pipeline
    video_ai_pipeline --> obj_det
    feo_demo --> adas_visualizer
-   
+
    @enduml
 
 Component Categories
@@ -256,7 +256,7 @@ The WASM components use WIT (WebAssembly Interface Types) for interface definiti
            data: list<u8>,
            timestamp: u64
        }
-       
+
        get-frame: func() -> result<frame, sensor-error>
        set-parameters: func(params: camera-parameters) -> result<_, sensor-error>
    }
@@ -269,12 +269,12 @@ The WASM components use WIT (WebAssembly Interface Types) for interface definiti
            z: f32,
            intensity: u8
        }
-       
+
        type point-cloud = {
            points: list<point>,
            timestamp: u64
        }
-       
+
        get-point-cloud: func() -> result<point-cloud, sensor-error>
    }
 
@@ -290,13 +290,13 @@ The WASM components use WIT (WebAssembly Interface Types) for interface definiti
            width: f32,
            height: f32
        }
-       
+
        type detection = {
            class-id: u32,
            confidence: f32,
            bbox: bounding-box
        }
-       
+
        detect-objects: func(frame: camera-frame) -> result<list<detection>, ai-error>
    }
 
@@ -312,7 +312,7 @@ The WASM components use WIT (WebAssembly Interface Types) for interface definiti
            brake: f32,
            timestamp: u64
        }
-       
+
        execute-control: func(command: control-command) -> result<_, control-error>
        get-status: func() -> result<vehicle-status, control-error>
    }
@@ -327,14 +327,14 @@ Components are composed using WAC (WebAssembly Composition) format:
    # adas-complete-system.wac
    [component]
    name = "adas-complete-system"
-   
+
    [component.dependencies]
    camera-front = { path = "components/sensors/camera-front" }
    object-detection = { path = "components/ai/object-detection" }
    sensor-fusion = { path = "components/fusion/sensor-fusion" }
    vehicle-control = { path = "components/control/vehicle-control" }
    safety-monitor = { path = "components/system/safety-monitor" }
-   
+
    [component.connections]
    camera-front.frame-output -> object-detection.frame-input
    object-detection.detections-output -> sensor-fusion.detections-input
@@ -351,7 +351,7 @@ The WASM components use Bazel for build management:
    # BUILD.bazel for object detection component
    load("@rules_rust//rust:defs.bzl", "rust_binary")
    load("@rules_wasm_component//wasm_component:defs.bzl", "wasm_component")
-   
+
    rust_binary(
        name = "object_detection_core",
        srcs = ["src/lib.rs"],
@@ -362,7 +362,7 @@ The WASM components use Bazel for build management:
            "@crate_index//:candle-transformers",
        ],
    )
-   
+
    wasm_component(
        name = "object_detection",
        binary = ":object_detection_core",
@@ -396,7 +396,7 @@ Security and Safety
      - Enable stack canaries
      - Use position-independent code
      - Implement control flow integrity
-   
+
    sandboxing:
      memory_isolation: ENABLED
      system_call_filtering: ENABLED

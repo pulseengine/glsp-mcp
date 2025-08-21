@@ -14,7 +14,7 @@ adas_camera_component(
 
 # For compatibility with existing system, create aliases
 alias(
-    name = "adas_camera_front_ecu", 
+    name = "adas_camera_front_ecu",
     actual = ":camera_front_ecu_release",
     visibility = ["//visibility:public"],
 )

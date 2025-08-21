@@ -320,12 +320,12 @@ html_show_sphinx = False
 
 # Configure pydata_sphinx_theme options
 html_theme_options = {
-    # Put logo on far left, search and utilities on the right  
+    # Put logo on far left, search and utilities on the right
     "navbar_start": ["navbar-logo"],
     # Keep center empty to move main nav to sidebar
     "navbar_center": [],
     # Group utilities on the right
-    "navbar_end": ["search-button", "theme-switcher"], 
+    "navbar_end": ["search-button", "theme-switcher"],
     # Control navigation bar behavior
     "navbar_align": "left", # Align content to left
     # Control the sidebar navigation
@@ -464,13 +464,13 @@ copybutton_remove_prompts = True
 # Custom setup function
 def setup(app):
     """Custom setup function for ADAS workspace documentation."""
-    
+
     # Add custom CSS for ADAS-specific styling
     app.add_css_file('custom.css')
-    
+
     # Add custom JavaScript for ADAS diagrams
     app.add_js_file('diagram-zoom.js')
-    
+
     # Configure additional metadata for ADAS builds
     app.add_config_value('build_metadata', {}, 'env')
     app.config.build_metadata = {
@@ -479,7 +479,7 @@ def setup(app):
         'environment': os.environ.get('BUILD_ENV', 'development'),
         'workspace': 'adas-wasm-components'
     }
-    
+
     return {
         'version': '0.1',
         'parallel_read_safe': True,
