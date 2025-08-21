@@ -3,11 +3,7 @@ import {
   WebWorkspaceManager,
   WebWorkspaceInfo,
 } from "../workspace/WebWorkspaceManager.js";
-import {
-  workspaceOperationManager,
-  WorkspaceOperationResult,
-  OperationProgress,
-} from "../workspace/WorkspaceOperationManager.js";
+import { WorkspaceOperationResult as ImportedWorkspaceOperationResult } from "../workspace/WorkspaceOperationManager.js"; // Ready for workspace operation management
 import { NotificationCenter } from "./NotificationCenter.js";
 // Import CSS styles
 import "./WorkspaceSelector.css";
@@ -20,10 +16,7 @@ interface WorkspaceInfo {
   wasm_components_count: number;
 }
 
-interface WorkspaceCreateDialogOptions {
-  name: string;
-  description?: string;
-}
+// Interface removed - was unused
 
 interface WorkspaceOperationResult {
   success: boolean;
@@ -40,24 +33,14 @@ interface WorkspaceOperation {
   retryable: boolean;
 }
 
-declare global {
-  interface Window {
-    __TAURI__: {
-      invoke: (command: string, args?: any) => Promise<any>;
-    };
-  }
-}
-
 export class WorkspaceSelector {
   private container: HTMLElement;
   private isOpen = false;
   private currentWorkspace: string | null = null;
   private onWorkspaceSelected: (workspace: string) => void;
   private notificationCenter: NotificationCenter;
-  private currentOperationId: string | null = null;
-  private progressElement: HTMLElement | null = null;
   private operationInProgress = false;
-  private lastOperationResult: WorkspaceOperationResult | null = null;
+  private lastOperationResult: ImportedWorkspaceOperationResult | null = null;
   private operationHistory: WorkspaceOperation[] = [];
   private currentOperation: WorkspaceOperation | null = null;
 
@@ -245,6 +228,26 @@ export class WorkspaceSelector {
         this.closeDropdown();
       }
     });
+
+    // Handle dropdown visibility and keyboard navigation
+    if (workspaceDropdown) {
+      workspaceDropdown.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          this.closeDropdown();
+          workspaceButton?.focus();
+        }
+      });
+
+      // Improve accessibility by managing focus
+      workspaceDropdown.addEventListener("focusout", (_event) => {
+        // Close dropdown if focus moves outside the container
+        setTimeout(() => {
+          if (!this.container.contains(document.activeElement)) {
+            this.closeDropdown();
+          }
+        }, 100);
+      });
+    }
   }
 
   private toggleDropdown(): void {
@@ -285,7 +288,7 @@ export class WorkspaceSelector {
     return this.handleWorkspaceOperation(async () => {
       const env = detectEnvironment();
       if (env.isTauri) {
-        const result = await window.__TAURI__.invoke(
+        const result = await window.__TAURI__!.invoke(
           "select_workspace_directory",
         );
         if (result) {
@@ -307,22 +310,19 @@ export class WorkspaceSelector {
       const env = detectEnvironment();
       if (env.isTauri) {
         // Set workspace directory using MCP (no server restart needed)
-        const result = await window.__TAURI__.invoke(
-          "set_workspace_directory",
-          {
-            workspacePath: workspaceIdentifier,
-            createIfMissing: true,
-          },
-        );
+        await window.__TAURI__!.invoke("set_workspace_directory", {
+          workspacePath: workspaceIdentifier,
+          createIfMissing: true,
+        });
 
         // Add to recent workspaces
-        await window.__TAURI__.invoke("add_recent_workspace", {
+        await window.__TAURI__!.invoke("add_recent_workspace", {
           workspacePath: workspaceIdentifier,
         });
 
         // Rescan workspace to discover existing files
         try {
-          await window.__TAURI__.invoke("rescan_workspace");
+          await window.__TAURI__!.invoke("rescan_workspace");
           console.log("Workspace rescan completed successfully");
         } catch (rescanError) {
           console.warn("Workspace rescan failed:", rescanError);
@@ -365,7 +365,8 @@ export class WorkspaceSelector {
     } catch (error) {
       console.error("Error selecting workspace:", error);
       this.showError(
-        "Failed to select workspace: " + (error as any).message || error,
+        "Failed to select workspace: " +
+          ((error as any)?.message || String(error)),
       );
     }
   }
@@ -374,7 +375,7 @@ export class WorkspaceSelector {
     try {
       const env = detectEnvironment();
       if (env.isTauri) {
-        const workspaces: WorkspaceInfo[] = await window.__TAURI__.invoke(
+        const workspaces: WorkspaceInfo[] = await window.__TAURI__!.invoke(
           "get_recent_workspaces",
         );
         this.displayRecentWorkspaces(workspaces);
@@ -771,7 +772,7 @@ export class WorkspaceSelector {
       if (env.isTauri) {
         // Get current workspace info from MCP server
         const workspaceInfo =
-          await window.__TAURI__.invoke("get_workspace_info");
+          await window.__TAURI__!.invoke("get_workspace_info");
         this.currentWorkspace = workspaceInfo.path;
         this.updateWorkspaceDisplay();
         this.updateWindowTitle();
@@ -788,7 +789,7 @@ export class WorkspaceSelector {
       if (env.isTauri) {
         // Fallback to app data directory if MCP call fails
         try {
-          const appDataDir = await window.__TAURI__.invoke("get_app_data_dir");
+          const appDataDir = await window.__TAURI__!.invoke("get_app_data_dir");
           this.currentWorkspace = appDataDir;
           this.updateWorkspaceDisplay();
           this.updateWindowTitle();
@@ -943,7 +944,7 @@ export class WorkspaceSelector {
         message: "Operation completed successfully",
       };
 
-      this.lastOperationResult = operationResult;
+      this.lastOperationResult = operationResult; // Store operation result for tracking
       this.currentOperation.result = operationResult;
       this.operationHistory.push(this.currentOperation);
 
@@ -959,7 +960,7 @@ export class WorkspaceSelector {
         error: error as Error,
       };
 
-      this.lastOperationResult = operationResult;
+      this.lastOperationResult = operationResult; // Store operation result for tracking
       this.currentOperation.result = operationResult;
       this.operationHistory.push(this.currentOperation);
 
@@ -1022,18 +1023,31 @@ export class WorkspaceSelector {
 
   public clearOperationHistory(): void {
     this.operationHistory = [];
+    this.lastOperationResult = null;
+  }
+
+  public getLastOperationResult(): ImportedWorkspaceOperationResult | null {
+    return this.lastOperationResult;
+  }
+
+  public hasRecentErrors(): boolean {
+    return this.lastOperationResult ? !this.lastOperationResult.success : false;
+  }
+
+  public getLastOperationMessage(): string | null {
+    return this.lastOperationResult?.message || null;
   }
 
   private async createWorkspaceDialog(): Promise<void> {
     return this.handleWorkspaceOperation(async () => {
       const env = detectEnvironment();
       if (env.isTauri) {
-        const result = await window.__TAURI__.invoke(
+        const result = await window.__TAURI__!.invoke(
           "select_workspace_directory",
         );
         if (result) {
           // Create workspace structure
-          await window.__TAURI__.invoke("create_workspace_structure", {
+          await window.__TAURI__!.invoke("create_workspace_structure", {
             workspacePath: result,
           });
           await this.selectWorkspace(result);
@@ -1067,7 +1081,7 @@ export class WorkspaceSelector {
 
     const env = detectEnvironment();
     if (env.isTauri) {
-      const validationResult = await window.__TAURI__.invoke(
+      const validationResult = await window.__TAURI__!.invoke(
         "validate_workspace",
         {
           workspacePath: this.currentWorkspace,

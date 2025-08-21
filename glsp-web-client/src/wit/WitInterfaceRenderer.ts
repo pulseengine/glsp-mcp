@@ -4,7 +4,13 @@
  */
 
 import { CanvasRenderer } from "../renderer/canvas-renderer.js";
-import { DiagramModel, ModelElement, Node, Edge } from "../model/diagram.js";
+import {
+  DiagramModel,
+  ModelElement,
+  Node,
+  Edge,
+  Position,
+} from "../model/diagram.js";
 import {
   WIT_VISUAL_STYLES,
   WIT_ICONS,
@@ -19,6 +25,39 @@ import {
 } from "./wit-types.js";
 import { WitIconLegend } from "./components/WitIconLegend.js";
 import { WitElementIcon } from "./components/WitElementIcon.js";
+
+// Define proper interface for WIT element properties
+export interface WitElementProperties {
+  interfaceType?: string;
+  functions?: unknown[];
+  types?: unknown[];
+  resources?: unknown[];
+  methods?: unknown[];
+  worlds?: unknown[];
+  parameterCount?: number;
+  returnCount?: number;
+  fieldsCount?: number;
+  casesCount?: number;
+  methodsCount?: number;
+  importsCount?: number;
+  exportsCount?: number;
+  description?: string;
+  functionsCount?: number;
+  typesCount?: number;
+  witType?: string;
+  hovered?: boolean;
+  relatedHighlight?: boolean;
+  hoverEffects?: unknown;
+  originalStyles?: unknown;
+  highlighted?: boolean;
+}
+
+// Define interface for node metadata
+export interface WitNodeMetadata {
+  witType?: string;
+  highlighted?: boolean;
+  [key: string]: unknown;
+}
 
 export class WitInterfaceRenderer extends CanvasRenderer {
   private expandedNodes: Set<string> = new Set();
@@ -46,9 +85,6 @@ export class WitInterfaceRenderer extends CanvasRenderer {
   private _showLegend: boolean = true;
 
   // Hover state management
-  private hoveredElementId: string | null = null;
-  private elementTooltip: HTMLElement | null = null;
-  private tooltipTimeout: number | null = null;
   private relatedElements: Set<string> = new Set();
 
   /**
@@ -1428,7 +1464,7 @@ export class WitInterfaceRenderer extends CanvasRenderer {
 
     const witType = this.getWitNodeType(element);
     const icon = this.getNodeIcon(witType);
-    const properties = element.properties || {};
+    const properties: WitElementProperties = element.properties || {};
 
     let content = `<h4><span class="tooltip-icon">${icon}</span>${
       element.label || "Unnamed"
@@ -1535,53 +1571,6 @@ export class WitInterfaceRenderer extends CanvasRenderer {
   }
 
   /**
-   * Highlight related elements when hovering
-   */
-  private highlightRelatedElements(element: WitElement): void {
-    if (!this.witDiagramModel) return;
-
-    const relatedIds = new Set<string>();
-
-    // Find connections related to this element
-    Object.values(this.witDiagramModel.elements).forEach((el) => {
-      if (!this.isNode(el)) {
-        const edge = el as Edge;
-        if (edge.sourceId === element.id) {
-          relatedIds.add(edge.targetId!);
-        } else if (edge.targetId === element.id) {
-          relatedIds.add(edge.sourceId!);
-        }
-      }
-    });
-
-    // Apply highlight to related elements
-    relatedIds.forEach((id) => {
-      const relatedElement = this.witDiagramModel!.elements[id];
-      if (relatedElement && this.isNode(relatedElement)) {
-        const node = relatedElement as Node;
-        if (!node.properties) node.properties = {};
-        node.properties.relatedHighlight = true;
-      }
-    });
-  }
-
-  /**
-   * Clear related element highlights
-   */
-  private clearRelatedHighlights(): void {
-    if (!this.witDiagramModel) return;
-
-    Object.values(this.witDiagramModel.elements).forEach((element) => {
-      if (this.isNode(element)) {
-        const node = element as Node;
-        if (node.properties?.relatedHighlight) {
-          delete node.properties.relatedHighlight;
-        }
-      }
-    });
-  }
-
-  /**
    * Initialize and show the WIT icon legend
    */
   public initializeIconLegend(container?: HTMLElement): void {
@@ -1623,16 +1612,6 @@ export class WitInterfaceRenderer extends CanvasRenderer {
   }
 
   /**
-   * Handle mouse leave events to clear hover state
-   */
-  protected handleMouseLeave(event: MouseEvent): void {
-    this.clearHoverState();
-    if (super.handleMouseLeave) {
-      super.handleMouseLeave(event);
-    }
-  }
-
-  /**
    * Clear all hover state
    */
   private clearHoverState(): void {
@@ -1662,132 +1641,6 @@ export class WitInterfaceRenderer extends CanvasRenderer {
       this.canvas.setAttribute("tabindex", "0");
       this.canvas.setAttribute("role", "application");
       this.canvas.setAttribute("aria-label", "WIT Interface Diagram");
-    }
-  }
-
-  /**
-   * Handle keyboard navigation for accessibility
-   */
-  private handleKeyDown(event: KeyboardEvent): void {
-    if (!this.witDiagramModel) return;
-
-    const nodes = Object.values(this.witDiagramModel.elements).filter((el) =>
-      this.isNode(el),
-    ) as Node[];
-
-    if (nodes.length === 0) return;
-
-    let currentIndex = -1;
-    if (this.hoveredElementId) {
-      currentIndex = nodes.findIndex(
-        (node) => node.id === this.hoveredElementId,
-      );
-    }
-
-    let newIndex = currentIndex;
-
-    switch (event.key) {
-      case "ArrowRight":
-      case "ArrowDown":
-        newIndex = (currentIndex + 1) % nodes.length;
-        break;
-      case "ArrowLeft":
-      case "ArrowUp":
-        newIndex = currentIndex <= 0 ? nodes.length - 1 : currentIndex - 1;
-        break;
-      case "Home":
-        newIndex = 0;
-        break;
-      case "End":
-        newIndex = nodes.length - 1;
-        break;
-      case "Enter":
-      case " ":
-        if (this.hoveredElementId) {
-          // Trigger click on hovered element
-          const hoveredNode = nodes.find(
-            (node) => node.id === this.hoveredElementId,
-          );
-          if (hoveredNode) {
-            this.handleClick({
-              clientX: hoveredNode.bounds?.x || 0,
-              clientY: hoveredNode.bounds?.y || 0,
-              target: this.canvas,
-            } as MouseEvent);
-          }
-        }
-        event.preventDefault();
-        return;
-      case "Escape":
-        this.clearHoverState();
-        event.preventDefault();
-        return;
-      default:
-        return; // Don't prevent default for other keys
-    }
-
-    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < nodes.length) {
-      const newNode = nodes[newIndex];
-      this.hoveredElementId = newNode.id;
-      this.hoveredElement = this.convertNodeToWitElement(newNode);
-
-      // Show tooltip at element center
-      const bounds = this.getNodeBounds(newNode);
-      const centerX = bounds.x + bounds.width / 2;
-      const centerY = bounds.y + bounds.height / 2;
-      const screenPos = this.worldToScreen(centerX, centerY);
-
-      this.showElementTooltip(newNode, {
-        x: screenPos.x + (this.canvas?.getBoundingClientRect().left || 0),
-        y: screenPos.y + (this.canvas?.getBoundingClientRect().top || 0),
-      });
-
-      this.highlightRelatedElements(this.hoveredElement!);
-      this.render();
-
-      event.preventDefault();
-    }
-  }
-
-  /**
-   * Cleanup method for destroying tooltips and event listeners
-   */
-  public destroy(): void {
-    // Clear hover state
-    this.clearHoverState();
-
-    // Remove tooltip from DOM
-    if (this.elementTooltip) {
-      this.elementTooltip.remove();
-      this.elementTooltip = null;
-    }
-
-    // Clear timeouts
-    if (this.tooltipTimeout) {
-      clearTimeout(this.tooltipTimeout);
-      this.tooltipTimeout = null;
-    }
-
-    if (this.mouseMoveDebounceTimeout) {
-      clearTimeout(this.mouseMoveDebounceTimeout);
-      this.mouseMoveDebounceTimeout = null;
-    }
-
-    // Destroy icon legend
-    this.destroyIconLegend();
-
-    // Remove canvas event listeners
-    if (this.canvas) {
-      this.canvas.removeEventListener(
-        "mouseleave",
-        this.handleMouseLeave.bind(this),
-      );
-      this.canvas.removeEventListener("keydown", this.handleKeyDown.bind(this));
-    }
-
-    // Call parent destroy if it exists
-    if (super.destroy) {
-      super.destroy();
     }
   }
 
@@ -1904,55 +1757,6 @@ export class WitInterfaceRenderer extends CanvasRenderer {
   }
 
   /**
-   * Get the currently hovered element
-   */
-  public getHoveredElement(): WitElement | null {
-    return this.hoveredElement;
-  }
-
-  /**
-   * Get the currently hovered element ID
-   */
-  public getHoveredElementId(): string | null {
-    return this.hoveredElementId;
-  }
-
-  /**
-   * Check if an element is currently hovered
-   */
-  public isElementHovered(elementId: string): boolean {
-    return this.hoveredElementId === elementId;
-  }
-
-  /**
-   * Programmatically set hover state for an element
-   */
-  public setHoverState(elementId: string | null): void {
-    if (elementId === this.hoveredElementId) return;
-
-    if (elementId && this.witDiagramModel?.elements[elementId]) {
-      const element = this.witDiagramModel.elements[elementId];
-      if (this.isNode(element)) {
-        const node = element as Node;
-        this.hoveredElementId = elementId;
-        this.hoveredElement = this.convertNodeToWitElement(node);
-
-        // Show tooltip at element center if no last mouse position
-        const mousePos = this.lastMousePosition || {
-          x: (node.bounds?.x || 0) + (node.bounds?.width || 0) / 2,
-          y: (node.bounds?.y || 0) + (node.bounds?.height || 0) / 2,
-        };
-
-        this.showElementTooltip(node, mousePos);
-        this.highlightRelatedElements(this.hoveredElement);
-        this.render();
-      }
-    } else {
-      this.clearHoverState();
-    }
-  }
-
-  /**
    * Get the icon legend instance
    */
   public getIconLegend(): WitIconLegend | null {
@@ -1986,27 +1790,6 @@ export class WitInterfaceRenderer extends CanvasRenderer {
    */
   public static getAvailableElementTypes(): WitElementType[] {
     return WitElementIcon.getAvailableTypes() as WitElementType[];
-  }
-
-  /**
-   * Brighten a color by a given factor
-   */
-  private brightenColor(color: string, factor: number): string {
-    // Convert hex to RGB
-    const hex = color.replace("#", "");
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-
-    // Brighten
-    const newR = Math.min(255, Math.floor(r + (255 - r) * factor));
-    const newG = Math.min(255, Math.floor(g + (255 - g) * factor));
-    const newB = Math.min(255, Math.floor(b + (255 - b) * factor));
-
-    // Convert back to hex
-    return `#${newR.toString(16).padStart(2, "0")}${newG
-      .toString(16)
-      .padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
   }
 
   /**
@@ -2372,7 +2155,8 @@ export class WitInterfaceRenderer extends CanvasRenderer {
     this.relatedElements.forEach((elementId) => {
       const element = this.witDiagramModel?.elements[elementId] as Node;
       if (element?.metadata) {
-        delete element.metadata.relatedHighlight;
+        const metadata = element.metadata as WitNodeMetadata;
+        delete metadata.relatedHighlight;
       }
     });
     this.relatedElements.clear();
@@ -2469,39 +2253,39 @@ export class WitInterfaceRenderer extends CanvasRenderer {
    * Get type-specific information for tooltip
    */
   private getElementTypeInfo(element: Node): string {
-    const witType = element.metadata?.witType as WitElementType;
-    const metadata = element.metadata || {};
+    const metadata = (element.metadata as WitNodeMetadata) || {};
+    const witType = metadata.witType as WitElementType;
 
     switch (witType) {
-      case "interface":
-        const funcCount = metadata.functionsCount || 0;
-        const typeCount = metadata.typesCount || 0;
+      case WitElementType.Interface:
+        const funcCount = (metadata as any).functionsCount || 0;
+        const typeCount = (metadata as any).typesCount || 0;
         return `${funcCount} functions, ${typeCount} types`;
 
-      case "function":
-        const params = metadata.parameterCount || 0;
-        const returns = metadata.returnCount || 0;
+      case WitElementType.Function:
+        const params = (metadata as any).parameterCount || 0;
+        const returns = (metadata as any).returnCount || 0;
         return `${params} parameters, ${returns} return values`;
 
-      case "record":
-        const fields = metadata.fieldsCount || 0;
+      case WitElementType.Record:
+        const fields = (metadata as any).fieldsCount || 0;
         return `${fields} fields`;
 
-      case "variant":
-        const cases = metadata.casesCount || 0;
+      case WitElementType.Variant:
+        const cases = (metadata as any).casesCount || 0;
         return `${cases} variant cases`;
 
-      case "resource":
-        const methods = metadata.methodsCount || 0;
+      case WitElementType.Resource:
+        const methods = (metadata as any).methodsCount || 0;
         return `${methods} methods`;
 
-      case "world":
-        const imports = metadata.importsCount || 0;
-        const exports = metadata.exportsCount || 0;
+      case WitElementType.World:
+        const imports = (metadata as any).importsCount || 0;
+        const exports = (metadata as any).exportsCount || 0;
         return `${imports} imports, ${exports} exports`;
 
       default:
-        return metadata.description || "WIT element";
+        return (metadata as any).description || "WIT element";
     }
   }
 
@@ -2587,12 +2371,13 @@ export class WitInterfaceRenderer extends CanvasRenderer {
     ctx: CanvasRenderingContext2D,
     node: Node,
   ): void {
-    const isHovered = node.metadata?.hovered === true;
-    const hasRelatedHighlight = node.metadata?.relatedHighlight;
+    const metadata = node.metadata as WitNodeMetadata;
+    const isHovered = metadata?.hovered === true;
+    const hasRelatedHighlight = (metadata as any)?.relatedHighlight;
 
     // Apply hover effects
-    if (isHovered && node.metadata?.hoverEffects) {
-      const effects = node.metadata.hoverEffects;
+    if (isHovered && (metadata as any)?.hoverEffects) {
+      const effects = (metadata as any).hoverEffects;
 
       ctx.save();
 
@@ -2607,13 +2392,13 @@ export class WitInterfaceRenderer extends CanvasRenderer {
       // Draw hover background
       ctx.fillStyle =
         effects.backgroundColor ||
-        node.metadata?.originalStyles?.backgroundColor ||
+        (metadata as any)?.originalStyles?.backgroundColor ||
         "#1C2333";
       ctx.fillRect(
-        node.position.x,
-        node.position.y,
-        node.size.width,
-        node.size.height,
+        node.position?.x || 0,
+        node.position?.y || 0,
+        node.size?.width || 0,
+        node.size?.height || 0,
       );
 
       // Draw hover border
@@ -2621,10 +2406,10 @@ export class WitInterfaceRenderer extends CanvasRenderer {
         ctx.strokeStyle = effects.borderColor;
         ctx.lineWidth = effects.borderWidth;
         ctx.strokeRect(
-          node.position.x,
-          node.position.y,
-          node.size.width,
-          node.size.height,
+          node.position?.x || 0,
+          node.position?.y || 0,
+          node.size?.width || 0,
+          node.size?.height || 0,
         );
       }
 
@@ -2642,10 +2427,10 @@ export class WitInterfaceRenderer extends CanvasRenderer {
       ctx.strokeStyle = hasRelatedHighlight.borderColor || "#4A9EFF";
       ctx.lineWidth = hasRelatedHighlight.borderWidth || 2;
       ctx.strokeRect(
-        node.position.x,
-        node.position.y,
-        node.size.width,
-        node.size.height,
+        node.position?.x || 0,
+        node.position?.y || 0,
+        node.size?.width || 0,
+        node.size?.height || 0,
       );
 
       ctx.restore();
@@ -2706,16 +2491,19 @@ export class WitInterfaceRenderer extends CanvasRenderer {
     this.destroyIconLegend();
 
     // Remove event listeners if canvas exists
-    if (this.canvas) {
-      this.canvas.removeEventListener(
+    if (this.canvasElement) {
+      this.canvasElement.removeEventListener(
         "mousemove",
         this.handleMouseMoveInternal.bind(this),
       );
-      this.canvas.removeEventListener(
+      this.canvasElement.removeEventListener(
         "mouseleave",
         this.handleMouseLeave.bind(this),
       );
-      this.canvas.removeEventListener("keydown", this.handleKeyDown.bind(this));
+      this.canvasElement.removeEventListener(
+        "keydown",
+        this.handleKeyDown.bind(this),
+      );
     }
 
     // Call parent destroy

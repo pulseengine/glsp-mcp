@@ -24,8 +24,13 @@ import {
 } from "./sidebar/sections/PropertiesSection.js";
 import { ComponentLibrarySection } from "./sidebar/sections/ComponentLibrarySection.js";
 import { DiagramControlsSection } from "./sidebar/sections/DiagramControlsSection.js";
+import { GraphicsComponentPalette } from "./sidebar/sections/GraphicsComponentPalette.js";
 import { ThemeController } from "./ThemeController.js";
 import { WasmComponent } from "../types/wasm-component.js";
+import {
+  animationSystem,
+  initializeAnimatedComponents,
+} from "../animation/index.js";
 
 interface WitInterfaceInfo {
   imports?: Array<{
@@ -64,7 +69,7 @@ export class UIManager {
   private statusElement: HTMLElement;
   private diagramListElement: HTMLElement;
   private aiAssistantPanel: AIAssistantPanel;
-  private _wasmPaletteElement: HTMLElement;
+  private _wasmPaletteElement: HTMLElement; // Ready for WASM component palette integration
   private currentMode: string = "select";
   private currentNodeType: string = "";
   private currentEdgeType: string = "";
@@ -80,6 +85,7 @@ export class UIManager {
   private toolboxSection?: ToolboxSection;
   private propertiesSection?: PropertiesSection;
   private componentLibrarySection?: ComponentLibrarySection;
+  private graphicsComponentPalette?: GraphicsComponentPalette;
   private workspaceSelector?: WorkspaceSelector;
 
   constructor() {
@@ -94,7 +100,7 @@ export class UIManager {
         onMinimizeToHeader: () => this.minimizeAIPanelToHeader(),
       },
     );
-    this._wasmPaletteElement = document.createElement("div"); // Placeholder
+    this._wasmPaletteElement = document.createElement("div"); // Placeholder for WASM component palette
 
     // Setup unified status listening
     statusManager.addListener((status: CombinedStatus) => {
@@ -103,6 +109,9 @@ export class UIManager {
 
     // Setup keyboard shortcuts
     this.setupKeyboardShortcuts();
+
+    // Initialize animation system
+    this.initializeAnimationSystem();
 
     // Initialize theme controller
     this.themeController = new ThemeController();
@@ -198,6 +207,24 @@ export class UIManager {
     // Initialize WASM component library section
     this.componentLibrarySection = new ComponentLibrarySection();
 
+    // Initialize graphics component palette
+    this.graphicsComponentPalette = new GraphicsComponentPalette({
+      onGraphicsNodeCreate: (nodeType, position) => {
+        console.log("Graphics node creation requested:", nodeType, position);
+        // Dispatch custom event for graphics node creation
+        window.dispatchEvent(
+          new CustomEvent("graphics-node-create", {
+            detail: { nodeType, position },
+          }),
+        );
+      },
+      onCategoryFilter: (category) => {
+        console.log("Graphics category filter changed:", category);
+      },
+      showCategories: true,
+      showPreview: true,
+    });
+
     // Initialize workspace selector
     const env = detectEnvironment();
     if (env.isDesktop) {
@@ -226,6 +253,8 @@ export class UIManager {
     console.log("UIManager: Diagram controls section added");
     this.sidebar.addSection(this.toolboxSection.createSection());
     console.log("UIManager: Toolbox section added");
+    this.sidebar.addSection(this.graphicsComponentPalette.createSection());
+    console.log("UIManager: Graphics component palette added");
     this.sidebar.addSection(this.propertiesSection.createSection());
     console.log("UIManager: Properties section added");
     this.sidebar.addSection(this.componentLibrarySection.createSection());
@@ -691,7 +720,10 @@ export class UIManager {
   public showWitIconLegend(): void {
     const canvasRenderer = window.canvasRenderer;
 
-    if (canvasRenderer && typeof (canvasRenderer as any).showIconLegend === "function") {
+    if (
+      canvasRenderer &&
+      typeof (canvasRenderer as any).showIconLegend === "function"
+    ) {
       (canvasRenderer as any).showIconLegend();
       console.log("UIManager: Showed WIT icon legend");
     } else {
@@ -705,7 +737,10 @@ export class UIManager {
   public hideWitIconLegend(): void {
     const canvasRenderer = window.canvasRenderer;
 
-    if (canvasRenderer && typeof (canvasRenderer as any).hideIconLegend === "function") {
+    if (
+      canvasRenderer &&
+      typeof (canvasRenderer as any).hideIconLegend === "function"
+    ) {
       (canvasRenderer as any).hideIconLegend();
       console.log("UIManager: Hid WIT icon legend");
     } else {
@@ -751,7 +786,7 @@ export class UIManager {
   }
 
   /** @deprecated - Use AIAssistantPanel instead */
-  private createAIPanel(): HTMLElement {
+  private _createAIPanel(): HTMLElement {
     const panel = document.createElement("div");
     panel.className = "ai-assistant";
     panel.innerHTML = `
@@ -1204,7 +1239,7 @@ export class UIManager {
   }
 
   private updateHeaderStatusChip(
-    status: ConnectionStatus,
+    _status: ConnectionStatus, // Currently unused
     healthMetrics: import("../mcp/client.js").ConnectionHealthMetrics,
   ): void {
     const statusChip = document.querySelector(".status-chip");
@@ -1793,7 +1828,9 @@ export class UIManager {
       description: component.description || "WASM Component",
       icon: this.getWasmComponentIcon(component),
       version: (component as any).version || "1.0.0",
-      status: ((component as any).status as "error" | "loading" | "available") || "available",
+      status:
+        ((component as any).status as "error" | "loading" | "available") ||
+        "available",
       path: component.path, // Include the path
       interfaces: component.interfaces, // Include interfaces
       onSelect: () => {
@@ -2087,7 +2124,7 @@ export class UIManager {
         {
           onConfirm: (value) => {
             dialog.close();
-            resolve(typeof value === 'string' ? value : null);
+            resolve(typeof value === "string" ? value : null);
           },
           onCancel: () => {
             dialog.close();
@@ -2730,6 +2767,25 @@ export class UIManager {
     );
   }
 
+  /**
+   * Initialize the animation system for UI components
+   */
+  private initializeAnimationSystem(): void {
+    try {
+      // Initialize animated components (buttons, dialogs, etc.)
+      initializeAnimatedComponents();
+
+      console.log("✨ UIManager: Animation system initialized successfully");
+    } catch (error) {
+      console.error(
+        "⚠️ UIManager: Failed to initialize animation system:",
+        error,
+      );
+      // Animation system failure shouldn't break the UI
+      // Application continues to work without animations
+    }
+  }
+
   public destroy(): void {
     if (this.statusListener) {
       statusManager.removeListener(this.statusListener);
@@ -2737,6 +2793,15 @@ export class UIManager {
 
     // Clean up mobile menu overlay if it exists
     this.removeMobileMenuOverlay();
+
+    // Clean up animation system
+    try {
+      // Cancel any active animations to prevent memory leaks
+      animationSystem.cancelAll();
+      console.log("✨ UIManager: Animation system cleaned up");
+    } catch (error) {
+      console.warn("⚠️ UIManager: Animation cleanup had issues:", error);
+    }
 
     // Clean up debug interface
     if ((window as any).workspaceDebug) {

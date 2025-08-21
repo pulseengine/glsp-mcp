@@ -19,7 +19,7 @@ export interface AlertDialogConfig extends DialogConfig {
 
 export class AlertDialog extends BaseDialog {
   private static currentConfig: AlertDialogConfig;
-  private _alertConfig: AlertDialogConfig; // TODO: Use this config for customization
+  private _alertConfig: AlertDialogConfig; // TODO: Use this config for customization - ready for enhancement
   private isDetailsExpanded: boolean = false;
 
   constructor(config: AlertDialogConfig, events: DialogEvents = {}) {
@@ -67,7 +67,7 @@ export class AlertDialog extends BaseDialog {
     AlertDialog.currentConfig = defaultConfig;
 
     super(defaultConfig, events);
-    this._alertConfig = defaultConfig;
+    this._alertConfig = defaultConfig; // Store for future customization features
   }
 
   protected createDialogContent(): string {

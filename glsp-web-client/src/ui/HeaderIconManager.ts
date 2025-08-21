@@ -330,8 +330,8 @@ export class HeaderIconManager {
 
         // Update hover colors if color changed
         if (updates.color) {
-          const __originalMouseEnter = iconElement.onmouseenter; // TODO: Store original handlers
-          const __originalMouseLeave = iconElement.onmouseleave; // TODO: Store original handlers
+          const __originalMouseEnter = iconElement.onmouseenter; // TODO: Store original handlers - ready for enhanced hover
+          const __originalMouseLeave = iconElement.onmouseleave; // TODO: Store original handlers - ready for enhanced hover
 
           iconElement.onmouseenter = () => {
             iconElement.style.background =

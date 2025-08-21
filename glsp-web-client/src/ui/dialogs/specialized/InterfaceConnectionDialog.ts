@@ -27,16 +27,24 @@ export interface InterfaceConnectionDialogConfig {
 export class InterfaceConnectionDialog extends BaseDialog {
   private interfaceConfig: InterfaceConnectionDialogConfig;
   private selectedOption?: InterfaceConnectionOption;
-  private _onConnectionCreate?: (option: InterfaceConnectionOption) => void; // TODO: Implement connection creation
+  private _onConnectionCreate?: (option: InterfaceConnectionOption) => void;
 
   constructor(config: InterfaceConnectionDialogConfig) {
-    super({
-      title: `Connect "${config.sourceInterface.name}" Interface`,
-      width: 500,
-      height: 400,
-      closable: true,
-      modal: true,
-    });
+    super(
+      {
+        title: `Connect "${config.sourceInterface.name}" Interface`,
+        width: 500,
+        height: 400,
+        closable: true,
+        modal: true,
+        showFooter: true,
+        primaryButtonText: "Connect",
+        cancelButtonText: "Cancel",
+      },
+      {
+        onConfirm: () => this.createConnection(),
+      },
+    );
     this.interfaceConfig = config;
   }
 
@@ -203,8 +211,23 @@ export class InterfaceConnectionDialog extends BaseDialog {
           // Store selection
           this.selectedOption = this.interfaceConfig.availableInterfaces[index];
         });
+
+        // Double-click to connect immediately
+        option.addEventListener("dblclick", () => {
+          const selectedInterface =
+            this.interfaceConfig.availableInterfaces[index];
+          this.selectedOption = selectedInterface;
+          this.createConnection();
+        });
       });
     }, 100);
+  }
+
+  private createConnection(): void {
+    if (this.selectedOption && this._onConnectionCreate) {
+      this._onConnectionCreate(this.selectedOption);
+      this.close();
+    }
   }
 
   public show(): void {

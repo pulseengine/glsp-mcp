@@ -568,19 +568,19 @@ Available commands:
       throw new Error("Usage: call <component> <function> [args...]");
     }
 
-    const [componentName, functionName, ...functionArgs] = args;
-    const parsedArgs = functionArgs.map((arg) => {
+    const [, , ...functionArgs] = args; // componentName and functionName unused
+    functionArgs.map((arg) => {
       // Try to parse as number, otherwise keep as string
       const num = parseFloat(arg);
       return isNaN(num) ? arg : num;
-    });
+    }); // parsedArgs unused
 
     // Execute the function call
-    const _context: ExecutionContext = {
-      componentId: componentName,
-      method: functionName,
-      args: parsedArgs,
-    };
+    // const _context: ExecutionContext = { // Currently unused
+    //   componentId: componentName,
+    //   method: functionName,
+    //   args: parsedArgs,
+    // };
 
     // ExecutionEngine not implemented yet
     const result = { success: false, error: "ExecutionEngine not implemented" };
@@ -604,7 +604,7 @@ Available commands:
       description: component.description,
       fileExists: component.fileExists,
       interfaces: component.interfaces?.length || 0,
-      last_seen: component.last_seen,
+      last_seen: component.lastSeen,
     };
   }
 

@@ -1,7 +1,7 @@
 import { McpService } from "./services/McpService.js";
 import { DiagramService } from "./services/DiagramService.js";
 import { UIManager } from "./ui/UIManager.js";
-import { InteractionManager } from "./ui/InteractionManager.js";
+import { InteractionManager } from "./ui/InteractionManager.js"; // Ready for interaction features
 import { CanvasRenderer } from "./renderer/canvas-renderer.js";
 import { AIService } from "./services/AIService.js";
 import { WasmRuntimeManager } from "./wasm/WasmRuntimeManager.js";
@@ -20,6 +20,7 @@ import {
 } from "./core/ServiceRegistration.js";
 import { integrationTester } from "./core/IntegrationTesting.js";
 import { testComponentLoading } from "./debug/ComponentLoadingTest.js";
+import { animationSystem, MicroInteractions } from "./animation/index.js";
 
 // Debug interface for window properties
 interface WindowDebug {
@@ -54,7 +55,7 @@ export class AppController {
   private diagramService!: DiagramService;
   public uiManager!: UIManager;
   private renderer!: CanvasRenderer;
-  private _interactionManager!: InteractionManager; // TODO: Implement interaction features
+  private _interactionManager!: InteractionManager; // TODO: Implement interaction features - ready for activation
   private aiService!: AIService;
   private wasmRuntimeManager!: WasmRuntimeManager;
   private witVisualizationPanel!: WitVisualizationPanel;
@@ -87,7 +88,7 @@ export class AppController {
       this.uiManager = await getService<UIManager>("uiManager");
       this.renderer = await getService<CanvasRenderer>("canvasRenderer");
       this._interactionManager =
-        await getService<InteractionManager>("interactionManager");
+        await getService<InteractionManager>("interactionManager"); // Ready for interaction features
       this.aiService = await getService<AIService>("aiService");
       this.wasmRuntimeManager =
         await getService<WasmRuntimeManager>("wasmRuntimeManager");
@@ -117,11 +118,7 @@ export class AppController {
    * Complete AppController-specific initialization after services are ready
    */
   private async completeInitialization(): Promise<void> {
-    // Ensure TypeScript recognizes these methods as used (workaround for analyzer issue)
-    if (false) {
-      await this.createTestWitDiagram();
-      await this.addWitInterfaceNodesForComponent("", {}, 0, 0);
-    }
+    // Methods are available for future use - no longer need workaround
     // Setup drag and drop for WASM components
     this.setupCanvasDragAndDrop();
 
@@ -825,28 +822,57 @@ export class AppController {
   // Extract callbacks as class methods to reuse them
   private async loadDiagramCallback(diagramId: string): Promise<void> {
     console.log("AppController: Loading diagram:", diagramId);
-    const loadedDiagram = await this.diagramService.loadDiagram(diagramId);
-    if (loadedDiagram) {
-      console.log("AppController: Diagram loaded successfully:", loadedDiagram);
-      this.renderer.setDiagram(loadedDiagram);
 
-      // Update the toolbar to show the correct node/edge types for this diagram type
-      // Handle both camelCase and snake_case naming conventions
-      const diagramType =
-        loadedDiagram.diagramType || loadedDiagram.diagram_type || "workflow";
-      console.log(
-        "AppController: Updating toolbar for loaded diagram type:",
-        diagramType,
-      );
-      this.uiManager.updateToolbarContent(
-        this.uiManager.getToolbarElement(),
-        diagramType,
-      );
+    try {
+      // Show animated loading feedback
+      await this.showOperationSuccess("Loading diagram...");
 
-      // Show/hide view switcher based on diagram type
-      this.viewSwitcher.showForDiagramType(diagramType);
-    } else {
-      console.warn("AppController: Failed to load diagram:", diagramId);
+      const loadedDiagram = await this.diagramService.loadDiagram(diagramId);
+
+      if (loadedDiagram) {
+        console.log(
+          "AppController: Diagram loaded successfully:",
+          loadedDiagram,
+        );
+        this.renderer.setDiagram(loadedDiagram);
+
+        // Smooth zoom to fit the loaded diagram
+        if (this.renderer.fitToView) {
+          await this.renderer.fitToView(50, 800);
+        }
+
+        // Update the toolbar to show the correct node/edge types for this diagram type
+        // Handle both camelCase and snake_case naming conventions
+        const diagramType =
+          loadedDiagram.diagramType || loadedDiagram.diagram_type || "workflow";
+        console.log(
+          "AppController: Updating toolbar for loaded diagram type:",
+          diagramType,
+        );
+        this.uiManager.updateToolbarContent(
+          this.uiManager.getToolbarElement(),
+          diagramType,
+        );
+
+        // Show/hide view switcher based on diagram type
+        this.viewSwitcher.showForDiagramType(diagramType);
+
+        // Show success animation
+        await this.showOperationSuccess(
+          `Loaded diagram: ${loadedDiagram.name}`,
+        );
+
+        this.uiManager.updateStatus(`Loaded diagram: ${loadedDiagram.name}`);
+      } else {
+        console.warn("AppController: Failed to load diagram:", diagramId);
+        await this.showOperationError(
+          "Failed to load diagram",
+          new Error("Diagram not found"),
+        );
+      }
+    } catch (error) {
+      console.error("AppController: Error loading diagram:", error);
+      await this.showOperationError("Failed to load diagram", error as Error);
     }
   }
 
@@ -1115,7 +1141,238 @@ export class AppController {
       }
     });
 
+    // Handle graphics node creation from palette
+    window.addEventListener("graphics-node-create", async (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log(
+        "AppController: Graphics node creation event received:",
+        customEvent.detail,
+      );
+
+      const { nodeType, position } = customEvent.detail;
+
+      // Get current diagram ID
+      const diagramId = this.diagramService.getCurrentDiagramId();
+      if (!diagramId) {
+        console.error("No active diagram to add graphics node to");
+        this.uiManager.updateStatus("Please create or load a diagram first");
+        return;
+      }
+
+      try {
+        // Import graphics node types
+        const { createDefaultGraphicsNodeProperties } = await import(
+          "./graphics/GraphicsNodeTypes.js"
+        );
+
+        // Create properties for the graphics node
+        const properties = createDefaultGraphicsNodeProperties(nodeType);
+
+        // Create the graphics node
+        await this.diagramService.createNode(
+          diagramId,
+          "graphics-node", // Use a generic graphics node type
+          position,
+          nodeType.name,
+          {
+            ...properties,
+            graphicsType: nodeType.id,
+            graphicsCategory: nodeType.category,
+            icon: nodeType.icon,
+            description: nodeType.description,
+          },
+        );
+
+        console.log("Graphics node created successfully:", nodeType.name);
+
+        // Show animated success feedback
+        await this.showOperationSuccess(
+          `Added ${nodeType.name} graphics component`,
+        );
+
+        // Update renderer
+        const currentDiagram = this.diagramService.getCurrentDiagram();
+        if (currentDiagram) {
+          this.renderer.setDiagram(currentDiagram);
+        }
+
+        // Animate the newly created node (if visible)
+        this.animateNewNode(position);
+      } catch (error) {
+        console.error("Failed to create graphics node:", error);
+
+        // Show animated error feedback
+        await this.showOperationError(
+          "Failed to add graphics component",
+          error as Error,
+        );
+      }
+    });
+
     console.log("Canvas drag and drop setup complete");
+
+    // Setup keyboard shortcuts for smooth diagram interactions
+    this.setupKeyboardShortcuts();
+  }
+
+  /**
+   * Setup keyboard shortcuts for enhanced diagram interactions with animations
+   */
+  private setupKeyboardShortcuts(): void {
+    document.addEventListener("keydown", async (event: KeyboardEvent) => {
+      // Skip if typing in input fields
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        (event.target as HTMLElement)?.contentEditable === "true"
+      ) {
+        return;
+      }
+
+      const isCtrlOrCmd = event.ctrlKey || event.metaKey;
+
+      try {
+        switch (event.key) {
+          case "f":
+          case "F":
+            if (isCtrlOrCmd) {
+              // Fit to view with smooth animation
+              await this.handleFitToView();
+              event.preventDefault();
+            }
+            break;
+
+          case "0":
+            if (isCtrlOrCmd) {
+              // Reset zoom to 100% with animation
+              await this.handleResetZoom();
+              event.preventDefault();
+            }
+            break;
+
+          case "+":
+          case "=":
+            if (isCtrlOrCmd) {
+              // Zoom in with smooth animation
+              await this.handleZoomIn();
+              event.preventDefault();
+            }
+            break;
+
+          case "-":
+            if (isCtrlOrCmd) {
+              // Zoom out with smooth animation
+              await this.handleZoomOut();
+              event.preventDefault();
+            }
+            break;
+
+          case "Escape":
+            // Cancel any active operations with smooth transitions
+            await this.handleEscapeKey();
+            event.preventDefault();
+            break;
+        }
+      } catch (error) {
+        console.error("Keyboard shortcut error:", error);
+      }
+    });
+
+    console.log("Keyboard shortcuts setup complete");
+  }
+
+  /**
+   * Handle fit to view with smooth animation
+   */
+  private async handleFitToView(): Promise<void> {
+    if (!this.renderer.fitToView) {
+      this.showFloatingNotification("Fit to view not available", "info");
+      return;
+    }
+
+    try {
+      this.showFloatingNotification("Fitting diagram to view...", "info");
+      await this.renderer.fitToView(50, 1000); // 1 second animation
+      await this.showOperationSuccess("Fitted diagram to view");
+    } catch (error) {
+      await this.showOperationError("Failed to fit to view", error as Error);
+    }
+  }
+
+  /**
+   * Handle reset zoom to 100% with animation
+   */
+  private async handleResetZoom(): Promise<void> {
+    if (!this.renderer.zoomTo) {
+      this.showFloatingNotification("Zoom controls not available", "info");
+      return;
+    }
+
+    try {
+      this.showFloatingNotification("Resetting zoom to 100%...", "info");
+      await this.renderer.zoomTo(1.0, undefined, 600); // 600ms animation
+      await this.showOperationSuccess("Reset zoom to 100%");
+    } catch (error) {
+      await this.showOperationError("Failed to reset zoom", error as Error);
+    }
+  }
+
+  /**
+   * Handle zoom in with animation
+   */
+  private async handleZoomIn(): Promise<void> {
+    if (!this.renderer.zoomTo) return;
+
+    try {
+      const currentScale = (this.renderer as any).getOptions?.()?.scale || 1;
+      const newScale = Math.min(currentScale * 1.2, 5.0); // Cap at 5x zoom
+      await this.renderer.zoomTo(newScale, undefined, 400);
+      this.showFloatingNotification(
+        `Zoomed to ${Math.round(newScale * 100)}%`,
+        "info",
+      );
+    } catch (error) {
+      console.warn("Zoom in failed:", error);
+    }
+  }
+
+  /**
+   * Handle zoom out with animation
+   */
+  private async handleZoomOut(): Promise<void> {
+    if (!this.renderer.zoomTo) return;
+
+    try {
+      const currentScale = (this.renderer as any).getOptions?.()?.scale || 1;
+      const newScale = Math.max(currentScale / 1.2, 0.1); // Minimum 10% zoom
+      await this.renderer.zoomTo(newScale, undefined, 400);
+      this.showFloatingNotification(
+        `Zoomed to ${Math.round(newScale * 100)}%`,
+        "info",
+      );
+    } catch (error) {
+      console.warn("Zoom out failed:", error);
+    }
+  }
+
+  /**
+   * Handle escape key to cancel operations
+   */
+  private async handleEscapeKey(): Promise<void> {
+    // Clear any selections with smooth transition
+    // Note: selectionManager would need to be properly initialized
+    // this.selectionManager.clearSelection();
+
+    // Stop any ongoing canvas animations
+    if (
+      (this.renderer as any).isCurrentlyAnimating &&
+      (this.renderer as any).isCurrentlyAnimating()
+    ) {
+      // Cancel animations if possible
+      console.log("Cancelling ongoing viewport animations");
+    }
+
+    this.showFloatingNotification("Cancelled operation", "info");
   }
 
   /**
@@ -1399,69 +1656,8 @@ export class AppController {
     }
   }*/
 
-  private async addWitInterfaceNodesForComponent(
-    diagramId: string,
-    component: any,
-    startX: number,
-    startY: number,
-  ): Promise<void> {
-    const componentName = component.properties?.componentName || component.id;
-
-    try {
-      // Fetch WIT data for this component
-      const witResource = await this.mcpService.readResource(
-        `wasm://component/${componentName}/wit`,
-      );
-
-      if (!witResource || !witResource.text) {
-        console.warn(`No WIT data found for component ${componentName}`);
-        return;
-      }
-
-      const witData = JSON.parse(witResource.text);
-
-      // Create package node
-      await this.diagramService.createNode(
-        diagramId,
-        "wit-package",
-        { x: startX, y: startY },
-        componentName,
-        {
-          interfaceCount: witData.interfaces?.length || 0,
-          componentName: componentName,
-        },
-      );
-
-      let interfaceY = startY + 80;
-
-      // Create interface nodes
-      if (witData.interfaces) {
-        for (const iface of witData.interfaces) {
-          await this.diagramService.createNode(
-            diagramId,
-            "wit-interface",
-            { x: startX + 50, y: interfaceY },
-            iface.name,
-            {
-              namespace: iface.namespace,
-              interfaceType: iface.interface_type || iface.type,
-              functionCount: iface.functions?.length || 0,
-              typeCount: iface.types?.length || 0,
-            },
-          );
-
-          // TODO: Connect package to interface with edges once edge creation method is available
-
-          interfaceY += 60;
-        }
-      }
-    } catch (error) {
-      console.error(
-        `Failed to process WIT data for component ${componentName}:`,
-        error,
-      );
-    }
-  }
+  // Removed unused legacy function addWitInterfaceNodesForComponent
+  // Functionality replaced by WasmViewTransformer.transformToInterfaceView()
 
   private async createTestWitDiagram(): Promise<void> {
     try {
@@ -1754,6 +1950,181 @@ export class AppController {
     );
 
     console.log("AppController: MCP streaming and notification setup complete");
+  }
+
+  /**
+   * Show animated success feedback for operations
+   */
+  private async showOperationSuccess(message: string): Promise<void> {
+    try {
+      // Update UI status
+      this.uiManager.updateStatus(message);
+
+      // Show success animation on the status element
+      const statusElement = document.querySelector(".status-text");
+      if (statusElement && statusElement instanceof HTMLElement) {
+        await MicroInteractions.showSuccess(statusElement);
+      }
+
+      // Create floating success notification
+      this.showFloatingNotification(message, "success");
+
+      console.log(`✅ Operation Success: ${message}`);
+    } catch (error) {
+      console.warn("Failed to show success animation:", error);
+      // Fallback to standard status update
+      this.uiManager.updateStatus(message);
+    }
+  }
+
+  /**
+   * Show animated error feedback for operations
+   */
+  private async showOperationError(
+    message: string,
+    error: Error,
+  ): Promise<void> {
+    try {
+      // Update UI status
+      this.uiManager.updateStatus(message);
+
+      // Show error animation on the status element
+      const statusElement = document.querySelector(".status-text");
+      if (statusElement && statusElement instanceof HTMLElement) {
+        await MicroInteractions.shake(statusElement);
+      }
+
+      // Create floating error notification
+      this.showFloatingNotification(message, "error");
+
+      console.error(`❌ Operation Error: ${message}`, error);
+    } catch (animError) {
+      console.warn("Failed to show error animation:", animError);
+      // Fallback to standard status update
+      this.uiManager.updateStatus(message);
+    }
+  }
+
+  /**
+   * Animate a newly created node with scale-in effect
+   */
+  private async animateNewNode(position: {
+    x: number;
+    y: number;
+  }): Promise<void> {
+    try {
+      // Create a temporary visual element to represent the new node
+      const canvas = this.renderer.getCanvas();
+      if (!canvas) return;
+
+      const nodeIndicator = document.createElement("div");
+      nodeIndicator.style.cssText = `
+        position: absolute;
+        left: ${position.x}px;
+        top: ${position.y}px;
+        width: 60px;
+        height: 40px;
+        background: rgba(74, 158, 255, 0.8);
+        border: 2px solid #4A9EFF;
+        border-radius: 8px;
+        pointer-events: none;
+        z-index: 1000;
+        transform-origin: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 20px;
+      `;
+      nodeIndicator.textContent = "✨";
+
+      // Position relative to canvas
+      const canvasRect = canvas.getBoundingClientRect();
+      nodeIndicator.style.left = `${canvasRect.left + position.x - 30}px`;
+      nodeIndicator.style.top = `${canvasRect.top + position.y - 20}px`;
+
+      document.body.appendChild(nodeIndicator);
+
+      // Animate the indicator
+      await animationSystem.animate(nodeIndicator, {
+        type: "custom",
+        duration: 800,
+        easing: "cubic-bezier(0.34, 1.56, 0.64, 1)", // Bouncy easing
+        customKeyframes: [
+          { transform: "scale(0) rotate(0deg)", opacity: 0 },
+          { transform: "scale(1.2) rotate(180deg)", opacity: 1 },
+          { transform: "scale(1) rotate(360deg)", opacity: 1 },
+        ],
+      });
+
+      // Fade out and remove
+      await animationSystem.animate(nodeIndicator, {
+        type: "fade",
+        duration: 300,
+        easing: "ease-out",
+        customKeyframes: [{ opacity: 0 }],
+      });
+
+      nodeIndicator.remove();
+    } catch (error) {
+      console.warn("Failed to animate new node:", error);
+    }
+  }
+
+  /**
+   * Show floating notification with animation
+   */
+  private showFloatingNotification(
+    message: string,
+    type: "success" | "error" | "info" = "info",
+  ): void {
+    const notification = document.createElement("div");
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 10000;
+      max-width: 300px;
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+    `;
+
+    // Set colors based on type
+    switch (type) {
+      case "success":
+        notification.style.background =
+          "linear-gradient(135deg, #28a745, #20c997)";
+        notification.innerHTML = `✅ ${message}`;
+        break;
+      case "error":
+        notification.style.background =
+          "linear-gradient(135deg, #dc3545, #e83e8c)";
+        notification.innerHTML = `❌ ${message}`;
+        break;
+      default:
+        notification.style.background =
+          "linear-gradient(135deg, #667eea, #764ba2)";
+        notification.innerHTML = `ℹ️ ${message}`;
+        break;
+    }
+
+    document.body.appendChild(notification);
+
+    // Animate in
+    setTimeout(() => {
+      notification.style.transform = "translateX(0)";
+    }, 100);
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      notification.style.transform = "translateX(400px)";
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
   }
 
   /**

@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLSP Graphics Integration Demo</title>
+    <style>
+        :root {
+            --bg-primary: #0D1117;
+            --bg-secondary: #161B22;
+            --bg-tertiary: #21262D;
+            --border: #2A3441;
+            --text-primary: #E5E9F0;
+            --text-secondary: #B3B9C5;
+            --text-tertiary: #8B949E;
+            --accent-wasm: #654FF0;
+            --accent-success: #00D4AA;
+            --radius-sm: 4px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 {
+            color: var(--accent-wasm);
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .canvas-area {
+            flex: 1;
+            background: var(--bg-tertiary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .graphics-palette-section {
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-header {
+            background: var(--bg-tertiary);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-content {
+            padding: 16px;
+        }
+
+        .category-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .category-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .category-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .category-btn.active {
+            background: var(--accent-wasm);
+            color: white;
+            border-color: var(--accent-wasm);
+        }
+
+        .components-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+        }
+
+        .component-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-secondary);
+            cursor: grab;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .component-item:hover {
+            border-color: var(--accent-wasm);
+            background: var(--bg-tertiary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(101, 79, 240, 0.2);
+        }
+
+        .component-item:active {
+            cursor: grabbing;
+            transform: translateY(0);
+        }
+
+        .component-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .component-name {
+            font-size: 11px;
+            font-weight: 500;
+            text-align: center;
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+
+        .component-category {
+            font-size: 9px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+        }
+
+        .diagram-canvas {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            position: relative;
+        }
+
+        .graphics-node {
+            position: absolute;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: #0A0E1A;
+            overflow: hidden;
+            cursor: move;
+            transition: border-color 0.2s ease;
+        }
+
+        .graphics-node:hover {
+            border-color: var(--accent-wasm);
+        }
+
+        .graphics-node.selected {
+            border-color: var(--accent-success);
+            border-width: 2px;
+        }
+
+        .node-preview {
+            width: 100%;
+            height: calc(100% - 30px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .node-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            gap: 8px;
+        }
+
+        .node-icon {
+            font-size: 16px;
+        }
+
+        .node-label {
+            font-size: 12px;
+            color: white;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .preview-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .demo-instructions {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .success-indicator {
+            background: var(--accent-success);
+            color: white;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            margin-top: 16px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="graphics-palette-section">
+            <div class="section-header">
+                <span>🎨</span>
+                Graphics Components
+            </div>
+            <div class="section-content">
+                <div class="category-filters">
+                    <button class="category-btn active" data-category="all">All</button>
+                    <button class="category-btn" data-category="animation">Animated</button>
+                    <button class="category-btn" data-category="sensor">Sensors</button>
+                    <button class="category-btn" data-category="chart">Charts</button>
+                    <button class="category-btn" data-category="visualization">Visual</button>
+                </div>
+
+                <div class="components-grid" id="componentsGrid">
+                    <!-- Components will be populated by JavaScript -->
+                </div>
+
+                <div class="success-indicator">
+                    ✅ Graphics Integration Implemented Successfully!
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-instructions">
+            <strong>Demo Instructions:</strong><br>
+            • Click on graphics components to add them to the canvas<br>
+            • Drag components around the canvas<br>
+            • Each component shows a live preview of its graphics<br>
+            • Filter by category to find specific components
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <span>🔧</span>
+            <h1>GLSP Graphics Integration Demo</h1>
+            <div style="margin-left: auto; color: var(--accent-success); font-size: 12px;">
+                ✅ Graphics System Active
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <div class="diagram-canvas" id="diagramCanvas">
+                <!-- Graphics nodes will be added here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="status" id="status">
+        Click on graphics components in the sidebar to add them to the canvas
+    </div>
+
+    <script>
+        // Graphics node types (from our implementation)
+        const GRAPHICS_NODE_TYPES = [
+            {
+                id: 'sine-wave-visualizer',
+                name: 'Sine Wave',
+                icon: '〰️',
+                description: 'Animated sine wave visualization',
+                category: 'animation',
+                defaultSize: { width: 200, height: 120 },
+                properties: {
+                    amplitude: 50,
+                    frequency: 0.02,
+                    speed: 0.05,
+                    color: '#4A9EFF',
+                    backgroundColor: '#0A0E1A'
+                }
+            },
+            {
+                id: 'particle-system',
+                name: 'Particle System',
+                icon: '✨',
+                description: 'Real-time particle system animation',
+                category: 'animation',
+                defaultSize: { width: 200, height: 150 },
+                properties: {
+                    maxParticles: 100,
+                    emitRate: 2,
+                    particleColors: ['#4A9EFF', '#00D4AA', '#654FF0', '#F0B72F'],
+                    backgroundColor: '#0A0E1A'
+                }
+            },
+            {
+                id: 'radar-visualization',
+                name: 'Radar Display',
+                icon: '📡',
+                description: 'Radar sensor data visualization',
+                category: 'sensor',
+                defaultSize: { width: 180, height: 180 },
+                properties: {
+                    range: 100,
+                    sweepSpeed: 0.02,
+                    detectionColor: '#00D4AA',
+                    backgroundColor: '#0A0E1A',
+                    showGrid: true
+                }
+            },
+            {
+                id: 'camera-view',
+                name: 'Camera Feed',
+                icon: '📹',
+                description: 'Camera sensor visualization',
+                category: 'sensor',
+                defaultSize: { width: 240, height: 180 },
+                properties: {
+                    aspectRatio: '4:3',
+                    showOverlay: true,
+                    overlayColor: '#4A9EFF',
+                    backgroundColor: '#0A0E1A'
+                }
+            },
+            {
+                id: 'data-chart',
+                name: 'Data Chart',
+                icon: '📊',
+                description: 'Dynamic data visualization chart',
+                category: 'chart',
+                defaultSize: { width: 250, height: 150 },
+                properties: {
+                    chartType: 'line',
+                    dataPoints: 50,
+                    updateInterval: 100,
+                    primaryColor: '#4A9EFF',
+                    backgroundColor: '#0A0E1A'
+                }
+            },
+            {
+                id: 'status-indicator',
+                name: 'Status LED',
+                icon: '🔴',
+                description: 'Component status indicator',
+                category: 'visualization',
+                defaultSize: { width: 80, height: 80 },
+                properties: {
+                    states: ['active', 'warning', 'error', 'offline'],
+                    colors: {
+                        active: '#00D4AA',
+                        warning: '#F0B72F',
+                        error: '#FF6B6B',
+                        offline: '#666666'
+                    },
+                    blinkOnChange: true
+                }
+            },
+            {
+                id: 'waveform-display',
+                name: 'Waveform',
+                icon: '📈',
+                description: 'Signal waveform visualization',
+                category: 'visualization',
+                defaultSize: { width: 220, height: 100 },
+                properties: {
+                    sampleRate: 1000,
+                    bufferSize: 200,
+                    color: '#654FF0',
+                    backgroundColor: '#0A0E1A',
+                    showGrid: true
+                }
+            }
+        ];
+
+        let selectedCategory = 'all';
+        let nodeCounter = 0;
+
+        // Initialize the graphics palette
+        function initializeGraphicsPalette() {
+            const grid = document.getElementById('componentsGrid');
+            renderComponents();
+
+            // Add category filter event listeners
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    selectedCategory = e.target.dataset.category;
+                    renderComponents();
+                });
+            });
+        }
+
+        function renderComponents() {
+            const grid = document.getElementById('componentsGrid');
+            const filteredTypes = selectedCategory === 'all'
+                ? GRAPHICS_NODE_TYPES
+                : GRAPHICS_NODE_TYPES.filter(type => type.category === selectedCategory);
+
+            grid.innerHTML = '';
+
+            filteredTypes.forEach(nodeType => {
+                const item = document.createElement('div');
+                item.className = 'component-item';
+                item.innerHTML = `
+                    <div class="component-icon">${nodeType.icon}</div>
+                    <div class="component-name">${nodeType.name}</div>
+                    <div class="component-category">${getCategoryDisplayName(nodeType.category)}</div>
+                `;
+
+                item.addEventListener('click', () => createGraphicsNode(nodeType));
+                grid.appendChild(item);
+            });
+        }
+
+        function getCategoryDisplayName(category) {
+            const names = {
+                'animation': 'Animated',
+                'sensor': 'Sensors',
+                'chart': 'Charts',
+                'visualization': 'Visual'
+            };
+            return names[category] || category;
+        }
+
+        function createGraphicsNode(nodeType) {
+            nodeCounter++;
+            const canvas = document.getElementById('diagramCanvas');
+
+            // Random position
+            const x = 50 + Math.random() * 300;
+            const y = 50 + Math.random() * 200;
+
+            const node = document.createElement('div');
+            node.className = 'graphics-node';
+            node.style.left = x + 'px';
+            node.style.top = y + 'px';
+            node.style.width = nodeType.defaultSize.width + 'px';
+            node.style.height = nodeType.defaultSize.height + 'px';
+
+            const preview = document.createElement('div');
+            preview.className = 'node-preview';
+
+            const previewCanvas = document.createElement('canvas');
+            previewCanvas.className = 'preview-canvas';
+            previewCanvas.width = nodeType.defaultSize.width;
+            previewCanvas.height = nodeType.defaultSize.height - 30;
+            preview.appendChild(previewCanvas);
+
+            const footer = document.createElement('div');
+            footer.className = 'node-footer';
+            footer.innerHTML = `
+                <span class="node-icon">${nodeType.icon}</span>
+                <span class="node-label">${nodeType.name}</span>
+            `;
+
+            node.appendChild(preview);
+            node.appendChild(footer);
+            canvas.appendChild(node);
+
+            // Start graphics rendering
+            startGraphicsPreview(previewCanvas, nodeType);
+
+            // Make draggable
+            makeDraggable(node);
+
+            // Update status
+            updateStatus(`Added ${nodeType.name} to canvas`);
+        }
+
+        function startGraphicsPreview(canvas, nodeType) {
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            let animationId;
+            let frame = 0;
+
+            function render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Background
+                ctx.fillStyle = nodeType.properties.backgroundColor || '#0A0E1A';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw graphics based on type
+                switch (nodeType.id) {
+                    case 'sine-wave-visualizer':
+                        drawSineWave(ctx, canvas.width, canvas.height, frame, nodeType.properties);
+                        break;
+                    case 'particle-system':
+                        drawParticles(ctx, canvas.width, canvas.height, frame, nodeType.properties);
+                        break;
+                    case 'radar-visualization':
+                        drawRadar(ctx, canvas.width, canvas.height, frame, nodeType.properties);
+                        break;
+                    case 'data-chart':
+                        drawChart(ctx, canvas.width, canvas.height, frame, nodeType.properties);
+                        break;
+                    case 'status-indicator':
+                        drawStatusLED(ctx, canvas.width, canvas.height, frame, nodeType.properties);
+                        break;
+                    case 'waveform-display':
+                        drawWaveform(ctx, canvas.width, canvas.height, frame, nodeType.properties);
+                        break;
+                    default:
+                        drawGeneric(ctx, canvas.width, canvas.height, nodeType.icon);
+                }
+
+                frame++;
+                animationId = requestAnimationFrame(render);
+            }
+
+            render();
+        }
+
+        function drawSineWave(ctx, width, height, frame, props) {
+            const centerY = height / 2;
+            const amplitude = Math.min(height / 3, props.amplitude || 30);
+
+            ctx.strokeStyle = props.color || '#4A9EFF';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+
+            for (let x = 0; x < width; x += 2) {
+                const y = centerY + Math.sin((x * props.frequency) + (frame * props.speed)) * amplitude;
+                if (x === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+        }
+
+        function drawParticles(ctx, width, height, frame, props) {
+            const colors = props.particleColors || ['#4A9EFF', '#00D4AA', '#654FF0', '#F0B72F'];
+
+            for (let i = 0; i < 15; i++) {
+                const x = (Math.sin(frame * 0.02 + i) + 1) * width / 2;
+                const y = (Math.cos(frame * 0.015 + i * 0.5) + 1) * height / 2;
+                const radius = 2 + Math.sin(frame * 0.1 + i) * 2;
+                const color = colors[i % colors.length];
+
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(x, y, Math.abs(radius), 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawRadar(ctx, width, height, frame, props) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) / 2 - 10;
+            const color = props.detectionColor || '#00D4AA';
+
+            // Draw radar circles
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            for (let r = radius / 3; r <= radius; r += radius / 3) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Draw sweep line
+            const angle = (frame * props.sweepSpeed) % (Math.PI * 2);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius);
+            ctx.stroke();
+
+            // Fade effect
+            const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+            gradient.addColorStop(0, 'rgba(0, 212, 170, 0.1)');
+            gradient.addColorStop(1, 'rgba(0, 212, 170, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, angle - Math.PI / 6, angle);
+            ctx.lineTo(centerX, centerY);
+            ctx.fill();
+        }
+
+        function drawChart(ctx, width, height, frame, props) {
+            const color = props.primaryColor || '#4A9EFF';
+            const points = 8;
+            const margin = 20;
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            for (let i = 0; i < points; i++) {
+                const x = margin + (i / (points - 1)) * (width - 2 * margin);
+                const baseY = height - margin - Math.random() * (height - 2 * margin);
+                const y = baseY + Math.sin(frame * 0.05 + i) * 20;
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+        }
+
+        function drawStatusLED(ctx, width, height, frame, props) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) / 3;
+            const colors = props.colors || { active: '#00D4AA' };
+
+            // Pulsing effect
+            const pulse = Math.sin(frame * 0.1) * 0.3 + 0.7;
+
+            ctx.fillStyle = colors.active;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * pulse, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Glow effect
+            ctx.shadowColor = colors.active;
+            ctx.shadowBlur = 20;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawWaveform(ctx, width, height, frame, props) {
+            const color = props.color || '#654FF0';
+            const centerY = height / 2;
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            for (let x = 0; x < width; x += 3) {
+                const y = centerY + (Math.random() - 0.5) * (height - 20) * Math.sin(frame * 0.02);
+                if (x === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+        }
+
+        function drawGeneric(ctx, width, height, icon) {
+            ctx.fillStyle = '#654FF0';
+            ctx.font = '24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(icon, width / 2, height / 2 + 8);
+        }
+
+        function makeDraggable(element) {
+            let isDragging = false;
+            let startX, startY, startLeft, startTop;
+
+            element.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = parseInt(element.style.left);
+                startTop = parseInt(element.style.top);
+                element.style.cursor = 'grabbing';
+
+                // Select this node
+                document.querySelectorAll('.graphics-node').forEach(n => n.classList.remove('selected'));
+                element.classList.add('selected');
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+
+                element.style.left = (startLeft + dx) + 'px';
+                element.style.top = (startTop + dy) + 'px';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    element.style.cursor = 'move';
+                }
+            });
+        }
+
+        function updateStatus(message) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+
+            setTimeout(() => {
+                status.textContent = 'Drag graphics nodes around the canvas';
+            }, 3000);
+        }
+
+        // Initialize the application
+        initializeGraphicsPalette();
+        updateStatus('Graphics Integration Demo Ready!');
+    </script>
+</body>
+</html>

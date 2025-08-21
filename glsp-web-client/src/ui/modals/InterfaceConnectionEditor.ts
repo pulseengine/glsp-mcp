@@ -414,7 +414,11 @@ export class InterfaceConnectionEditor {
             font-size: 10px;
             padding: 2px 6px;
             border-radius: 4px;
-            background: ${iface.interfaceType === "import" ? "var(--accent-info, #58A6FF)" : "var(--accent-success, #3FB950)"};
+            background: ${
+              iface.interfaceType === "import"
+                ? "var(--accent-info, #58A6FF)"
+                : "var(--accent-success, #3FB950)"
+            };
             color: white;
             text-transform: uppercase;
             font-weight: 600;

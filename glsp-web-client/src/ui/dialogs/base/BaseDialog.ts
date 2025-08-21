@@ -9,6 +9,7 @@ import {
   FloatingPanelEvents,
 } from "../../FloatingPanel.js";
 import { DialogResult } from "../DialogManager.js";
+import { animationSystem } from "../../../animation/index.js";
 
 export interface DialogConfig extends Partial<FloatingPanelConfig> {
   modal?: boolean;
@@ -520,12 +521,13 @@ export abstract class BaseDialog extends FloatingPanel {
       let parent = this.element.parentElement;
       let parentLevel = 0;
       const _blurSources = [
+        // Ready for blur detection enhancement - TODO: Implement blur detection
         "filter",
         "backdrop-filter",
         "transform",
         "will-change",
         "perspective",
-      ]; // TODO: Use for blur detection
+      ];
 
       while (parent && parentLevel < 15) {
         const parentStyle = window.getComputedStyle(parent);
@@ -1026,45 +1028,93 @@ export abstract class BaseDialog extends FloatingPanel {
     console.groupEnd();
   }
 
-  private applyEntranceAnimation(): void {
+  private async applyEntranceAnimation(): Promise<void> {
     if (this.dialogConfig.animationType === "none") return;
 
-    // Remove any existing animation classes
-    this.element.className = this.element.className.replace(
-      /dialog-animate-\w+-\w+/g,
-      "",
-    );
-
-    // Apply entrance animation based on type
     const animationType = this.dialogConfig.animationType || "scale";
-    this.element.classList.add(`dialog-animate-${animationType}-in`);
 
-    console.log(`🎬 Applied entrance animation: ${animationType}-in`);
+    try {
+      // Use new animation system for smoother animations
+      await animationSystem.animate(this.element, {
+        type: animationType as any,
+        duration:
+          animationType === "bounce"
+            ? 600
+            : animationType === "slide"
+              ? 400
+              : 300,
+        easing:
+          animationType === "bounce"
+            ? "cubic-bezier(0.68, -0.55, 0.265, 1.55)"
+            : "ease-out",
+        fillMode: "both",
+      });
+
+      console.log(`✨ Applied enhanced entrance animation: ${animationType}`);
+    } catch (error) {
+      // Fallback to CSS animation if new system fails
+      console.warn("Animation system fallback for entrance:", error);
+      this.element.classList.add(`dialog-animate-${animationType}-in`);
+    }
   }
 
-  private applyExitAnimation(callback: () => void): void {
+  private async applyExitAnimation(callback: () => void): Promise<void> {
     if (this.dialogConfig.animationType === "none") {
       callback();
       return;
     }
 
-    // Remove any existing animation classes
-    this.element.className = this.element.className.replace(
-      /dialog-animate-\w+-\w+/g,
-      "",
-    );
-
-    // Apply exit animation based on type
     const animationType = this.dialogConfig.animationType || "scale";
-    this.element.classList.add(`dialog-animate-${animationType}-out`);
 
-    console.log(`🎬 Applied exit animation: ${animationType}-out`);
+    try {
+      // Use new animation system for smoother exit animations
+      const exitKeyframes = this.getExitKeyframes(animationType);
 
-    // Wait for animation to complete before executing callback
-    const animationDuration =
-      animationType === "bounce" ? 600 : animationType === "slide" ? 400 : 300;
+      await animationSystem.animate(this.element, {
+        type: "custom",
+        duration:
+          animationType === "bounce"
+            ? 400
+            : animationType === "slide"
+              ? 300
+              : 200,
+        easing: "ease-in",
+        customKeyframes: exitKeyframes,
+        fillMode: "forwards",
+      });
 
-    setTimeout(callback, animationDuration);
+      console.log(`✨ Applied enhanced exit animation: ${animationType}`);
+      callback();
+    } catch (error) {
+      // Fallback to CSS animation if new system fails
+      console.warn("Animation system fallback for exit:", error);
+      this.element.classList.add(`dialog-animate-${animationType}-out`);
+      const animationDuration =
+        animationType === "bounce"
+          ? 600
+          : animationType === "slide"
+            ? 400
+            : 300;
+      setTimeout(callback, animationDuration);
+    }
+  }
+
+  private getExitKeyframes(animationType: string): Keyframe[] {
+    switch (animationType) {
+      case "fade":
+        return [{ opacity: 0 }];
+      case "slide":
+        return [{ transform: "translateY(-100%)", opacity: 0 }];
+      case "scale":
+        return [{ transform: "scale(0.8)", opacity: 0 }];
+      case "bounce":
+        return [
+          { transform: "scale(1.1)", opacity: 1 },
+          { transform: "scale(0.3)", opacity: 0 },
+        ];
+      default:
+        return [{ opacity: 0 }];
+    }
   }
 
   protected implementContextAwarePositioning(): void {

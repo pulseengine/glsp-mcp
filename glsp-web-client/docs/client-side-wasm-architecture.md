@@ -3,6 +3,7 @@
 ## Current State Analysis
 
 ### Existing Frontend Architecture
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    CURRENT GLSP CLIENT                         │
@@ -30,6 +31,7 @@
 ## Proposed Client-Side WASM Architecture
 
 ### Enhanced Architecture with jco Integration
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                 ENHANCED GLSP CLIENT                           │
@@ -62,6 +64,7 @@
 ## Detailed Component Flow Architecture
 
 ### 1. Component Upload & Transpilation Flow
+
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   User uploads  │    │   jco transpile │    │  Component      │
@@ -79,6 +82,7 @@
 ```
 
 ### 2. Component Execution Flow
+
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │  User selects   │    │  Component      │    │  Canvas         │
@@ -100,45 +104,51 @@
 ### Phase 1: Core Infrastructure (Week 1-2)
 
 #### 1.1 WasmTranspiler Service
+
 ```typescript
 // New service for client-side transpilation
 class WasmTranspiler {
-  async transpileComponent(wasmBytes: ArrayBuffer): Promise<TranspiledComponent>
-  async validateComponent(wasmBytes: ArrayBuffer): Promise<ValidationResult>
-  extractMetadata(wasmBytes: ArrayBuffer): Promise<ComponentMetadata>
+  async transpileComponent(
+    wasmBytes: ArrayBuffer,
+  ): Promise<TranspiledComponent>;
+  async validateComponent(wasmBytes: ArrayBuffer): Promise<ValidationResult>;
+  extractMetadata(wasmBytes: ArrayBuffer): Promise<ComponentMetadata>;
 }
 ```
 
 #### 1.2 Enhanced WasmComponentManager
+
 ```typescript
 // Extend existing WasmComponentManager
 class WasmRuntimeManager extends WasmComponentManager {
-  private transpiler: WasmTranspiler
-  private registry: ComponentRegistry
-  private executionEngine: ExecutionEngine
-  
-  async uploadAndTranspileComponent(file: File): Promise<string>
-  async loadTranspiledComponent(id: string): Promise<WasmComponent>
-  async executeComponent(id: string, method: string, args: any[]): Promise<any>
+  private transpiler: WasmTranspiler;
+  private registry: ComponentRegistry;
+  private executionEngine: ExecutionEngine;
+
+  async uploadAndTranspileComponent(file: File): Promise<string>;
+  async loadTranspiledComponent(id: string): Promise<WasmComponent>;
+  async executeComponent(id: string, method: string, args: any[]): Promise<any>;
 }
 ```
 
 #### 1.3 Component Registry
+
 ```typescript
 // Store and manage loaded components
 class ComponentRegistry {
-  private components: Map<string, TranspiledComponent>
-  
-  registerComponent(component: TranspiledComponent): string
-  getComponent(id: string): TranspiledComponent | null
-  listComponents(): ComponentMetadata[]
-  removeComponent(id: string): boolean
+  private components: Map<string, TranspiledComponent>;
+
+  registerComponent(component: TranspiledComponent): string;
+  getComponent(id: string): TranspiledComponent | null;
+  listComponents(): ComponentMetadata[];
+  removeComponent(id: string): boolean;
 }
 ```
 
 ### Phase 2: UI Integration (Week 2-3)
 
 #### 2.1 Component Upload Panel
+
 ```typescript
 // New UI panel for uploading WASM components
 class ComponentUploadPanel {
@@ -151,6 +161,7 @@ class ComponentUploadPanel {
 ```
 
 #### 2.2 Enhanced Component Palette
+
 ```typescript
 // Extend existing palette with dynamic components
 class EnhancedComponentPalette extends WasmComponentPalette {
@@ -163,6 +174,7 @@ class EnhancedComponentPalette extends WasmComponentPalette {
 ```
 
 #### 2.3 Component Execution Interface
+
 ```typescript
 // Interactive interface for loaded components
 class ComponentExecutionView {
@@ -177,44 +189,48 @@ class ComponentExecutionView {
 ### Phase 3: Canvas Integration (Week 3-4)
 
 #### 3.1 WASM-Canvas Bridge
+
 ```typescript
 // Bridge between WASM components and Canvas
 class WasmCanvasBridge {
-  async renderWithComponent(component: WasmComponent, data: any): Promise<void>
-  setupEventHandlers(component: WasmComponent): void
-  handleComponentOutput(output: any): void
+  async renderWithComponent(component: WasmComponent, data: any): Promise<void>;
+  setupEventHandlers(component: WasmComponent): void;
+  handleComponentOutput(output: any): void;
 }
 ```
 
 #### 3.2 Graphics Command System
+
 ```typescript
 // Translate WASM graphics calls to Canvas operations
 interface GraphicsCommand {
-  type: 'rect' | 'circle' | 'text' | 'image' | 'path'
-  parameters: any
-  style: RenderStyle
+  type: "rect" | "circle" | "text" | "image" | "path";
+  parameters: any;
+  style: RenderStyle;
 }
 
 class GraphicsRenderer {
-  executeCommands(commands: GraphicsCommand[]): void
-  optimizeCommandBuffer(commands: GraphicsCommand[]): GraphicsCommand[]
+  executeCommands(commands: GraphicsCommand[]): void;
+  optimizeCommandBuffer(commands: GraphicsCommand[]): GraphicsCommand[];
 }
 ```
 
 ## Required Frontend Changes
 
 ### 1. New Dependencies
+
 ```json
 {
   "dependencies": {
-    "@bytecodealliance/jco": "^1.0.0",  // jco for transpilation
-    "file-drop-element": "^2.0.0",      // File upload UI
-    "monaco-editor": "^0.45.0"          // Code editor for component inspection
+    "@bytecodealliance/jco": "^1.0.0", // jco for transpilation
+    "file-drop-element": "^2.0.0", // File upload UI
+    "monaco-editor": "^0.45.0" // Code editor for component inspection
   }
 }
 ```
 
 ### 2. New Directory Structure
+
 ```
 src/
 ├── wasm/                           # New WASM-related code
@@ -239,24 +255,26 @@ src/
 ```
 
 ### 3. Enhanced UI Layout
+
 ```typescript
 // Add new floating panels to the layout
 interface EnhancedLayout {
   // Existing panels
-  aiAssistant: FloatingPanel
-  wasmPalette: FloatingPanel
-  
+  aiAssistant: FloatingPanel;
+  wasmPalette: FloatingPanel;
+
   // New panels
-  componentUpload: FloatingPanel
-  componentLibrary: FloatingPanel
-  executionView: Modal
-  componentInspector: Modal
+  componentUpload: FloatingPanel;
+  componentLibrary: FloatingPanel;
+  executionView: Modal;
+  componentInspector: Modal;
 }
 ```
 
 ## Security Considerations
 
 ### 1. Component Validation
+
 ```typescript
 class ComponentValidator {
   // Validate WASM component before transpilation
@@ -270,6 +288,7 @@ class ComponentValidator {
 ```
 
 ### 2. Execution Sandboxing
+
 ```typescript
 class ExecutionSandbox {
   // Limit component capabilities
@@ -283,48 +302,56 @@ class ExecutionSandbox {
 ## Performance Considerations
 
 ### 1. Lazy Loading
+
 - Load jco library only when needed
 - Transpile components on-demand
 - Cache transpiled results
 - Unload unused components
 
 ### 2. Memory Management
+
 - Monitor WASM memory usage
 - Implement garbage collection for components
 - Limit concurrent component executions
 - Provide memory usage indicators
 
 ### 3. Caching Strategy
+
 ```typescript
 class ComponentCache {
   // Cache transpiled components
-  private cache: Map<string, CachedComponent>
-  
-  async getOrTranspile(wasmHash: string, wasmBytes: ArrayBuffer): Promise<TranspiledComponent>
-  clearExpiredEntries(): void
-  getMemoryUsage(): number
+  private cache: Map<string, CachedComponent>;
+
+  async getOrTranspile(
+    wasmHash: string,
+    wasmBytes: ArrayBuffer,
+  ): Promise<TranspiledComponent>;
+  clearExpiredEntries(): void;
+  getMemoryUsage(): number;
 }
 ```
 
 ## Integration Points with Existing Code
 
 ### 1. Minimal Changes to Existing Services
+
 - **McpService**: No changes needed
 - **DiagramService**: Add component diagram type support
 - **CanvasRenderer**: Add WASM component rendering support
 - **InteractionManager**: Add component interaction handlers
 
 ### 2. Enhanced WasmComponentManager
+
 ```typescript
 // Evolution of existing WasmComponentManager
 class WasmComponentManager {
   // Existing functionality
-  private wasmComponentPalette: WasmComponentPalette
-  
+  private wasmComponentPalette: WasmComponentPalette;
+
   // New functionality
-  private runtimeManager: WasmRuntimeManager
-  private uploadPanel: ComponentUploadPanel
-  
+  private runtimeManager: WasmRuntimeManager;
+  private uploadPanel: ComponentUploadPanel;
+
   // Bridge old and new systems
   async showPalette(): Promise<void> {
     // Show both static and dynamic components
@@ -333,6 +360,7 @@ class WasmComponentManager {
 ```
 
 ### 3. UI Integration Strategy
+
 - Add new panels as floating components (consistent with existing design)
 - Extend toolbar with component upload button
 - Add component-related menu items
@@ -341,6 +369,7 @@ class WasmComponentManager {
 ## Development Phases Timeline
 
 ### Phase 1: Foundation (2 weeks)
+
 - [ ] Add jco dependency
 - [ ] Create WasmTranspiler service
 - [ ] Implement ComponentRegistry
@@ -348,6 +377,7 @@ class WasmComponentManager {
 - [ ] Component validation system
 
 ### Phase 2: Runtime (2 weeks)
+
 - [ ] ExecutionEngine implementation
 - [ ] Memory management system
 - [ ] Enhanced component palette
@@ -355,6 +385,7 @@ class WasmComponentManager {
 - [ ] Error handling and debugging
 
 ### Phase 3: Integration (2 weeks)
+
 - [ ] WASM-Canvas bridge
 - [ ] Graphics command system
 - [ ] Event handling integration
@@ -362,6 +393,7 @@ class WasmComponentManager {
 - [ ] Security hardening
 
 ### Phase 4: Polish (1 week)
+
 - [ ] UI/UX refinements
 - [ ] Documentation
 - [ ] Testing and debugging

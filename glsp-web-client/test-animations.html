@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animation and Transition Systems Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Taurus, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin: 0;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin: 10px 0 0 0;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .demo-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .demo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.18);
+        }
+
+        .demo-card h3 {
+            margin: 0 0 15px 0;
+            color: #667eea;
+            font-size: 1.3rem;
+        }
+
+        .demo-card p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .demo-canvas {
+            width: 100%;
+            height: 200px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .demo-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #495057;
+            border: 1px solid #dee2e6;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            color: #212529;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #e83e8c);
+            color: white;
+        }
+
+        .animation-showcase {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+            min-height: 150px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .demo-box {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        .demo-box:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .loading-demo {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .pulse-dot {
+            width: 20px;
+            height: 20px;
+            background: #28a745;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .skeleton-line {
+            height: 20px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s linear infinite;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+
+        .skeleton-line.short { width: 60%; }
+        .skeleton-line.long { width: 100%; }
+
+        .transition-area {
+            min-height: 200px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .transition-content {
+            text-align: center;
+            padding: 20px;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .micro-interactions {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateX(400px);
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        /* Keyframe animations */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-20px); }
+            60% { transform: translateY(-10px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        .animate-bounce {
+            animation: bounce 0.6s ease-in-out;
+        }
+
+        .animate-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        /* Graphics canvas styles */
+        .graphics-canvas {
+            background: #1a1a2e;
+            border-radius: 8px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            position: relative;
+        }
+
+        .status-active {
+            background: #28a745;
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.6);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-warning {
+            background: #ffc107;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .status-error {
+            background: #dc3545;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .feature-list {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+
+        .feature-list h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .feature-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-list li::before {
+            content: '✅';
+            position: absolute;
+            left: 0;
+            top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Animation & Transition Systems</h1>
+            <p>Interactive demonstration of smooth UI animations, graphics transitions, and micro-interactions</p>
+        </div>
+
+        <div class="demo-grid">
+            <!-- UI Component Animations -->
+            <div class="demo-card">
+                <h3>🎯 UI Component Animations</h3>
+                <p>Smooth animations for buttons, dialogs, and interactive elements with hover and click effects.</p>
+
+                <div class="animation-showcase">
+                    <button class="btn btn-primary" data-animated="button" data-hover-animation="lift" onclick="showToast('Primary button clicked!')">Lift Effect</button>
+                    <button class="btn btn-secondary" data-animated="button" data-hover-animation="glow" onclick="showToast('Glow effect activated!')">Glow Effect</button>
+                    <button class="btn btn-success" data-animated="button" data-hover-animation="scale" onclick="showToast('Scale animation!')">Scale Effect</button>
+                    <div class="demo-box" onclick="animateBox(this)">Box</div>
+                </div>
+
+                <div class="demo-controls">
+                    <button class="btn btn-primary" onclick="testButtonAnimations()">Test All Effects</button>
+                    <button class="btn btn-secondary" onclick="showLoadingDemo()">Loading States</button>
+                </div>
+            </div>
+
+            <!-- Graphics Animations -->
+            <div class="demo-card">
+                <h3>📊 Graphics Animations</h3>
+                <p>Animated graphics components with smooth transitions, particle effects, and data visualizations.</p>
+
+                <canvas class="demo-canvas graphics-canvas" id="graphics-canvas" width="350" height="180"></canvas>
+
+                <div class="demo-controls">
+                    <button class="btn btn-primary" onclick="startSineWave()">Sine Wave</button>
+                    <button class="btn btn-success" onclick="startParticles()">Particles</button>
+                    <button class="btn btn-warning" onclick="startRadar()">Radar Sweep</button>
+                    <button class="btn btn-danger" onclick="clearGraphics()">Clear</button>
+                </div>
+            </div>
+
+            <!-- Page Transitions -->
+            <div class="demo-card">
+                <h3>🔄 Page Transitions</h3>
+                <p>Smooth page and view transitions with fade, slide, and scale effects for seamless navigation.</p>
+
+                <div class="transition-area" id="transition-area">
+                    <div class="transition-content" id="content-1" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; opacity: 1;">
+                        <h4>View 1</h4>
+                        <p>This is the first view with a gradient background.</p>
+                    </div>
+                    <div class="transition-content" id="content-2" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; opacity: 0; transform: translateX(100%);">
+                        <h4>View 2</h4>
+                        <p>This is the second view with a different color scheme.</p>
+                    </div>
+                    <div class="transition-content" id="content-3" style="background: linear-gradient(135deg, #dc3545, #e83e8c); color: white; opacity: 0; transform: scale(0.8);">
+                        <h4>View 3</h4>
+                        <p>This is the third view with scaling transition.</p>
+                    </div>
+                </div>
+
+                <div class="demo-controls">
+                    <button class="btn btn-primary" onclick="transitionTo(1)">View 1</button>
+                    <button class="btn btn-success" onclick="transitionTo(2)">View 2</button>
+                    <button class="btn btn-danger" onclick="transitionTo(3)">View 3</button>
+                    <button class="btn btn-secondary" onclick="autoTransition()">Auto Play</button>
+                </div>
+            </div>
+
+            <!-- Loading Animations -->
+            <div class="demo-card">
+                <h3>⏳ Loading & Skeleton Screens</h3>
+                <p>Loading states with spinners, skeleton screens, and progress indicators for better user experience.</p>
+
+                <div class="loading-demo">
+                    <div class="spinner"></div>
+                    <div class="pulse-dot"></div>
+                    <div>
+                        <div class="skeleton-line long"></div>
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line long"></div>
+                    </div>
+                </div>
+
+                <div class="demo-controls">
+                    <button class="btn btn-primary" onclick="showSkeletonDemo()">Skeleton Loading</button>
+                    <button class="btn btn-success" onclick="showProgressDemo()">Progress Demo</button>
+                    <button class="btn btn-warning" onclick="showSpinnerDemo()">Spinner Types</button>
+                </div>
+            </div>
+
+            <!-- Micro-interactions -->
+            <div class="demo-card">
+                <h3>✨ Micro-interactions</h3>
+                <p>Subtle animations and feedback for user interactions including hover states, clicks, and status indicators.</p>
+
+                <div class="micro-interactions">
+                    <button class="btn btn-success" onclick="showSuccess(this)">Success ✓</button>
+                    <button class="btn btn-danger" onclick="shakeElement(this)">Error Shake</button>
+                    <button class="btn btn-warning" onclick="bounceElement(this)">Bounce</button>
+                    <div>
+                        <span class="status-indicator status-active"></span> Active
+                        <span class="status-indicator status-warning"></span> Warning
+                        <span class="status-indicator status-error"></span> Error
+                    </div>
+                </div>
+
+                <div class="demo-controls">
+                    <button class="btn btn-primary" onclick="pulseNotification()">Pulse Effect</button>
+                    <button class="btn btn-secondary" onclick="showTooltipDemo(this)">Tooltip Demo</button>
+                </div>
+            </div>
+
+            <!-- Animation Performance -->
+            <div class="demo-card">
+                <h3>⚡ Performance Optimizations</h3>
+                <p>Hardware-accelerated animations with reduced motion support and performance monitoring.</p>
+
+                <div class="animation-showcase">
+                    <div id="fps-counter" style="font-size: 1.2rem; font-weight: bold; color: #667eea;">
+                        FPS: <span id="fps-value">60</span>
+                    </div>
+                    <div id="animation-count" style="font-size: 1rem; color: #666;">
+                        Active: <span id="active-animations">0</span> animations
+                    </div>
+                </div>
+
+                <div class="demo-controls">
+                    <button class="btn btn-primary" onclick="performanceTest()">Performance Test</button>
+                    <button class="btn btn-success" onclick="toggleReducedMotion()">Toggle Reduced Motion</button>
+                    <button class="btn btn-secondary" onclick="showMetrics()">Show Metrics</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="feature-list">
+            <h3>🚀 Animation System Features</h3>
+            <ul>
+                <li><strong>UI Component Animations:</strong> Hover effects, click feedback, and state transitions</li>
+                <li><strong>Graphics Animations:</strong> Canvas-based animations with particle systems and waveforms</li>
+                <li><strong>Page Transitions:</strong> Smooth view changes with fade, slide, and scale effects</li>
+                <li><strong>Loading States:</strong> Skeleton screens, spinners, and progress indicators</li>
+                <li><strong>Micro-interactions:</strong> Subtle feedback for enhanced user experience</li>
+                <li><strong>Performance Optimization:</strong> Hardware acceleration and reduced motion support</li>
+                <li><strong>Accessibility:</strong> Respects user preferences for reduced motion</li>
+                <li><strong>Customizable:</strong> Easy-to-configure animation properties and timing</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast">
+        <span id="toast-message">Notification</span>
+    </div>
+
+    <script>
+        // Animation system mock implementation
+        class AnimationSystem {
+            constructor() {
+                this.activeAnimations = 0;
+                this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                this.setupEventListeners();
+                this.startFPSCounter();
+            }
+
+            setupEventListeners() {
+                // Auto-initialize animated buttons
+                document.querySelectorAll('[data-animated="button"]').forEach(button => {
+                    this.setupButtonAnimation(button);
+                });
+            }
+
+            setupButtonAnimation(button) {
+                const hoverAnimation = button.dataset.hoverAnimation;
+
+                button.addEventListener('mouseenter', () => {
+                    if (this.reducedMotion) return;
+
+                    switch (hoverAnimation) {
+                        case 'lift':
+                            button.style.transform = 'translateY(-3px)';
+                            button.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
+                            break;
+                        case 'glow':
+                            button.style.boxShadow = '0 0 15px rgba(102, 126, 234, 0.6)';
+                            break;
+                        case 'scale':
+                            button.style.transform = 'scale(1.05)';
+                            break;
+                    }
+                });
+
+                button.addEventListener('mouseleave', () => {
+                    button.style.transform = '';
+                    button.style.boxShadow = '';
+                });
+
+                button.addEventListener('click', () => {
+                    if (this.reducedMotion) return;
+
+                    button.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        button.style.transform = '';
+                    }, 150);
+                });
+            }
+
+            animate(element, keyframes, options) {
+                if (this.reducedMotion) {
+                    return Promise.resolve();
+                }
+
+                this.activeAnimations++;
+                this.updateAnimationCounter();
+
+                return new Promise((resolve) => {
+                    const animation = element.animate(keyframes, options);
+                    animation.onfinish = () => {
+                        this.activeAnimations--;
+                        this.updateAnimationCounter();
+                        resolve();
+                    };
+                });
+            }
+
+            updateAnimationCounter() {
+                const counter = document.getElementById('active-animations');
+                if (counter) {
+                    counter.textContent = this.activeAnimations;
+                }
+            }
+
+            startFPSCounter() {
+                let lastTime = performance.now();
+                let frameCount = 0;
+
+                const updateFPS = () => {
+                    frameCount++;
+                    const currentTime = performance.now();
+
+                    if (currentTime >= lastTime + 1000) {
+                        const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+                        const fpsElement = document.getElementById('fps-value');
+                        if (fpsElement) {
+                            fpsElement.textContent = fps;
+                        }
+
+                        frameCount = 0;
+                        lastTime = currentTime;
+                    }
+
+                    requestAnimationFrame(updateFPS);
+                };
+
+                updateFPS();
+            }
+        }
+
+        // Graphics animation system
+        class GraphicsAnimations {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.animations = new Map();
+                this.animationFrame = null;
+                this.startTime = performance.now();
+                this.running = false;
+            }
+
+            start() {
+                if (this.running) return;
+                this.running = true;
+                this.animate();
+            }
+
+            stop() {
+                this.running = false;
+                if (this.animationFrame) {
+                    cancelAnimationFrame(this.animationFrame);
+                }
+            }
+
+            animate() {
+                if (!this.running) return;
+
+                const currentTime = performance.now();
+                const elapsed = currentTime - this.startTime;
+
+                this.ctx.fillStyle = '#1a1a2e';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Render active animations
+                this.animations.forEach((animation, key) => {
+                    switch (animation.type) {
+                        case 'sine-wave':
+                            this.renderSineWave(elapsed, animation.props);
+                            break;
+                        case 'particles':
+                            this.renderParticles(elapsed, animation);
+                            break;
+                        case 'radar':
+                            this.renderRadar(elapsed, animation.props);
+                            break;
+                    }
+                });
+
+                this.animationFrame = requestAnimationFrame(() => this.animate());
+            }
+
+            addSineWave(props = {}) {
+                this.animations.set('sine-wave', {
+                    type: 'sine-wave',
+                    props: {
+                        amplitude: 30,
+                        frequency: 0.02,
+                        speed: 0.003,
+                        color: '#4A9EFF',
+                        ...props
+                    }
+                });
+                this.start();
+            }
+
+            addParticles(props = {}) {
+                const particles = [];
+                for (let i = 0; i < 50; i++) {
+                    particles.push({
+                        x: this.canvas.width / 2,
+                        y: this.canvas.height / 2,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        life: 1,
+                        color: `hsl(${Math.random() * 360}, 70%, 60%)`
+                    });
+                }
+
+                this.animations.set('particles', {
+                    type: 'particles',
+                    particles: particles,
+                    props: {
+                        gravity: 0.02,
+                        fade: 0.01,
+                        ...props
+                    }
+                });
+                this.start();
+            }
+
+            addRadar(props = {}) {
+                this.animations.set('radar', {
+                    type: 'radar',
+                    props: {
+                        centerX: this.canvas.width / 2,
+                        centerY: this.canvas.height / 2,
+                        radius: Math.min(this.canvas.width, this.canvas.height) / 3,
+                        speed: 0.02,
+                        color: '#00FF41',
+                        ...props
+                    }
+                });
+                this.start();
+            }
+
+            renderSineWave(time, props) {
+                const { amplitude, frequency, speed, color } = props;
+
+                this.ctx.strokeStyle = color;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+
+                for (let x = 0; x < this.canvas.width; x += 2) {
+                    const y = this.canvas.height / 2 + Math.sin((x * frequency) + (time * speed)) * amplitude;
+                    if (x === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                }
+
+                this.ctx.stroke();
+            }
+
+            renderParticles(time, animation) {
+                const { particles, props } = animation;
+
+                particles.forEach(particle => {
+                    // Update particle
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vy += props.gravity;
+                    particle.life -= props.fade;
+
+                    // Reset if dead
+                    if (particle.life <= 0) {
+                        particle.x = this.canvas.width / 2;
+                        particle.y = this.canvas.height / 2;
+                        particle.vx = (Math.random() - 0.5) * 4;
+                        particle.vy = (Math.random() - 0.5) * 4;
+                        particle.life = 1;
+                    }
+
+                    // Render particle
+                    this.ctx.globalAlpha = particle.life;
+                    this.ctx.fillStyle = particle.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+
+                this.ctx.globalAlpha = 1;
+            }
+
+            renderRadar(time, props) {
+                const { centerX, centerY, radius, speed, color } = props;
+                const angle = (time * speed) % (Math.PI * 2);
+
+                // Draw radar circles
+                this.ctx.strokeStyle = color;
+                this.ctx.globalAlpha = 0.3;
+                this.ctx.lineWidth = 1;
+
+                for (let i = 1; i <= 3; i++) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(centerX, centerY, (radius / 3) * i, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+
+                // Draw sweep
+                this.ctx.globalAlpha = 1;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX, centerY);
+                this.ctx.lineTo(
+                    centerX + Math.cos(angle - Math.PI / 2) * radius,
+                    centerY + Math.sin(angle - Math.PI / 2) * radius
+                );
+                this.ctx.stroke();
+
+                // Draw sweep trail
+                const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+                gradient.addColorStop(0, color + '40');
+                gradient.addColorStop(1, color + '00');
+
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, radius, angle - Math.PI / 2, angle - Math.PI / 2 + Math.PI / 6);
+                this.ctx.lineTo(centerX, centerY);
+                this.ctx.fill();
+            }
+
+            clear() {
+                this.animations.clear();
+                this.stop();
+                this.ctx.fillStyle = '#1a1a2e';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+        }
+
+        // Initialize systems
+        const animationSystem = new AnimationSystem();
+        const graphicsCanvas = document.getElementById('graphics-canvas');
+        const graphicsAnimations = new GraphicsAnimations(graphicsCanvas);
+
+        // Current transition state
+        let currentView = 1;
+        let transitionTimeout;
+
+        // UI Functions
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const messageEl = document.getElementById('toast-message');
+
+            messageEl.textContent = message;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function animateBox(box) {
+            if (animationSystem.reducedMotion) return;
+
+            animationSystem.animate(box, [
+                { transform: 'scale(1) rotate(0deg)' },
+                { transform: 'scale(1.2) rotate(180deg)' },
+                { transform: 'scale(1) rotate(360deg)' }
+            ], {
+                duration: 600,
+                easing: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+            });
+        }
+
+        function testButtonAnimations() {
+            const buttons = document.querySelectorAll('[data-animated="button"]');
+            buttons.forEach((button, index) => {
+                setTimeout(() => {
+                    button.click();
+                }, index * 200);
+            });
+        }
+
+        function showLoadingDemo() {
+            showToast('Loading animation demo - check the loading states section!');
+        }
+
+        // Graphics Functions
+        function startSineWave() {
+            graphicsAnimations.clear();
+            graphicsAnimations.addSineWave();
+            showToast('Sine wave animation started');
+        }
+
+        function startParticles() {
+            graphicsAnimations.clear();
+            graphicsAnimations.addParticles();
+            showToast('Particle system animation started');
+        }
+
+        function startRadar() {
+            graphicsAnimations.clear();
+            graphicsAnimations.addRadar();
+            showToast('Radar sweep animation started');
+        }
+
+        function clearGraphics() {
+            graphicsAnimations.clear();
+            showToast('Graphics cleared');
+        }
+
+        // Transition Functions
+        function transitionTo(viewNumber) {
+            if (currentView === viewNumber) return;
+
+            const currentContent = document.getElementById(`content-${currentView}`);
+            const newContent = document.getElementById(`content-${viewNumber}`);
+
+            // Animate out current view
+            if (animationSystem.reducedMotion) {
+                currentContent.style.opacity = '0';
+                newContent.style.opacity = '1';
+                newContent.style.transform = '';
+            } else {
+                animationSystem.animate(currentContent, [
+                    { opacity: 1, transform: 'translateX(0) scale(1)' },
+                    { opacity: 0, transform: 'translateX(-100%) scale(0.8)' }
+                ], { duration: 400, easing: 'ease-in' });
+
+                // Animate in new view
+                setTimeout(() => {
+                    animationSystem.animate(newContent, [
+                        { opacity: 0, transform: 'translateX(100%) scale(0.8)' },
+                        { opacity: 1, transform: 'translateX(0) scale(1)' }
+                    ], { duration: 400, easing: 'ease-out' });
+                }, 200);
+            }
+
+            currentView = viewNumber;
+            showToast(`Transitioned to View ${viewNumber}`);
+        }
+
+        function autoTransition() {
+            let view = 1;
+            const cycle = () => {
+                transitionTo(view);
+                view = (view % 3) + 1;
+                transitionTimeout = setTimeout(cycle, 2000);
+            };
+
+            if (transitionTimeout) {
+                clearTimeout(transitionTimeout);
+                transitionTimeout = null;
+                showToast('Auto transition stopped');
+            } else {
+                cycle();
+                showToast('Auto transition started');
+            }
+        }
+
+        // Loading Functions
+        function showSkeletonDemo() {
+            showToast('Skeleton loading animation is visible in the loading section');
+        }
+
+        function showProgressDemo() {
+            showToast('Progress indicators with smooth animations');
+        }
+
+        function showSpinnerDemo() {
+            showToast('Various spinner types with CSS animations');
+        }
+
+        // Micro-interaction Functions
+        function showSuccess(button) {
+            const checkmark = document.createElement('span');
+            checkmark.innerHTML = '✓';
+            checkmark.style.position = 'absolute';
+            checkmark.style.color = '#28a745';
+            checkmark.style.fontSize = '20px';
+            checkmark.style.fontWeight = 'bold';
+            checkmark.style.marginLeft = '10px';
+
+            button.appendChild(checkmark);
+
+            if (!animationSystem.reducedMotion) {
+                animationSystem.animate(checkmark, [
+                    { transform: 'scale(0)', opacity: 0 },
+                    { transform: 'scale(1.2)', opacity: 1 },
+                    { transform: 'scale(1)', opacity: 1 }
+                ], { duration: 400, easing: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)' });
+            }
+
+            setTimeout(() => checkmark.remove(), 2000);
+            showToast('Success animation completed!');
+        }
+
+        function shakeElement(element) {
+            element.classList.add('animate-shake');
+            setTimeout(() => element.classList.remove('animate-shake'), 500);
+            showToast('Error shake animation');
+        }
+
+        function bounceElement(element) {
+            element.classList.add('animate-bounce');
+            setTimeout(() => element.classList.remove('animate-bounce'), 600);
+            showToast('Bounce animation completed');
+        }
+
+        function pulseNotification() {
+            const indicators = document.querySelectorAll('.status-indicator');
+            indicators.forEach(indicator => {
+                indicator.style.animation = 'pulse 0.5s ease-in-out 3';
+            });
+            showToast('Pulse notification triggered');
+        }
+
+        function showTooltipDemo(button) {
+            const tooltip = document.createElement('div');
+            tooltip.textContent = 'This is an animated tooltip!';
+            tooltip.style.cssText = `
+                position: absolute;
+                top: -40px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0,0,0,0.8);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                z-index: 1000;
+            `;
+
+            button.style.position = 'relative';
+            button.appendChild(tooltip);
+
+            if (!animationSystem.reducedMotion) {
+                animationSystem.animate(tooltip, [
+                    { opacity: 0, transform: 'translateX(-50%) translateY(10px)' },
+                    { opacity: 1, transform: 'translateX(-50%) translateY(0)' }
+                ], { duration: 200, easing: 'ease-out' });
+            } else {
+                tooltip.style.opacity = '1';
+            }
+
+            setTimeout(() => {
+                if (!animationSystem.reducedMotion) {
+                    animationSystem.animate(tooltip, [
+                        { opacity: 1 },
+                        { opacity: 0 }
+                    ], { duration: 200, easing: 'ease-in' }).then(() => tooltip.remove());
+                } else {
+                    tooltip.remove();
+                }
+            }, 2000);
+
+            showToast('Animated tooltip displayed');
+        }
+
+        // Performance Functions
+        function performanceTest() {
+            // Create multiple animations simultaneously
+            const boxes = document.querySelectorAll('.demo-box');
+            const buttons = document.querySelectorAll('.btn');
+
+            // Animate all elements
+            [...boxes, ...buttons].forEach((element, index) => {
+                setTimeout(() => {
+                    if (!animationSystem.reducedMotion) {
+                        animationSystem.animate(element, [
+                            { transform: 'scale(1) rotate(0deg)' },
+                            { transform: 'scale(1.1) rotate(10deg)' },
+                            { transform: 'scale(1) rotate(0deg)' }
+                        ], { duration: 300, easing: 'ease-in-out' });
+                    }
+                }, index * 50);
+            });
+
+            showToast('Performance test: Multiple simultaneous animations');
+        }
+
+        function toggleReducedMotion() {
+            animationSystem.reducedMotion = !animationSystem.reducedMotion;
+            showToast(`Reduced motion: ${animationSystem.reducedMotion ? 'Enabled' : 'Disabled'}`);
+        }
+
+        function showMetrics() {
+            const fps = document.getElementById('fps-value').textContent;
+            const activeAnimations = document.getElementById('active-animations').textContent;
+            showToast(`Performance: ${fps} FPS, ${activeAnimations} active animations`);
+        }
+
+        // Initialize demo
+        console.log('🎬 Animation Systems Demo loaded!');
+        console.log('🎯 Interactive elements ready for testing');
+        console.log('📊 Graphics animations available on canvas');
+        console.log('⚡ Performance monitoring active');
+
+        // Auto-start with a welcome animation
+        setTimeout(() => {
+            if (!animationSystem.reducedMotion) {
+                const cards = document.querySelectorAll('.demo-card');
+                cards.forEach((card, index) => {
+                    setTimeout(() => {
+                        card.style.transform = 'translateY(20px)';
+                        card.style.opacity = '0';
+
+                        animationSystem.animate(card, [
+                            { transform: 'translateY(20px)', opacity: 0 },
+                            { transform: 'translateY(0)', opacity: 1 }
+                        ], {
+                            duration: 600,
+                            easing: 'cubic-bezier(0.4, 0.0, 0.2, 1)',
+                            delay: index * 100
+                        });
+                    }, 100);
+                });
+            }
+        }, 500);
+    </script>
+</body>
+</html>

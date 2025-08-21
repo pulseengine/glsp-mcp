@@ -14,18 +14,18 @@
 </head>
 <body>
     <h1>GLSP Frontend Debug</h1>
-    
+
     <button onclick="testMCP()">Test MCP Connection</button>
     <button onclick="testDiagramList()">Test Diagram List API</button>
     <button onclick="testMainApp()">Check Main App Status</button>
-    
+
     <div id="output">Click buttons above to test...</div>
-    
+
     <script>
         window.testMCP = async function() {
             const output = document.getElementById('output');
             output.innerHTML = 'Testing MCP connection...';
-            
+
             try {
                 const response = await fetch('http://127.0.0.1:3000/messages', {
                     method: 'POST',
@@ -44,19 +44,19 @@
                         }
                     })
                 });
-                
+
                 const result = await response.json();
                 output.innerHTML = 'SUCCESS: MCP Connected: ' + result.result.serverInfo.name;
-                
+
             } catch (error) {
                 output.innerHTML = 'ERROR: ' + error.message;
             }
         };
-        
+
         window.testDiagramList = async function() {
             const output = document.getElementById('output');
             output.innerHTML = 'Testing diagram list...';
-            
+
             try {
                 const diagResponse = await fetch('http://127.0.0.1:3000/messages', {
                     method: 'POST',
@@ -68,26 +68,26 @@
                         params: { uri: 'diagram://list' }
                     })
                 });
-                
+
                 const diagResult = await diagResponse.json();
                 const diagrams = JSON.parse(diagResult.result.contents[0].text).diagrams;
                 output.innerHTML = 'SUCCESS: Found ' + diagrams.length + ' diagrams\n\nFirst 10:\n';
                 diagrams.slice(0,10).forEach((d, i) => {
                     output.innerHTML += (i+1) + '. ' + d.name + ' (' + d.diagramType + ')\n';
                 });
-                
+
             } catch (error) {
                 output.innerHTML = 'ERROR: ' + error.message;
             }
         };
-        
+
         window.testMainApp = function() {
             const output = document.getElementById('output');
             output.innerHTML = 'Checking main app status...\n\n';
-            
+
             // Try to open main app and check its elements
             const mainWindow = window.open('http://localhost:5174', 'mainapp');
-            
+
             setTimeout(() => {
                 try {
                     // Check if we can access the main window
@@ -95,15 +95,15 @@
                         const canvas = mainWindow.document.getElementById('diagram-canvas');
                         const diagramContainer = mainWindow.document.getElementById('diagram-list-container');
                         const statusChip = mainWindow.document.querySelector('.status-chip span');
-                        
+
                         output.innerHTML += 'Canvas found: ' + (canvas ? 'YES' : 'NO') + '\n';
                         output.innerHTML += 'Diagram container found: ' + (diagramContainer ? 'YES' : 'NO') + '\n';
                         output.innerHTML += 'Status text: ' + (statusChip ? statusChip.textContent : 'NOT FOUND') + '\n';
-                        
+
                         // Check if global app exists
                         const app = mainWindow.app;
                         output.innerHTML += 'Global app object: ' + (app ? 'EXISTS' : 'NOT FOUND') + '\n';
-                        
+
                         // Check diagram container content
                         if (diagramContainer) {
                             output.innerHTML += 'Container HTML length: ' + diagramContainer.innerHTML.length + '\n';

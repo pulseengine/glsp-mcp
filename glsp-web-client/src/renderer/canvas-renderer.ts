@@ -33,6 +33,7 @@ import {
   GraphicsComponentNode,
 } from "../wasm/graphics/GraphicsComponentIntegration.js";
 import { GraphicsBridge } from "../wasm/graphics/GraphicsBridge.js";
+import { graphicsAnimationIntegration } from "../animation/GraphicsAnimationIntegration.js";
 
 // Convert ComponentInterface to WitInterface for compatibility
 function convertToWitInterface(
@@ -140,6 +141,18 @@ export class CanvasRenderer {
     side: "left" | "right";
     connectorPosition: Position;
   };
+
+  // Animation state for smooth transitions
+  private isAnimating: boolean = false;
+  private animationRequest: number | null = null;
+  private targetViewState: { offset: Position; scale: number } | null = null;
+  private currentAnimation: {
+    startTime: number;
+    duration: number;
+    startOffset: Position;
+    startScale: number;
+    easing: (t: number) => number;
+  } | null = null;
   private interfaceTooltip?: HTMLElement;
   private contextMenu?: HTMLElement;
   private minScale = 0.1;
@@ -153,6 +166,13 @@ export class CanvasRenderer {
   private mcpClient?: McpClient;
   private showInterfaceNames: boolean = false;
   private currentViewMode: string = "component";
+  private lastPerformanceMetrics?: {
+    renderTime: number;
+    fps: number;
+    elementsRendered: number;
+    elementsCulled: number;
+    cullingEfficiency: number;
+  };
 
   constructor(canvas: HTMLCanvasElement, options: RenderOptions = {}) {
     this.canvas = canvas;
@@ -1383,12 +1403,30 @@ export class CanvasRenderer {
     this.ctx.stroke();
   }
 
-  private drawNodes(renderingHints: Record<string, boolean> = {}): void {
+  private drawNodes(
+    renderingHints: Record<string, boolean | string | number> = {},
+  ): void {
     if (!this.currentDiagram) return;
 
     const elements = Object.values(this.currentDiagram.elements);
 
-    elements.forEach((element) => {
+    // Performance optimization: viewport culling
+    const visibleElements = renderingHints.viewportCullingEnabled
+      ? this.cullElementsOutsideViewport(elements)
+      : elements;
+
+    // Performance optimization: element batching
+    const processedElements = renderingHints.batchingEnabled
+      ? this.batchSimilarElements(visibleElements)
+      : visibleElements;
+
+    // Performance monitoring
+    const renderStartTime = renderingHints.enablePerformanceMetrics
+      ? performance.now()
+      : 0;
+    let renderedCount = 0;
+
+    processedElements.forEach((element) => {
       const elementType = element.type || element.element_type;
       if (elementType === "graph" || !element.bounds) {
         return;
@@ -1399,13 +1437,31 @@ export class CanvasRenderer {
         return;
       }
 
+      // Level of detail optimization
+      if (!this.shouldRenderWithLevelOfDetail(element, renderingHints)) {
+        return;
+      }
+
       this.drawNode(element as Node, renderingHints);
+      renderedCount++;
     });
+
+    // Performance metrics
+    if (renderingHints.enablePerformanceMetrics && renderStartTime > 0) {
+      const renderTime = performance.now() - renderStartTime;
+      this.updatePerformanceMetrics({
+        renderTime,
+        elementCount: elements.length,
+        renderedCount,
+        culledCount: elements.length - visibleElements.length,
+        frameTarget: renderingHints.frameTargetMs as number,
+      });
+    }
   }
 
   private drawNode(
     node: Node,
-    _renderingHints: Record<string, boolean> = {},
+    _renderingHints: Record<string, boolean | string | number> = {},
   ): void {
     // Ensure element has bounds before rendering
     this.ensureElementBounds(node);
@@ -1421,6 +1477,13 @@ export class CanvasRenderer {
 
     // Debug: Log node type for troubleshooting
     console.log(`Rendering node ${node.id} with type: ${nodeType}`);
+
+    // Check if this is a graphics node type
+    if (this.isGraphicsNodeType(nodeType)) {
+      console.log(`Using graphics renderer for node ${node.id}`);
+      this.drawGraphicsNode(node, isSelected, isHovered);
+      return;
+    }
 
     // Check if this is a WIT interface type
     if (this.isWitInterfaceType(nodeType)) {
@@ -1544,6 +1607,25 @@ export class CanvasRenderer {
     }
   }
 
+  /**
+   * Protected method for rendering individual nodes with context
+   * Can be overridden by specialized renderers like WitInterfaceRenderer
+   */
+  protected renderNode(ctx: CanvasRenderingContext2D, node: Node): void {
+    // Save current context and use provided context
+    const savedCtx = this.ctx;
+    this.ctx = ctx;
+    this.drawNode(node, {});
+    this.ctx = savedCtx;
+  }
+
+  /**
+   * Protected getter for canvas element access by subclasses
+   */
+  protected get canvasElement(): HTMLCanvasElement {
+    return this.canvas;
+  }
+
   private isWasmComponentType(nodeType: string): boolean {
     return [
       "wasm-component",
@@ -1569,6 +1651,10 @@ export class CanvasRenderer {
       "wit-flags",
       "wit-resource",
     ].includes(nodeType);
+  }
+
+  private isGraphicsNodeType(nodeType: string): boolean {
+    return nodeType === "graphics-node";
   }
 
   private drawWitInterfaceNode(
@@ -2378,8 +2464,10 @@ export class CanvasRenderer {
   }
 
   // Find interface connector at a given position
-  private _findInterfaceConnector(position: Position):
-    | {
+  private _findInterfaceConnector(
+    position: Position,
+  ): // Enhanced interface connector - ready for advanced interaction features
+  | {
         element: ModelElement;
         interface: ComponentInterface;
         side: "left" | "right";
@@ -3149,6 +3237,342 @@ export class CanvasRenderer {
     return String(element.type || element.element_type || "");
   }
 
+  private drawGraphicsNode(
+    node: Node,
+    isSelected: boolean,
+    isHovered: boolean,
+  ): void {
+    if (!node.bounds) return;
+
+    const { x, y, width, height } = node.bounds;
+    const graphicsType = node.properties?.graphicsType || "unknown";
+    const graphicsProps = node.properties?.graphicsProperties || {};
+    const icon = node.properties?.icon || "🎨";
+
+    this.ctx.save();
+
+    // Draw background
+    const bgColor = (graphicsProps as any).backgroundColor || "#0A0E1A";
+    this.ctx.fillStyle = bgColor;
+    this.ctx.fillRect(x, y, width, height);
+
+    // Draw border
+    let borderColor = "#2A3441";
+    if (isSelected) {
+      borderColor = "#4A9EFF";
+    } else if (isHovered) {
+      borderColor = "#654FF0";
+    }
+
+    this.ctx.strokeStyle = borderColor;
+    this.ctx.lineWidth = isSelected ? 2 : 1;
+    this.ctx.strokeRect(x, y, width, height);
+
+    // Try to render with animation system first
+    const animatedNodes = graphicsAnimationIntegration.getAnimatedNodes();
+    const animatedNode = animatedNodes.get(node.id);
+
+    if (animatedNode) {
+      // Use animated rendering for live graphics
+      try {
+        // Update bounds if they've changed
+        animatedNode.bounds = { x, y, width: width - 20, height: height - 40 };
+
+        // Render animated graphics content
+        this.ctx.save();
+        this.ctx.translate(10, 10); // Offset for margins
+        this.ctx.beginPath();
+        this.ctx.rect(0, 0, width - 20, height - 40);
+        this.ctx.clip(); // Clip to content area
+
+        graphicsAnimationIntegration.renderAnimatedNode(
+          this.ctx,
+          animatedNode,
+          this.options.scale,
+        );
+
+        this.ctx.restore();
+      } catch (error) {
+        console.warn(
+          `Failed to render animated graphics for node ${node.id}:`,
+          error,
+        );
+        // Fallback to static preview
+        this.drawGraphicsPreview(graphicsType as string, graphicsProps as any, {
+          x: x + 10,
+          y: y + 10,
+          width: width - 20,
+          height: height - 40,
+        });
+      }
+    } else {
+      // Fallback to static graphics preview
+      this.drawGraphicsPreview(graphicsType as string, graphicsProps as any, {
+        x: x + 10,
+        y: y + 10,
+        width: width - 20,
+        height: height - 40,
+      });
+    }
+
+    // Draw icon and label overlay
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    this.ctx.fillRect(x, y + height - 30, width, 30);
+
+    // Draw icon
+    this.ctx.font = "16px Arial";
+    this.ctx.fillStyle = "white";
+    this.ctx.textAlign = "left";
+    this.ctx.fillText(icon as string, x + 5, y + height - 10);
+
+    // Draw name
+    this.ctx.font = "12px Arial";
+    this.ctx.fillStyle = "white";
+    this.ctx.fillText(node.label || "Graphics Node", x + 25, y + height - 10);
+
+    // Draw selection handles if selected
+    if (isSelected) {
+      this.drawSelectionHandles({ x, y, width, height });
+    }
+
+    this.ctx.restore();
+  }
+
+  private drawGraphicsPreview(
+    graphicsType: string,
+    props: any,
+    bounds: { x: number; y: number; width: number; height: number },
+  ): void {
+    const { x, y, width, height } = bounds;
+    const centerX = x + width / 2;
+    const centerY = y + (height - 30) / 2; // Account for bottom overlay
+    const previewHeight = height - 30;
+
+    this.ctx.save();
+
+    // Clip to prevent overflow
+    this.ctx.beginPath();
+    this.ctx.rect(x + 2, y + 2, width - 4, previewHeight - 4);
+    this.ctx.clip();
+
+    switch (graphicsType) {
+      case "sine-wave-visualizer":
+        this.drawSineWavePreview(centerX, centerY, props);
+        break;
+      case "particle-system":
+        this.drawParticleSystemPreview(x, y, width, previewHeight, props);
+        break;
+      case "radar-visualization":
+        this.drawRadarPreview(centerX, centerY, props);
+        break;
+      case "data-chart":
+        this.drawDataChartPreview(x, y, width, previewHeight, props);
+        break;
+      case "status-indicator":
+        this.drawStatusIndicatorPreview(centerX, centerY, props);
+        break;
+      case "waveform-display":
+        this.drawWaveformPreview(x, y, width, previewHeight, props);
+        break;
+      default:
+        this.drawGenericGraphicsPreview(centerX, centerY);
+    }
+
+    this.ctx.restore();
+  }
+
+  private drawSineWavePreview(
+    centerX: number,
+    centerY: number,
+    props: any,
+  ): void {
+    const color = props.color || "#4A9EFF";
+    const amplitude = Math.min(30, props.amplitude || 30);
+
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+
+    for (let i = -50; i <= 50; i += 2) {
+      const x = centerX + i;
+      const y = centerY + Math.sin(i * 0.1) * amplitude;
+      if (i === -50) {
+        this.ctx.moveTo(x, y);
+      } else {
+        this.ctx.lineTo(x, y);
+      }
+    }
+    this.ctx.stroke();
+  }
+
+  private drawParticleSystemPreview(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    props: any,
+  ): void {
+    const colors = props.particleColors || [
+      "#4A9EFF",
+      "#00D4AA",
+      "#654FF0",
+      "#F0B72F",
+    ];
+
+    for (let i = 0; i < 12; i++) {
+      const px = x + Math.random() * width;
+      const py = y + Math.random() * height;
+      const radius = Math.random() * 3 + 1;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+
+      this.ctx.fillStyle = color;
+      this.ctx.beginPath();
+      this.ctx.arc(px, py, radius, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+  }
+
+  private drawRadarPreview(centerX: number, centerY: number, props: any): void {
+    const color = props.detectionColor || "#00D4AA";
+    const radius = 25;
+
+    // Draw radar circles
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 1;
+    for (let r = 8; r <= radius; r += 8) {
+      this.ctx.beginPath();
+      this.ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+      this.ctx.stroke();
+    }
+
+    // Draw sweep line
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(centerX, centerY);
+    this.ctx.lineTo(centerX + radius - 5, centerY - 8);
+    this.ctx.stroke();
+  }
+
+  private drawDataChartPreview(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    props: any,
+  ): void {
+    const color = props.primaryColor || "#4A9EFF";
+    const points = 6;
+
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+
+    for (let i = 0; i < points; i++) {
+      const px = x + 10 + (i / (points - 1)) * (width - 20);
+      const py = y + 10 + Math.random() * (height - 20);
+
+      if (i === 0) {
+        this.ctx.moveTo(px, py);
+      } else {
+        this.ctx.lineTo(px, py);
+      }
+    }
+    this.ctx.stroke();
+  }
+
+  private drawStatusIndicatorPreview(
+    centerX: number,
+    centerY: number,
+    props: any,
+  ): void {
+    const colors = props.colors || { active: "#00D4AA" };
+    const radius = 12;
+
+    this.ctx.fillStyle = colors.active;
+    this.ctx.beginPath();
+    this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Add glow effect
+    this.ctx.shadowColor = colors.active;
+    this.ctx.shadowBlur = 8;
+    this.ctx.fill();
+    this.ctx.shadowBlur = 0;
+  }
+
+  private drawWaveformPreview(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    props: any,
+  ): void {
+    const color = props.color || "#654FF0";
+    const centerY = y + height / 2;
+
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 1.5;
+    this.ctx.beginPath();
+
+    for (let px = x + 5; px < x + width - 5; px += 3) {
+      const py = centerY + (Math.random() - 0.5) * (height - 20);
+      if (px === x + 5) {
+        this.ctx.moveTo(px, py);
+      } else {
+        this.ctx.lineTo(px, py);
+      }
+    }
+    this.ctx.stroke();
+  }
+
+  private drawGenericGraphicsPreview(centerX: number, centerY: number): void {
+    // Draw a simple geometric pattern
+    this.ctx.strokeStyle = "#654FF0";
+    this.ctx.lineWidth = 2;
+
+    // Draw diamond shape
+    this.ctx.beginPath();
+    this.ctx.moveTo(centerX, centerY - 15);
+    this.ctx.lineTo(centerX + 15, centerY);
+    this.ctx.lineTo(centerX, centerY + 15);
+    this.ctx.lineTo(centerX - 15, centerY);
+    this.ctx.closePath();
+    this.ctx.stroke();
+
+    // Draw center dot
+    this.ctx.fillStyle = "#654FF0";
+    this.ctx.beginPath();
+    this.ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
+    this.ctx.fill();
+  }
+
+  private drawSelectionHandles(bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }): void {
+    const { x, y, width, height } = bounds;
+    const handleSize = 8;
+
+    this.ctx.fillStyle = "#4A9EFF";
+    this.ctx.strokeStyle = "white";
+    this.ctx.lineWidth = 1;
+
+    // Corner handles
+    const handles = [
+      { x: x - handleSize / 2, y: y - handleSize / 2 }, // Top-left
+      { x: x + width - handleSize / 2, y: y - handleSize / 2 }, // Top-right
+      { x: x - handleSize / 2, y: y + height - handleSize / 2 }, // Bottom-left
+      { x: x + width - handleSize / 2, y: y + height - handleSize / 2 }, // Bottom-right
+    ];
+
+    handles.forEach((handle) => {
+      this.ctx.fillRect(handle.x, handle.y, handleSize, handleSize);
+      this.ctx.strokeRect(handle.x, handle.y, handleSize, handleSize);
+    });
+  }
+
   private ensureElementBounds(element: any): void {
     if (
       !element.bounds &&
@@ -3217,41 +3641,106 @@ export class CanvasRenderer {
   /**
    * Get view mode specific rendering hints
    */
-  private getViewModeRenderingHints(): Record<string, boolean> {
-    switch (this.currentViewMode) {
-      case "component":
-        return {
-          showComponents: true,
-          showInterfaces: true,
-          showConnections: true,
-          showInterfaceNames: this.showInterfaceNames,
-        };
-      case "wit-interface":
-        return {
-          showPackages: true,
-          showInterfaces: true,
-          showFunctions: true,
-          showTypes: true,
-          emphasizeStructure: true,
-        };
-      case "wit-dependencies":
-        return {
-          showDependencies: true,
-          showExporters: true,
-          showImporters: true,
-          groupByInterface: true,
-          highlightDependencies: true,
-        };
-      default:
-        return {};
-    }
+  private getViewModeRenderingHints(): Record<
+    string,
+    boolean | string | number
+  > {
+    const baseHints = this.getPerformanceOptimizedHints();
+
+    const viewModeHints = (() => {
+      switch (this.currentViewMode) {
+        case "component":
+          return {
+            showComponents: true,
+            showInterfaces: true,
+            showConnections: true,
+            showInterfaceNames: this.showInterfaceNames,
+          };
+        case "wit-interface":
+          return {
+            showPackages: true,
+            showInterfaces: true,
+            showFunctions: true,
+            showTypes: true,
+            emphasizeStructure: true,
+          };
+        case "wit-dependencies":
+          return {
+            showDependencies: true,
+            showExporters: true,
+            showImporters: true,
+            groupByInterface: true,
+            highlightDependencies: true,
+          };
+        default:
+          return {};
+      }
+    })();
+
+    // Filter out undefined values to avoid type issues
+    const combinedHints = { ...baseHints, ...viewModeHints };
+    const cleanHints: Record<string, boolean | string | number> = {};
+
+    Object.entries(combinedHints).forEach(([key, value]) => {
+      if (value !== undefined) {
+        cleanHints[key] = value;
+      }
+    });
+
+    return cleanHints;
+  }
+
+  private getPerformanceOptimizedHints(): Record<
+    string,
+    boolean | string | number
+  > {
+    const scale = this.options.scale;
+    const elementCount = this.currentDiagram
+      ? Object.keys(this.currentDiagram.elements).length
+      : 0;
+
+    // Performance-based optimizations
+    const isLargeScale = elementCount > 50;
+    const isZoomedOut = scale < 0.5;
+    const isZoomedIn = scale > 2.0;
+
+    return {
+      // Level of detail based on zoom
+      levelOfDetail: isZoomedOut ? "low" : isZoomedIn ? "high" : "medium",
+
+      // Viewport culling enabled for large diagrams
+      viewportCullingEnabled: isLargeScale,
+
+      // Element batching for performance
+      batchingEnabled: isLargeScale,
+
+      // Simplified rendering for distant view
+      showDetailedLabels: !isZoomedOut,
+      showMinorElements: !isZoomedOut,
+      showAnimations: !isLargeScale || scale > 0.75,
+
+      // Cache strategy based on diagram size
+      cacheStrategy: isLargeScale ? "static" : "dynamic",
+
+      // Quality settings based on performance needs
+      antialiasing: !isLargeScale,
+      highQualityText: scale > 0.8,
+
+      // Culling thresholds
+      minElementSize: isZoomedOut ? 10 : 2,
+      maxRenderDistance: 2000,
+
+      // Performance monitoring
+      enablePerformanceMetrics: true,
+      frameTargetMs: 16.67, // 60 FPS target
+    };
   }
 
   /**
    * Apply WIT-specific styling and rendering context
    */
   private applyWitSpecificStyling(
-    renderingHints: Record<string, boolean>,
+    renderingHints: Record<string, boolean | string | number>,
   ): void {
     if (renderingHints.emphasizeStructure) {
       // Enhance line weights for structural elements
@@ -3267,9 +3756,142 @@ export class CanvasRenderer {
   /**
    * Determine if an element should be rendered based on view mode hints
    */
+  private cullElementsOutsideViewport(
+    elements: ModelElement[],
+  ): ModelElement[] {
+    if (!this.canvas) return elements;
+
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const viewportBounds = {
+      left: -this.options.offset.x / this.options.scale,
+      top: -this.options.offset.y / this.options.scale,
+      right: (-this.options.offset.x + canvasRect.width) / this.options.scale,
+      bottom: (-this.options.offset.y + canvasRect.height) / this.options.scale,
+    };
+
+    // Add margin for smooth scrolling
+    const margin = 100;
+    viewportBounds.left -= margin;
+    viewportBounds.top -= margin;
+    viewportBounds.right += margin;
+    viewportBounds.bottom += margin;
+
+    return elements.filter((element) => {
+      if (!element.bounds) return true; // Always render elements without bounds
+
+      const { x, y, width = 50, height = 30 } = element.bounds;
+
+      // Check if element intersects with viewport
+      return !(
+        x + width < viewportBounds.left ||
+        x > viewportBounds.right ||
+        y + height < viewportBounds.top ||
+        y > viewportBounds.bottom
+      );
+    });
+  }
+
+  private batchSimilarElements(elements: ModelElement[]): ModelElement[] {
+    // Group similar elements for batch processing to reduce context switches
+    const batches = new Map<string, ModelElement[]>();
+
+    elements.forEach((element) => {
+      const elementType = element.type || element.element_type || "unknown";
+
+      if (!batches.has(elementType)) {
+        batches.set(elementType, []);
+      }
+      batches.get(elementType)!.push(element);
+    });
+
+    // Return elements grouped by type for optimized rendering
+    const batchedElements: ModelElement[] = [];
+
+    // Render in order of rendering priority
+    const priorityOrder = [
+      "node",
+      "edge",
+      "wasm-component",
+      "graphics-node",
+      "wit-interface",
+    ];
+
+    priorityOrder.forEach((type) => {
+      if (batches.has(type)) {
+        batchedElements.push(...batches.get(type)!);
+      }
+    });
+
+    // Add any remaining types
+    batches.forEach((elements, type) => {
+      if (!priorityOrder.includes(type)) {
+        batchedElements.push(...elements);
+      }
+    });
+
+    return batchedElements;
+  }
+
+  private shouldRenderWithLevelOfDetail(
+    element: ModelElement,
+    renderingHints: Record<string, boolean | string | number>,
+  ): boolean {
+    const levelOfDetail = renderingHints.levelOfDetail as string;
+    const minSize = renderingHints.minElementSize as number;
+
+    if (!element.bounds) return true;
+
+    // Skip very small elements when zoomed out
+    const scaledWidth = (element.bounds.width || 50) * this.options.scale;
+    const scaledHeight = (element.bounds.height || 30) * this.options.scale;
+
+    if (
+      levelOfDetail === "low" &&
+      (scaledWidth < minSize || scaledHeight < minSize)
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private updatePerformanceMetrics(metrics: {
+    renderTime: number;
+    elementCount: number;
+    renderedCount: number;
+    culledCount: number;
+    frameTarget: number;
+  }): void {
+    const fps = metrics.renderTime > 0 ? 1000 / metrics.renderTime : 0;
+    const cullingEfficiency =
+      metrics.elementCount > 0
+        ? (metrics.culledCount / metrics.elementCount) * 100
+        : 0;
+
+    // Log performance metrics for debugging (can be enhanced with real monitoring)
+    if (metrics.renderTime > metrics.frameTarget * 1.5) {
+      console.warn(`Canvas Renderer Performance Warning:`, {
+        renderTime: `${metrics.renderTime.toFixed(2)}ms`,
+        targetTime: `${metrics.frameTarget.toFixed(2)}ms`,
+        fps: fps.toFixed(1),
+        elements: `${metrics.renderedCount}/${metrics.elementCount}`,
+        cullingEfficiency: `${cullingEfficiency.toFixed(1)}%`,
+      });
+    }
+
+    // Store metrics for potential UI display
+    this.lastPerformanceMetrics = {
+      renderTime: metrics.renderTime,
+      fps: fps,
+      elementsRendered: metrics.renderedCount,
+      elementsCulled: metrics.culledCount,
+      cullingEfficiency: cullingEfficiency,
+    };
+  }
+
   private shouldRenderElement(
     element: ModelElement,
-    renderingHints: Record<string, boolean>,
+    renderingHints: Record<string, boolean | string | number>,
   ): boolean {
     const elementType = element.type || element.element_type;
 
@@ -3894,10 +4516,219 @@ export class CanvasRenderer {
         getComponents: () => this.getAvailableGraphicsComponents(),
         updateProperties: (id: string, props: any) =>
           this.updateGraphicsComponentProperties(id, props),
+        getPerformanceMetrics: () => this.getPerformanceMetrics(),
       };
       console.log(
         "CanvasRenderer: Graphics debugging interface available as window.graphicsRenderer",
       );
     }
+  }
+
+  /**
+   * Get current performance metrics for monitoring and UI display
+   */
+  public getPerformanceMetrics() {
+    return {
+      ...this.lastPerformanceMetrics,
+      currentScale: this.options.scale,
+      viewportSize: {
+        width: this.canvas.width,
+        height: this.canvas.height,
+      },
+      diagramElementCount: this.currentDiagram
+        ? Object.keys(this.currentDiagram.elements).length
+        : 0,
+    };
+  }
+
+  /**
+   * Smoothly animate to a specific viewport position and scale
+   */
+  public animateToViewport(
+    targetOffset: Position,
+    targetScale: number,
+    duration: number = 800,
+  ): Promise<void> {
+    return new Promise((resolve) => {
+      // Cancel any existing animation
+      if (this.animationRequest) {
+        cancelAnimationFrame(this.animationRequest);
+      }
+
+      this.isAnimating = true;
+      this.currentAnimation = {
+        startTime: performance.now(),
+        duration,
+        startOffset: { ...this.options.offset },
+        startScale: this.options.scale,
+        easing: this.easeInOutCubic,
+      };
+
+      this.targetViewState = {
+        offset: targetOffset,
+        scale: targetScale,
+      };
+
+      const animate = (currentTime: number) => {
+        if (!this.currentAnimation || !this.targetViewState) {
+          resolve();
+          return;
+        }
+
+        const elapsed = currentTime - this.currentAnimation.startTime;
+        const progress = Math.min(elapsed / this.currentAnimation.duration, 1);
+        const easedProgress = this.currentAnimation.easing(progress);
+
+        // Interpolate offset
+        this.options.offset.x = this.lerp(
+          this.currentAnimation.startOffset.x,
+          this.targetViewState.offset.x,
+          easedProgress,
+        );
+        this.options.offset.y = this.lerp(
+          this.currentAnimation.startOffset.y,
+          this.targetViewState.offset.y,
+          easedProgress,
+        );
+
+        // Interpolate scale
+        this.options.scale = this.lerp(
+          this.currentAnimation.startScale,
+          this.targetViewState.scale,
+          easedProgress,
+        );
+
+        // Trigger re-render
+        this.render();
+
+        if (progress < 1) {
+          this.animationRequest = requestAnimationFrame(animate);
+        } else {
+          // Animation complete
+          this.isAnimating = false;
+          this.currentAnimation = null;
+          this.targetViewState = null;
+          this.animationRequest = null;
+          resolve();
+        }
+      };
+
+      this.animationRequest = requestAnimationFrame(animate);
+    });
+  }
+
+  /**
+   * Smoothly pan to a specific position
+   */
+  public async panTo(
+    position: Position,
+    duration: number = 600,
+  ): Promise<void> {
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const centerX = canvasRect.width / 2;
+    const centerY = canvasRect.height / 2;
+
+    const targetOffset = {
+      x: centerX - position.x * this.options.scale,
+      y: centerY - position.y * this.options.scale,
+    };
+
+    return this.animateToViewport(targetOffset, this.options.scale, duration);
+  }
+
+  /**
+   * Smoothly zoom to a specific scale level
+   */
+  public async zoomTo(
+    scale: number,
+    centerPoint?: Position,
+    duration: number = 500,
+  ): Promise<void> {
+    let targetOffset = { ...this.options.offset };
+
+    if (centerPoint) {
+      // Zoom toward a specific point
+      const canvasRect = this.canvas.getBoundingClientRect();
+      const centerX = canvasRect.width / 2;
+      const centerY = canvasRect.height / 2;
+
+      targetOffset = {
+        x: centerX - centerPoint.x * scale,
+        y: centerY - centerPoint.y * scale,
+      };
+    }
+
+    return this.animateToViewport(targetOffset, scale, duration);
+  }
+
+  /**
+   * Smoothly fit the diagram to the viewport
+   */
+  public async fitToView(
+    padding: number = 50,
+    duration: number = 800,
+  ): Promise<void> {
+    if (!this.currentDiagram) return;
+
+    const elements = Object.values(this.currentDiagram.elements);
+    if (elements.length === 0) return;
+
+    // Calculate bounding box of all elements
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+
+    elements.forEach((element) => {
+      if (element.bounds) {
+        const { x, y, width = 50, height = 30 } = element.bounds;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + width);
+        maxY = Math.max(maxY, y + height);
+      }
+    });
+
+    if (!isFinite(minX)) return;
+
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+    const canvasRect = this.canvas.getBoundingClientRect();
+
+    // Calculate scale to fit content with padding
+    const scaleX = (canvasRect.width - padding * 2) / contentWidth;
+    const scaleY = (canvasRect.height - padding * 2) / contentHeight;
+    const targetScale = Math.min(scaleX, scaleY, 2); // Cap at 2x zoom
+
+    // Calculate center offset
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const targetOffset = {
+      x: canvasRect.width / 2 - centerX * targetScale,
+      y: canvasRect.height / 2 - centerY * targetScale,
+    };
+
+    return this.animateToViewport(targetOffset, targetScale, duration);
+  }
+
+  /**
+   * Cubic ease-in-out easing function
+   */
+  private easeInOutCubic(t: number): number {
+    return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+  }
+
+  /**
+   * Linear interpolation helper
+   */
+  private lerp(start: number, end: number, progress: number): number {
+    return start + (end - start) * progress;
+  }
+
+  /**
+   * Get current animation state
+   */
+  public isCurrentlyAnimating(): boolean {
+    return this.isAnimating;
   }
 }

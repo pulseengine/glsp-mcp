@@ -345,7 +345,7 @@ export class InteractionManager {
       // Check if we already have interface data
       if (
         !element.properties?.interfaces ||
-(element.properties.interfaces as unknown[]).length === 0
+        (element.properties.interfaces as unknown[]).length === 0
       ) {
         await this.fetchAndStoreWitInfo(element);
       }
@@ -508,7 +508,10 @@ export class InteractionManager {
           console.error("Failed to persist interface data:", updateError);
         }
       } else {
-        console.warn("Failed to fetch WIT info:", (witInfo as any)?.content?.[0]?.text);
+        console.warn(
+          "Failed to fetch WIT info:",
+          (witInfo as any)?.content?.[0]?.text,
+        );
         element.properties = {
           ...element.properties,
           interfaces: [],
@@ -620,16 +623,22 @@ export class InteractionManager {
                     <div class="component-info">
                         <div class="info-grid">
                             <div class="info-item">
-                                <strong>Component:</strong> ${loadedComponent.name}
+                                <strong>Component:</strong> ${
+                                  loadedComponent.name
+                                }
                             </div>
                             <div class="info-item">
                                 <strong>Status:</strong> <span class="status-badge status-ready">Ready</span>
                             </div>
                             <div class="info-item">
-                                <strong>Loaded:</strong> ${(loadedComponent as any).loadedAt || 'N/A'}
+                                <strong>Loaded:</strong> ${
+                                  (loadedComponent as any).loadedAt || "N/A"
+                                }
                             </div>
                             <div class="info-item">
-                                <strong>Path:</strong> <span class="component-path">${loadedComponent.path}</span>
+                                <strong>Path:</strong> <span class="component-path">${
+                                  loadedComponent.path
+                                }</span>
                             </div>
                         </div>
                     </div>
@@ -1428,19 +1437,18 @@ function sleep(ms) {
       ) {
         const interfaces = (element.properties?.interfaces as unknown[]) || [];
         interfaces.forEach((iface: any) => {
-            const witInterface: WitInterface = {
-              name: iface.name || "unknown",
-              interface_type:
-                (iface.interface_type as "import" | "export") || "export",
-              functions: (iface.functions as WitFunction[]) || [],
-              types: (iface.types as WitType[]) || [],
-            };
-            availableInterfaces.push({
-              componentId: element.id,
-              interface: witInterface,
-            });
-          },
-        );
+          const witInterface: WitInterface = {
+            name: iface.name || "unknown",
+            interface_type:
+              (iface.interface_type as "import" | "export") || "export",
+            functions: (iface.functions as WitFunction[]) || [],
+            types: (iface.types as WitType[]) || [],
+          };
+          availableInterfaces.push({
+            componentId: element.id,
+            interface: witInterface,
+          });
+        });
       }
     });
 
@@ -1808,7 +1816,9 @@ function sleep(ms) {
               resultMessage.textContent = `> ${
                 executionResult.success ? "Success" : "Error"
               }: ${
-(executionResult as any).output || executionResult.error || "No output"
+                (executionResult as any).output ||
+                executionResult.error ||
+                "No output"
               }`;
               consoleOutput.appendChild(resultMessage);
               consoleOutput.scrollTop = consoleOutput.scrollHeight;
@@ -1888,7 +1898,8 @@ function sleep(ms) {
         const stateInfo = {
           name: loadedComponent.name,
           path: loadedComponent.path,
-          loadedAt: (loadedComponent as any).loadedAt || new Date().toISOString(),
+          loadedAt:
+            (loadedComponent as any).loadedAt || new Date().toISOString(),
           metrics: {
             memoryUsage: `${Math.round(metrics.memoryUsage)} KB`,
             executionTime: `${metrics.executionTime}ms`,
@@ -1953,7 +1964,10 @@ function sleep(ms) {
       );
 
       if (!(executeResult as any).success) {
-        console.error("Component execution failed:", (executeResult as any).error);
+        console.error(
+          "Component execution failed:",
+          (executeResult as any).error,
+        );
         return null;
       }
 

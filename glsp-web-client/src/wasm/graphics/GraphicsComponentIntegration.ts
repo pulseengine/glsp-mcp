@@ -4,7 +4,7 @@
  */
 
 import { CanvasRenderer } from "../../renderer/canvas-renderer.js";
-import { DiagramModel, Node, ModelElement } from "../../model/diagram.js";
+import { Node } from "../../model/diagram.js";
 import {
   GraphicsBridge,
   GraphicsAPI,
@@ -12,10 +12,13 @@ import {
 } from "./GraphicsBridge.js";
 import {
   GraphicsComponentFactory,
-  WasmGraphicsComponent,
-  GraphicsComponentInfo,
-} from "./WasmGraphicsComponent.js";
+  GraphicsComponent as WasmGraphicsComponent,
+} from "./WasmGraphicsComponent.js"; // Ready for graphics integration
 import { WasmComponent } from "../../types/wasm-component.js";
+import {
+  graphicsAnimationIntegration,
+  type AnimatedGraphicsNode,
+} from "../../animation/GraphicsAnimationIntegration.js";
 
 export interface GraphicsIntegrationOptions {
   enableInteractivity: boolean;
@@ -25,8 +28,14 @@ export interface GraphicsIntegrationOptions {
   thumbnailSize: { width: number; height: number };
 }
 
+export interface GraphicsComponentInfo {
+  name: string;
+  component: WasmGraphicsComponent;
+  config?: any;
+}
+
 export interface GraphicsComponentNode extends Node {
-  graphicsComponent?: WasmGraphicsComponent;
+  graphicsComponent?: WasmGraphicsComponent; // Ready for graphics component integration
   graphicsCanvas?: HTMLCanvasElement;
   graphicsContext?: CanvasRenderingContext2D;
   isGraphicsComponent: boolean;
@@ -38,8 +47,8 @@ export interface GraphicsComponentNode extends Node {
 export class GraphicsComponentIntegration {
   private canvasRenderer: CanvasRenderer;
   private graphicsBridge: GraphicsBridge;
-  private componentFactory: GraphicsComponentFactory;
-  private graphicsComponents: Map<string, WasmGraphicsComponent> = new Map();
+  private componentFactory: GraphicsComponentFactory; // Ready for graphics component factory
+  private graphicsComponents: Map<string, WasmGraphicsComponent> = new Map(); // Ready for graphics components
   private graphicsCanvases: Map<string, HTMLCanvasElement> = new Map();
   private animationCallbacks: Map<string, number> = new Map();
   private options: GraphicsIntegrationOptions;
@@ -61,6 +70,22 @@ export class GraphicsComponentIntegration {
       thumbnailSize: { width: 200, height: 150 },
       ...options,
     };
+
+    // Initialize animation system integration if enabled
+    if (this.options.enableAnimation) {
+      this.initializeAnimationSystem();
+    }
+  }
+
+  /**
+   * Initialize animation system for graphics components
+   */
+  private initializeAnimationSystem(): void {
+    console.log(
+      "🎬 GraphicsComponentIntegration: Initializing animation system",
+    );
+    // Animation system is ready for graphics component registration
+    // Individual graphics nodes will be registered when created
   }
 
   /**
@@ -94,7 +119,10 @@ export class GraphicsComponentIntegration {
    * Register a graphics component with the integration system
    */
   public registerGraphicsComponent(componentInfo: GraphicsComponentInfo): void {
-    this.componentFactory.registerComponent(componentInfo);
+    this.componentFactory.registerComponent({
+      name: componentInfo.name,
+      component: componentInfo.component,
+    });
     console.log(
       `GraphicsComponentIntegration: Registered component '${componentInfo.name}'`,
     );
@@ -106,10 +134,10 @@ export class GraphicsComponentIntegration {
   public isGraphicsComponent(component: WasmComponent): boolean {
     // Check if component has graphics interface or metadata
     const hasGraphicsInterface = component.exports?.some(
-      (exp) =>
-        exp.name.includes("graphics") ||
-        exp.name.includes("render") ||
-        exp.name.includes("draw"),
+      (exp: any) =>
+        exp?.name?.includes("graphics") ||
+        exp?.name?.includes("render") ||
+        exp?.name?.includes("draw"),
     );
 
     const hasGraphicsMetadata =
@@ -196,6 +224,11 @@ export class GraphicsComponentIntegration {
     // Initialize component
     await this.initializeGraphicsComponent(node);
 
+    // Register with animation system if enabled
+    if (this.options.enableAnimation) {
+      this.registerNodeForAnimation(node);
+    }
+
     console.log(
       `GraphicsComponentIntegration: Created graphics component node '${node.id}'`,
     );
@@ -215,7 +248,10 @@ export class GraphicsComponentIntegration {
       const graphicsAPI = this.createGraphicsAPI(node);
 
       // Initialize the component
-      await node.graphicsComponent.initialize(graphicsAPI);
+      await node.graphicsComponent.initialize(graphicsAPI, {
+        width: this.options.thumbnailSize.width,
+        height: this.options.thumbnailSize.height,
+      });
 
       // Start animation if enabled
       if (
@@ -313,18 +349,31 @@ export class GraphicsComponentIntegration {
       },
 
       // Canvas properties
+      getWidth: () => canvas.width,
+      getHeight: () => canvas.height,
       getCanvasSize: () => ({ width: canvas.width, height: canvas.height }),
 
       // Backend operations (delegated to GraphicsBridge)
-      renderChart: async (data: any, options: any) => {
+      renderChart: async (data: any, options?: any) => {
         return await this.graphicsBridge.renderChart(data, options);
       },
 
-      streamVisualization: async (dataStream: any, options: any) => {
+      streamVisualization: async (dataStream: any, options?: any) => {
         return await this.graphicsBridge.streamVisualization(
           dataStream,
           options,
         );
+      },
+
+      renderOnBackend: async (componentId: string, commands: any[]) => {
+        return await this.graphicsBridge.renderOnBackend(componentId, commands);
+      },
+
+      streamFromBackend: async (
+        componentId: string,
+        params: Record<string, unknown>,
+      ) => {
+        return await this.graphicsBridge.streamFromBackend(componentId, params);
       },
     };
   }
@@ -396,7 +445,12 @@ export class GraphicsComponentIntegration {
     try {
       // Let the component render itself
       if (node.graphicsComponent.render) {
-        await node.graphicsComponent.render();
+        const graphicsAPI = this.createGraphicsAPI(node);
+        node.graphicsComponent.render(graphicsAPI, {
+          time: Date.now(),
+          deltaTime: 16,
+          frameCount: 0,
+        });
       }
 
       // Trigger main canvas re-render to show updated graphics
@@ -434,9 +488,9 @@ export class GraphicsComponentIntegration {
         case "move":
           return node.graphicsComponent.onMouseMove?.(x, y) || false;
         case "down":
-          return node.graphicsComponent.onMouseDown?.(x, y) || false;
+          return node.graphicsComponent.onMouseDown?.(x, y, 0) || false;
         case "up":
-          return node.graphicsComponent.onMouseUp?.(x, y) || false;
+          return node.graphicsComponent.onMouseUp?.(x, y, 0) || false;
       }
     } catch (error) {
       console.error(
@@ -554,17 +608,113 @@ export class GraphicsComponentIntegration {
   }
 
   /**
+   * Register a graphics node with the animation system
+   */
+  private registerNodeForAnimation(node: GraphicsComponentNode): void {
+    try {
+      // Convert GraphicsComponentNode to AnimatedGraphicsNode format
+      const animatedNode: AnimatedGraphicsNode = {
+        id: node.id,
+        type: this.inferGraphicsNodeType(node),
+        bounds: {
+          x: node.position?.x || 0,
+          y: node.position?.y || 0,
+          width: node.size?.width || 200,
+          height: node.size?.height || 150,
+        },
+        properties: this.extractGraphicsProperties(node),
+      };
+
+      // Register with animation system
+      graphicsAnimationIntegration.registerAnimatedNode(animatedNode);
+
+      console.log(`🎬 Registered graphics node '${node.id}' for animation`);
+    } catch (error) {
+      console.warn(
+        `Failed to register node '${node.id}' for animation:`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * Infer graphics node type from component
+   */
+  private inferGraphicsNodeType(node: GraphicsComponentNode): string {
+    const componentName = node.label?.toLowerCase() || "";
+
+    // Map component names to our graphics node types
+    if (componentName.includes("sine") || componentName.includes("wave")) {
+      return "sine-wave-visualizer";
+    }
+    if (componentName.includes("particle")) {
+      return "particle-system";
+    }
+    if (componentName.includes("radar")) {
+      return "radar-visualization";
+    }
+    if (componentName.includes("chart") || componentName.includes("graph")) {
+      return "chart-display";
+    }
+    if (componentName.includes("led") || componentName.includes("status")) {
+      return "status-led";
+    }
+
+    // Default fallback
+    return "sine-wave-visualizer";
+  }
+
+  /**
+   * Extract properties for animation system
+   */
+  private extractGraphicsProperties(
+    node: GraphicsComponentNode,
+  ): Record<string, any> {
+    const defaultProps = {
+      amplitude: 50,
+      frequency: 0.02,
+      speed: 0.05,
+      color: "#4A9EFF",
+      backgroundColor: "#0A0E1A",
+    };
+
+    // Merge with any existing properties from the node
+    const metadataProps = (node.metadata as any)?.properties || {};
+    return {
+      ...defaultProps,
+      ...metadataProps,
+      // Add component-specific properties
+      componentName: node.label,
+      isActive: true,
+    };
+  }
+
+  /**
    * Destroy the integration manager
    */
   public destroy(): void {
+    // Clean up animation system registrations
+    if (this.options.enableAnimation) {
+      this.graphicsComponents.forEach((_component, nodeId) => {
+        try {
+          graphicsAnimationIntegration.unregisterAnimatedNode(nodeId);
+        } catch (error) {
+          console.warn(
+            `Failed to unregister animated node '${nodeId}':`,
+            error,
+          );
+        }
+      });
+    }
+
     // Stop all animations
-    this.animationCallbacks.forEach((animationId, nodeId) => {
+    this.animationCallbacks.forEach((animationId, _nodeId) => {
       cancelAnimationFrame(animationId);
     });
     this.animationCallbacks.clear();
 
     // Destroy all components
-    this.graphicsComponents.forEach((component, nodeId) => {
+    this.graphicsComponents.forEach((component, _nodeId) => {
       if (component.destroy) {
         component.destroy();
       }
