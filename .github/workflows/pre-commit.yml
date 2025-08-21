@@ -1,0 +1,152 @@
+name: Pre-commit Checks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain: [stable]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Needed for detect-secrets baseline
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ matrix.toolchain }}
+        components: rustfmt, clippy
+
+    - name: Cache Rust dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          glsp-mcp-server/target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: glsp-web-client/package-lock.json
+
+    - name: Install Node.js dependencies
+      run: |
+        cd glsp-web-client
+        npm ci
+
+    - name: Set up Python for pre-commit
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install pre-commit
+      run: pip install pre-commit
+
+    - name: Cache pre-commit dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pre-commit
+        key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+    - name: Run pre-commit hooks
+      run: pre-commit run --all-files
+
+  # Separate job for running full test suites
+  tests:
+    runs-on: ubuntu-latest
+    needs: pre-commit
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+
+    - name: Cache Rust dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          glsp-mcp-server/target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Run Rust tests
+      run: |
+        cd glsp-mcp-server
+        cargo test --verbose
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: glsp-web-client/package-lock.json
+
+    - name: Install Node.js dependencies
+      run: |
+        cd glsp-web-client
+        npm ci
+
+    - name: Run TypeScript type check
+      run: |
+        cd glsp-web-client
+        npm run type-check
+
+    - name: Run frontend tests
+      run: |
+        cd glsp-web-client
+        npm test
+
+    - name: Build frontend
+      run: |
+        cd glsp-web-client
+        npm run build
+
+  # Security check job
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Rust security audit
+      uses: actions-rs/audit-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: glsp-mcp-server
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install Node.js dependencies
+      run: |
+        cd glsp-web-client
+        npm ci
+
+    - name: Run npm audit
+      run: |
+        cd glsp-web-client
+        npm audit --audit-level moderate

@@ -23,7 +23,7 @@ System-Level Requirements
    :asil_level: B
    :component_category: system
    :links: WASM_001, SAFETY_001
-   
+
    The ADAS system shall initialize all 15 components in the correct order within 2 seconds of system startup,
    ensuring all safety-critical components are operational before enabling driver assistance features.
 
@@ -33,7 +33,7 @@ System-Level Requirements
    :asil_level: B
    :component_category: system
    :links: WASM_002, SAFETY_021
-   
+
    Each ADAS component shall run in an isolated WebAssembly sandbox with no shared memory, ensuring
    that a failure in one component cannot directly corrupt another component's state.
 
@@ -43,7 +43,7 @@ System-Level Requirements
    :asil_level: B
    :component_category: system
    :latency_requirement: 100ms
-   
+
    The complete ADAS pipeline from sensor input to control output shall process data with an
    end-to-end latency not exceeding 100ms under normal operating conditions.
 
@@ -53,7 +53,7 @@ System-Level Requirements
    :asil_level: B
    :component_category: system
    :links: SAFETY_032
-   
+
    The ADAS system shall support graceful degradation, maintaining basic safety functions even
    when non-critical components fail or sensors become unavailable.
 
@@ -63,7 +63,7 @@ System-Level Requirements
    :asil_level: B
    :component_category: system
    :wit_interface: adas-common/messaging.wit
-   
+
    All inter-component communication shall use typed WIT interfaces with versioning support,
    ensuring backward compatibility and type safety across component boundaries.
 
@@ -76,7 +76,7 @@ Data Flow Requirements
    :asil_level: B
    :component_category: data_flow
    :latency_requirement: 20ms
-   
+
    The sensor data pipeline shall process raw sensor inputs through the fusion components
    within 20ms, providing synchronized multi-sensor data to perception algorithms.
 
@@ -87,7 +87,7 @@ Data Flow Requirements
    :component_category: data_flow
    :latency_requirement: 50ms
    :links: AI_COMP_001
-   
+
    The perception pipeline shall process fused sensor data through AI components to produce
    object detections, classifications, and predictions within 50ms of sensor data receipt.
 
@@ -97,7 +97,7 @@ Data Flow Requirements
    :asil_level: B
    :component_category: data_flow
    :latency_requirement: 30ms
-   
+
    The control pipeline shall process perception outputs through planning and vehicle control
    components to generate actuator commands within 30ms of perception data receipt.
 
@@ -110,7 +110,7 @@ Component Lifecycle Requirements
    :asil_level: B
    :component_category: lifecycle
    :links: SAFETY_003
-   
+
    Each component shall implement health monitoring with heartbeat signals every 100ms and
    detailed diagnostics accessible through the safety monitor component.
 
@@ -119,7 +119,7 @@ Component Lifecycle Requirements
    :status: implemented
    :asil_level: QM
    :component_category: lifecycle
-   
+
    Non-safety-critical components shall support hot reloading for updates without requiring
    full system restart, enabling over-the-air updates for enhanced functionality.
 
@@ -129,7 +129,7 @@ Component Lifecycle Requirements
    :asil_level: B
    :component_category: lifecycle
    :wit_interface: adas-common/versioning.wit
-   
+
    All components shall expose version information including semantic version, build timestamp,
    and safety certification status through standardized WIT interfaces.
 
@@ -142,7 +142,7 @@ Resource Management Requirements
    :asil_level: B
    :component_category: resources
    :links: WASM_009
-   
+
    Each component shall operate within pre-allocated memory limits: sensors (64MB), AI components (256MB),
    fusion components (128MB), control components (32MB), system components (64MB).
 
@@ -151,7 +151,7 @@ Resource Management Requirements
    :status: implemented
    :asil_level: B
    :component_category: resources
-   
+
    The complete ADAS system shall not exceed 70% CPU utilization on the target hardware platform
    (4-core ARM Cortex-A72) under worst-case sensor input conditions.
 
@@ -160,7 +160,7 @@ Resource Management Requirements
    :status: implemented
    :asil_level: QM
    :component_category: resources
-   
+
    Components shall support power-saving modes with configurable update rates based on vehicle
    state (parked: 1Hz, urban: 10Hz, highway: 30Hz).
 
@@ -173,7 +173,7 @@ System Integration Requirements
    :asil_level: B
    :component_category: integration
    :links: ADAS_COMP_027
-   
+
    The ADAS system shall integrate with vehicle systems through the CAN Gateway component,
    supporting CAN-FD protocol with DBC file configuration for message definitions.
 

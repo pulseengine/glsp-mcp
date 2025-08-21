@@ -1,3 +1,17 @@
+// Copyright (c) 2024 GLSP-Rust Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //! InfluxDB database backend implementation for time-series sensor data
 //!
 //! This implementation provides a specialized time-series database backend
@@ -669,7 +683,7 @@ impl DatabaseInterface for InfluxDBBackend {
     }
 
     async fn backup(&self, destination: &str) -> DatabaseResult<()> {
-        warn!("InfluxDB backup not implemented - use influxd backup command: influxd backup -database {} {}", 
+        warn!("InfluxDB backup not implemented - use influxd backup command: influxd backup -database {} {}",
               self.database_name, destination);
         Err(DatabaseError::FeatureNotSupported {
             feature: "Automatic backup not implemented".to_string(),
@@ -677,7 +691,7 @@ impl DatabaseInterface for InfluxDBBackend {
     }
 
     async fn restore(&mut self, source: &str) -> DatabaseResult<()> {
-        warn!("InfluxDB restore not implemented - use influxd restore command: influxd restore -database {} {}", 
+        warn!("InfluxDB restore not implemented - use influxd restore command: influxd restore -database {} {}",
               self.database_name, source);
         Err(DatabaseError::FeatureNotSupported {
             feature: "Automatic restore not implemented".to_string(),

@@ -31,7 +31,7 @@ Front Camera Requirements
    :component_category: sensor
    :wit_interface: sensors/camera.wit
    :bazel_target: //components/sensors/camera-front
-   
+
    The front camera component shall capture video frames at 1920x1080 resolution at 30 FPS,
    providing RGB data in YUV420 format for object detection processing.
 
@@ -41,7 +41,7 @@ Front Camera Requirements
    :sensor_type: camera
    :asil_level: B
    :component_category: sensor
-   
+
    The front camera shall provide a minimum 120-degree horizontal field of view with
    distortion correction applied to maintain object detection accuracy.
 
@@ -52,7 +52,7 @@ Front Camera Requirements
    :asil_level: B
    :component_category: sensor
    :latency_requirement: 33ms
-   
+
    The front camera component shall support HDR processing and low-light enhancement,
    maintaining object detection capability down to 0.1 lux illumination.
 
@@ -62,7 +62,7 @@ Front Camera Requirements
    :sensor_type: camera
    :asil_level: B
    :component_category: sensor
-   
+
    Each camera frame shall include high-precision timestamps (microsecond accuracy) synchronized
    with the vehicle's master clock for sensor fusion alignment.
 
@@ -73,7 +73,7 @@ Front Camera Requirements
    :asil_level: B
    :component_category: sensor
    :links: ADAS_REQ_009
-   
+
    The camera component shall detect and report sensor failures including lens obstruction,
    image freezing, and communication errors within 100ms of occurrence.
 
@@ -88,7 +88,7 @@ Surround Camera Requirements
    :component_category: sensor
    :wit_interface: sensors/camera.wit
    :bazel_target: //components/sensors/camera-surround
-   
+
    The surround camera component shall process data from four cameras (front, rear, left, right)
    providing 360-degree coverage around the vehicle for parking assistance.
 
@@ -99,7 +99,7 @@ Surround Camera Requirements
    :asil_level: QM
    :component_category: sensor
    :latency_requirement: 100ms
-   
+
    The component shall stitch individual camera feeds into a unified bird's-eye view within
    100ms, with seamless blending at overlap regions.
 
@@ -114,7 +114,7 @@ LiDAR Component Requirements
    :component_category: sensor
    :wit_interface: sensors/lidar.wit
    :bazel_target: //components/sensors/lidar
-   
+
    The LiDAR component shall process 3D point cloud data at 10Hz with a minimum of 100,000
    points per frame, covering a 360-degree horizontal and 40-degree vertical field of view.
 
@@ -124,7 +124,7 @@ LiDAR Component Requirements
    :sensor_type: lidar
    :asil_level: B
    :component_category: sensor
-   
+
    The LiDAR shall detect objects from 0.5m to 200m with range accuracy of ±2cm and
    reflectivity information for each point.
 
@@ -135,7 +135,7 @@ LiDAR Component Requirements
    :asil_level: B
    :component_category: sensor
    :latency_requirement: 50ms
-   
+
    The component shall apply real-time filtering to remove noise, rain, and dust particles
    while preserving relevant obstacle information within 50ms processing time.
 
@@ -153,7 +153,7 @@ Front Radar Requirements
    :component_category: sensor
    :wit_interface: sensors/radar.wit
    :bazel_target: //components/sensors/radar-front
-   
+
    The front radar shall detect objects up to 250m range with velocity measurement accuracy
    of ±0.1 m/s for adaptive cruise control and collision avoidance.
 
@@ -163,7 +163,7 @@ Front Radar Requirements
    :sensor_type: radar
    :asil_level: B
    :component_category: sensor
-   
+
    The radar shall simultaneously track up to 64 targets with position, velocity, and
    acceleration information updated at 20Hz.
 
@@ -173,7 +173,7 @@ Front Radar Requirements
    :sensor_type: radar
    :asil_level: B
    :component_category: sensor
-   
+
    The radar component shall maintain detection performance in adverse weather conditions
    including heavy rain, snow, and fog where optical sensors are degraded.
 
@@ -188,7 +188,7 @@ Corner Radar Requirements
    :component_category: sensor
    :wit_interface: sensors/radar.wit
    :bazel_target: //components/sensors/radar-corner
-   
+
    Corner radar components shall provide blind spot monitoring with 150-degree field of view
    and 50m range for lane change assistance.
 
@@ -199,7 +199,7 @@ Corner Radar Requirements
    :asil_level: B
    :component_category: sensor
    :latency_requirement: 50ms
-   
+
    The radar shall detect cross-traffic when reversing with object classification
    (vehicle, pedestrian, cyclist) within 50ms for parking safety.
 
@@ -214,7 +214,7 @@ Ultrasonic Component Requirements
    :component_category: sensor
    :wit_interface: sensors/ultrasonic.wit
    :bazel_target: //components/sensors/ultrasonic
-   
+
    The ultrasonic component shall process data from 12 sensors providing 360-degree
    close-range coverage from 0.2m to 5m for parking assistance.
 
@@ -224,7 +224,7 @@ Ultrasonic Component Requirements
    :sensor_type: ultrasonic
    :asil_level: QM
    :component_category: sensor
-   
+
    The component shall synchronize ultrasonic sensor firing to avoid cross-talk
    while maintaining 10Hz update rate for all sensors.
 
@@ -238,7 +238,7 @@ Sensor Fusion Requirements
    :asil_level: B
    :component_category: sensor
    :links: ADAS_REQ_006
-   
+
    All sensor components shall support extrinsic calibration with sub-centimeter accuracy
    for proper sensor fusion alignment in 3D space.
 
@@ -248,7 +248,7 @@ Sensor Fusion Requirements
    :sensor_type: all
    :asil_level: B
    :component_category: sensor
-   
+
    Each sensor component shall provide data quality metrics including confidence scores,
    SNR measurements, and degradation indicators for fusion weighting.
 
@@ -258,7 +258,7 @@ Sensor Fusion Requirements
    :sensor_type: all
    :asil_level: B
    :component_category: sensor
-   
+
    All sensors shall support PTP (Precision Time Protocol) for sub-millisecond
    synchronization across the distributed ADAS system.
 

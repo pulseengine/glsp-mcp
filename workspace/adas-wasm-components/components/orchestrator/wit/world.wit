@@ -5,17 +5,17 @@ world orchestrator {
     import adas:control/ai-control;
     import adas:control/sensor-control;
     import adas:control/system-control;
-    
+
     // Import data flow for coordination
     import adas:data/data-flow;
-    
+
     // Import diagnostics
     import adas:diagnostics/health-monitoring;
     import adas:diagnostics/performance-monitoring;
-    
+
     // Import orchestration control
     import adas:orchestration/orchestration-control;
-    
+
     // Export orchestrator interfaces
     export adas:orchestration/orchestration-control;
     export adas:diagnostics/health-monitoring;

@@ -28,7 +28,7 @@ rust_wasm_component_test(
 
 # For compatibility with existing system
 alias(
-    name = "adas_radar_front_ecu", 
+    name = "adas_radar_front_ecu",
     actual = ":radar_front_ecu_release",
     visibility = ["//visibility:public"],
 )

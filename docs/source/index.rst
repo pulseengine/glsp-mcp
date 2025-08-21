@@ -82,70 +82,70 @@ System Architecture
 
    @startuml
    !theme plain
-   
+
    package "AI Layer" {
        [Ollama LLM] as ollama
        [AI Agent] as agent
        [Natural Language Processor] as nlp
    }
-   
+
    package "MCP Protocol Layer" {
        [MCP Server] as mcp_server
        [Tools] as tools
        [Resources] as resources
        [Prompts] as prompts
    }
-   
+
    package "WASM Component System" {
        [WASM Runtime] as wasm_runtime
        [15 ADAS Components] as adas_components
        [Security Scanner] as security
        [Execution Engine] as execution
    }
-   
+
    package "Database Layer" {
        [PostgreSQL] as postgres
        [InfluxDB] as influx
        [Redis] as redis
    }
-   
+
    package "Frontend" {
        [Canvas Renderer] as canvas
        [UI Manager] as ui
        [Theme Controller] as theme
    }
-   
+
    package "Simulation Engine" {
        [Time-driven Scenarios] as scenarios
        [Sensor Data Pipeline] as sensors
        [Resource Manager] as resources_mgr
    }
-   
+
    ollama --> agent
    agent --> nlp
    nlp --> mcp_server
-   
+
    mcp_server --> tools
    mcp_server --> resources
    mcp_server --> prompts
-   
+
    tools --> wasm_runtime
    wasm_runtime --> adas_components
    wasm_runtime --> security
    wasm_runtime --> execution
-   
+
    mcp_server --> postgres
    mcp_server --> influx
    mcp_server --> redis
-   
+
    mcp_server --> canvas
    canvas --> ui
    ui --> theme
-   
+
    execution --> scenarios
    scenarios --> sensors
    sensors --> resources_mgr
-   
+
    @enduml
 
 Documentation Structure
@@ -210,15 +210,15 @@ Production Status
    :class: note
 
    GLSP-Rust is **production-ready** with comprehensive testing, security analysis, and documentation.
-   
+
    ✅ **Code Quality**: Excellent - Well-structured, extensively documented
-   
+
    ✅ **Architecture**: Advanced - Clean separation of concerns, modular design
-   
+
    ✅ **Testing**: Comprehensive - Unit, integration, and component tests
-   
+
    ✅ **Security**: High - WASM sandboxing, security analysis, input validation
-   
+
    ✅ **Performance**: Optimized - Sub-20ms AI inference, hardware acceleration
 
 Contact & Support

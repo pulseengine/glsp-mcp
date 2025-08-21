@@ -6,15 +6,15 @@ world fusion-component {
     import adas:orchestration/execution-control;
     import adas:orchestration/resource-management;
     import adas:orchestration/data-flow;
-    
+
     /// Import sensor and AI data sources
     import adas:data/sensor-data;
     import adas:data/perception-data;
     import adas:common-types/types;
-    
+
     /// Export unified perception/fusion data
     export adas:data/perception-data;
-    
+
     /// Export diagnostics
     export adas:diagnostics/health-monitoring;
     export adas:diagnostics/performance-monitoring;

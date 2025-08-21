@@ -23,11 +23,11 @@ Simulation Architecture
 
 .. plantuml::
    :caption: Simulation Framework Architecture
-   
+
    @startuml
    !theme plain
    skinparam componentStyle rectangle
-   
+
    package "Simulation Framework" {
        [Simulation Engine] as engine
        [Pipeline Manager] as pipeline
@@ -36,35 +36,35 @@ Simulation Architecture
        [Resource Manager] as resource
        [Statistics Collector] as stats
    }
-   
+
    package "WASM Components" {
        [Component A] as compA
        [Component B] as compB
        [Component C] as compC
    }
-   
+
    database "Database Layer" {
        [PostgreSQL] as pg
        [InfluxDB] as influx
        [Redis Cache] as redis
    }
-   
+
    engine --> pipeline : Manages
    engine --> timing : Controls
    pipeline --> compA : Executes
    pipeline --> compB : Executes
    pipeline --> compC : Executes
-   
+
    bridge --> influx : Queries
    bridge --> redis : Caches
    bridge --> compA : Streams data
    bridge --> compB : Streams data
-   
+
    timing --> bridge : Synchronizes
    resource --> compA : Limits
    resource --> compB : Limits
    resource --> compC : Limits
-   
+
    stats --> engine : Collects metrics
    @enduml
 
@@ -75,27 +75,27 @@ The pipeline execution model enables complex component compositions:
 
 .. plantuml::
    :caption: Pipeline Execution Flow
-   
+
    @startuml
    !theme plain
-   
+
    start
-   
+
    :Load Pipeline Configuration;
    :Validate Component Dependencies;
-   
+
    partition "Initialization Phase" {
        :Load WASM Components;
        :Security Scan Components;
        :Initialize Sensor Bridge;
        :Setup Resource Limits;
    }
-   
+
    partition "Execution Phase" {
        while (Simulation Running?) is (yes)
            :Get Next Time Frame;
            :Query Sensor Data;
-           
+
            fork
                :Execute Stage 1;
            fork again
@@ -103,20 +103,20 @@ The pipeline execution model enables complex component compositions:
            fork again
                :Execute Stage 3;
            end fork
-           
+
            :Collect Results;
            :Update Statistics;
-           
+
            if (Error Occurred?) then (yes)
                :Handle Error;
                :Log Diagnostics;
            endif
        endwhile (no)
    }
-   
+
    :Generate Report;
    :Cleanup Resources;
-   
+
    stop
    @enduml
 
@@ -134,7 +134,7 @@ Components are composed into pipelines with explicit data flow:
        pub connections: Vec<DataConnection>,
        pub sensor_config: Option<SensorBridgeConfig>,
    }
-   
+
    pub struct PipelineStage {
        pub stage_id: String,
        pub component_name: String,
@@ -148,39 +148,39 @@ Data Flow Architecture
 
 .. plantuml::
    :caption: Sensor Data Flow in Simulation
-   
+
    @startuml
    !theme plain
-   
+
    participant "Database" as db
    participant "Sensor Bridge" as bridge
    participant "Buffer Manager" as buffer
    participant "Component A" as compA
    participant "Component B" as compB
    participant "Pipeline Engine" as engine
-   
+
    == Initialization ==
    engine -> bridge : Configure sensors
    bridge -> db : Query metadata
    bridge -> buffer : Allocate buffers
-   
+
    == Simulation Loop ==
    loop Every frame
        engine -> bridge : Request frame(t)
        bridge -> db : Query time range
        db --> bridge : Sensor readings
        bridge -> buffer : Buffer data
-       
+
        par
            bridge -> compA : Stream data
            compA -> compA : Process
            compA --> engine : Results
        and
-           bridge -> compB : Stream data  
+           bridge -> compB : Stream data
            compB -> compB : Process
            compB --> engine : Results
        end
-       
+
        engine -> engine : Aggregate results
    end
    @enduml
@@ -192,42 +192,42 @@ Complex scenarios with multiple pipelines:
 
 .. plantuml::
    :caption: Multi-Pipeline Scenario Execution
-   
+
    @startuml
    !theme plain
-   
+
    package "Scenario: ADAS Simulation" {
        component "Sensor Pipeline" as sensor {
            [Camera Processing]
            [LiDAR Processing]
            [Radar Processing]
        }
-       
+
        component "AI Pipeline" as ai {
            [Object Detection]
            [Behavior Prediction]
            [Sensor Fusion]
        }
-       
+
        component "Control Pipeline" as control {
            [Path Planning]
            [Vehicle Control]
            [Safety Monitor]
        }
    }
-   
+
    database "Sensor Database" as db
-   
+
    db --> sensor : Time-series data
    sensor --> ai : Processed sensor data
    ai --> control : Perception results
    control --> [Actuator Commands]
-   
+
    note right of ai
        Parallel execution
        within pipeline
    end note
-   
+
    note bottom of control
        Sequential execution
        with safety checks
@@ -268,33 +268,33 @@ Testing Framework Integration
 
 .. plantuml::
    :caption: Testing Framework Architecture
-   
+
    @startuml
    !theme plain
-   
+
    package "Test Infrastructure" {
        [Test Runner] as runner
        [Scenario Generator] as generator
        [Result Validator] as validator
        [Performance Profiler] as profiler
    }
-   
+
    package "Test Types" {
        [Unit Tests] as unit
        [Integration Tests] as integration
        [Simulation Tests] as simulation
        [Performance Tests] as perf
    }
-   
+
    runner --> unit
    runner --> integration
    runner --> simulation
    runner --> perf
-   
+
    generator --> simulation : Test scenarios
    simulation --> validator : Results
    simulation --> profiler : Metrics
-   
+
    note right of simulation
        Uses same pipeline
        engine as production
@@ -321,7 +321,7 @@ A complete example of testing an ADAS system:
                  method: "scan"
                - component: "lidar"
                  method: "sweep"
-                 
+
            - id: "perception-pipeline"
              stages:
                - component: "object-detection"
@@ -329,7 +329,7 @@ A complete example of testing an ADAS system:
                  dependencies: ["sensor-pipeline"]
                - component: "sensor-fusion"
                  method: "fuse"
-                 
+
            - id: "control-pipeline"
              stages:
                - component: "path-planning"
@@ -337,13 +337,13 @@ A complete example of testing an ADAS system:
                  dependencies: ["perception-pipeline"]
                - component: "vehicle-control"
                  method: "control"
-                 
+
      sensor_config:
        dataset_id: "highway-test-data"
        timing:
          playback_speed: 1.0
          target_fps: 30
-       
+
      settings:
        timeout_seconds: 300
        resource_limits:
@@ -378,10 +378,10 @@ The simulation framework integrates with continuous integration:
 
    # Run simulation tests in CI
    cargo test --features simulation
-   
+
    # Run performance benchmarks
    cargo bench --features simulation
-   
+
    # Generate test report
    cargo xtask test-report
 

@@ -112,7 +112,7 @@ docker run -d -p 6379:6379 redis:7
 Set environment variables or use defaults:
 ```bash
 # PostgreSQL
-DATABASE_URL=postgresql://user:pass@localhost/glsp
+DATABASE_URL=postgresql://username:password@localhost/glsp  # pragma: allowlist secret
 
 # InfluxDB
 INFLUXDB_URL=http://localhost:8086
@@ -269,3 +269,24 @@ RUST_LOG=glsp_mcp_server::wasm::simulation=trace cargo run
 - [ ] Advanced caching strategies
 - [ ] Multi-tenancy support
 - [ ] Plugin marketplace
+
+## Important Development Guidelines
+
+### Pre-commit Hook Policy
+**CRITICAL**: NEVER disable or comment out pre-commit hooks in .pre-commit-config.yaml without explicit user approval. Pre-commit hooks are essential for:
+- Code quality and consistency
+- Security scanning and vulnerability detection
+- License compliance
+- Build integrity
+
+**If pre-commit hooks are failing:**
+1. Fix the underlying issues causing failures
+2. Ask the user for guidance if fixes are complex or require architectural changes
+3. Only disable hooks with explicit user permission
+4. Always document why hooks were disabled if approved by user
+
+**Examples of proper responses to hook failures:**
+- ✅ Fix TypeScript errors, formatting issues, or linting problems
+- ✅ Update code to pass security scans
+- ✅ Ask user: "TypeScript check is failing due to 200+ existing type errors. Should I fix these or would you prefer to disable the check temporarily?"
+- ❌ Automatically disable hooks without asking

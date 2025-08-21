@@ -20,7 +20,7 @@ Development Deployment
 
    @startuml
    !theme plain
-   
+
    node "Developer Machine" {
        component "Development Environment" {
            [Ollama LLM] as ollama_dev
@@ -32,18 +32,18 @@ Development Deployment
            [IDE/Editor] as ide
        }
    }
-   
+
    node "Local Network" {
        [Network Router] as router
        [DNS Server] as dns
    }
-   
+
    cloud "External Services" {
        [GitHub Repository] as github
        [Package Registries] as packages
        [Model Repositories] as models
    }
-   
+
    ' Development connections
    ide --> glsp_dev : Development
    glsp_dev --> ollama_dev : AI Processing
@@ -51,18 +51,18 @@ Development Deployment
    glsp_dev --> pg_dev : Data Storage
    glsp_dev --> influx_dev : Time-Series Data
    glsp_dev --> redis_dev : Caching
-   
+
    ' Network connections
    router --> dns : Name Resolution
    router --> github : Source Code
    router --> packages : Dependencies
    router --> models : AI Models
-   
+
    ' Development workflow
    ide --> github : Version Control
    glsp_dev --> packages : Runtime Dependencies
    ollama_dev --> models : Model Download
-   
+
    @enduml
 
 **Development Environment Setup:**
@@ -98,19 +98,19 @@ Production Deployment
 
    @startuml
    !theme plain
-   
+
    cloud "Internet" {
        [External Users] as users
        [AI Agents] as ai_agents
        [API Clients] as api_clients
    }
-   
+
    node "Load Balancer Tier" {
        [Application Load Balancer] as alb
        [SSL Termination] as ssl
        [WAF] as waf
    }
-   
+
    node "Application Tier" {
        [GLSP-MCP Server 1] as glsp1
        [GLSP-MCP Server 2] as glsp2
@@ -118,13 +118,13 @@ Production Deployment
        [AI Service] as ai_service
        [WASM Registry] as wasm_registry
    }
-   
+
    node "Web Tier" {
        [CDN] as cdn
        [Static Assets] as static
        [Frontend Bundle] as frontend
    }
-   
+
    node "Database Tier" {
        [PostgreSQL Master] as pg_master
        [PostgreSQL Replica 1] as pg_replica1
@@ -132,29 +132,29 @@ Production Deployment
        [InfluxDB Cluster] as influx_cluster
        [Redis Cluster] as redis_cluster
    }
-   
+
    node "Monitoring Tier" {
        [Prometheus] as prometheus
        [Grafana] as grafana
        [AlertManager] as alertmanager
        [Log Aggregator] as logs
    }
-   
+
    node "Security Tier" {
        [Certificate Manager] as cert_mgr
        [Secret Manager] as secret_mgr
        [Backup Service] as backup
    }
-   
+
    ' External connections
    users --> waf
    ai_agents --> waf
    api_clients --> waf
-   
+
    ' Load balancer tier
    waf --> ssl
    ssl --> alb
-   
+
    ' Application tier
    alb --> glsp1
    alb --> glsp2
@@ -165,11 +165,11 @@ Production Deployment
    glsp1 --> wasm_registry
    glsp2 --> wasm_registry
    glsp3 --> wasm_registry
-   
+
    ' Web tier
    cdn --> static
    static --> frontend
-   
+
    ' Database tier
    glsp1 --> pg_master
    glsp2 --> pg_master
@@ -182,7 +182,7 @@ Production Deployment
    glsp1 --> redis_cluster
    glsp2 --> redis_cluster
    glsp3 --> redis_cluster
-   
+
    ' Monitoring tier
    prometheus --> glsp1
    prometheus --> glsp2
@@ -195,7 +195,7 @@ Production Deployment
    logs --> glsp1
    logs --> glsp2
    logs --> glsp3
-   
+
    ' Security tier
    cert_mgr --> ssl
    secret_mgr --> glsp1
@@ -204,7 +204,7 @@ Production Deployment
    backup --> pg_master
    backup --> influx_cluster
    backup --> redis_cluster
-   
+
    @enduml
 
 **Production Configuration:**
@@ -227,7 +227,7 @@ Production Deployment
          - influxdb
          - redis
          - ai-service
-       
+
      postgres:
        image: postgres:15
        environment:
@@ -236,7 +236,7 @@ Production Deployment
          - POSTGRES_PASSWORD=password
        volumes:
          - postgres_data:/var/lib/postgresql/data
-       
+
      influxdb:
        image: influxdb:2.0
        environment:
@@ -245,12 +245,12 @@ Production Deployment
          - INFLUXDB_ADMIN_PASSWORD=password
        volumes:
          - influxdb_data:/var/lib/influxdb
-         
+
      redis:
        image: redis:7
        volumes:
          - redis_data:/data
-         
+
      ai-service:
        image: ollama/ollama:latest
        volumes:
@@ -264,12 +264,12 @@ Kubernetes Deployment
 
    @startuml
    !theme plain
-   
+
    package "Kubernetes Cluster" {
        package "Namespace: glsp-system" {
            [Ingress Controller] as ingress
            [Service Mesh] as mesh
-           
+
            package "Application Pods" {
                [GLSP Server Pod 1] as pod1
                [GLSP Server Pod 2] as pod2
@@ -277,19 +277,19 @@ Kubernetes Deployment
                [AI Service Pod] as ai_pod
                [WASM Registry Pod] as wasm_pod
            }
-           
+
            package "Database Pods" {
                [PostgreSQL Pod] as pg_pod
                [InfluxDB Pod] as influx_pod
                [Redis Pod] as redis_pod
            }
-           
+
            package "Monitoring Pods" {
                [Prometheus Pod] as prom_pod
                [Grafana Pod] as grafana_pod
                [AlertManager Pod] as alert_pod
            }
-           
+
            package "Storage" {
                [Persistent Volume 1] as pv1
                [Persistent Volume 2] as pv2
@@ -299,22 +299,22 @@ Kubernetes Deployment
            }
        }
    }
-   
+
    cloud "External Traffic" {
        [Users] as users
        [AI Agents] as agents
    }
-   
+
    ' External connections
    users --> ingress
    agents --> ingress
-   
+
    ' Ingress to services
    ingress --> mesh
    mesh --> pod1
    mesh --> pod2
    mesh --> pod3
-   
+
    ' Application to services
    pod1 --> ai_pod
    pod2 --> ai_pod
@@ -322,7 +322,7 @@ Kubernetes Deployment
    pod1 --> wasm_pod
    pod2 --> wasm_pod
    pod3 --> wasm_pod
-   
+
    ' Database connections
    pod1 --> pg_pod
    pod2 --> pg_pod
@@ -333,7 +333,7 @@ Kubernetes Deployment
    pod1 --> redis_pod
    pod2 --> redis_pod
    pod3 --> redis_pod
-   
+
    ' Monitoring connections
    prom_pod --> pod1
    prom_pod --> pod2
@@ -343,7 +343,7 @@ Kubernetes Deployment
    prom_pod --> redis_pod
    grafana_pod --> prom_pod
    alert_pod --> prom_pod
-   
+
    ' Storage connections
    pg_pod --> pv1
    influx_pod --> pv2
@@ -354,7 +354,7 @@ Kubernetes Deployment
    pod1 --> secrets
    pod2 --> secrets
    pod3 --> secrets
-   
+
    @enduml
 
 **Kubernetes Manifests:**
@@ -464,7 +464,7 @@ AWS Deployment
 
    @startuml
    !theme plain
-   
+
    package "AWS Region" {
        package "VPC" {
            package "Public Subnet" {
@@ -472,20 +472,20 @@ AWS Deployment
                [NAT Gateway] as nat
                [Internet Gateway] as igw
            }
-           
+
            package "Private Subnet 1" {
                [ECS Cluster] as ecs1
                [RDS Master] as rds_master
                [ElastiCache] as elasticache
            }
-           
+
            package "Private Subnet 2" {
                [ECS Cluster] as ecs2
                [RDS Replica] as rds_replica
                [InfluxDB] as influx_aws
            }
        }
-       
+
        package "AWS Services" {
            [CloudWatch] as cloudwatch
            [Systems Manager] as ssm
@@ -494,17 +494,17 @@ AWS Deployment
            [CloudFront] as cloudfront
        }
    }
-   
+
    cloud "Internet" {
        [Users] as users_aws
    }
-   
+
    ' Internet connections
    users_aws --> igw
    igw --> alb
    alb --> ecs1
    alb --> ecs2
-   
+
    ' Private subnet connections
    ecs1 --> rds_master
    ecs2 --> rds_master
@@ -513,7 +513,7 @@ AWS Deployment
    ecs2 --> elasticache
    ecs1 --> influx_aws
    ecs2 --> influx_aws
-   
+
    ' AWS services
    ecs1 --> cloudwatch
    ecs2 --> cloudwatch
@@ -523,7 +523,7 @@ AWS Deployment
    ecs2 --> secrets_aws
    s3 --> cloudfront
    cloudfront --> users_aws
-   
+
    @enduml
 
 **AWS ECS Task Definition:**
@@ -580,14 +580,14 @@ Azure Deployment
 
    @startuml
    !theme plain
-   
+
    package "Azure Resource Group" {
        package "Virtual Network" {
            package "Public Subnet" {
                [Application Gateway] as app_gateway
                [Load Balancer] as lb_azure
            }
-           
+
            package "Private Subnet" {
                [AKS Cluster] as aks
                [Azure SQL] as sql_azure
@@ -595,7 +595,7 @@ Azure Deployment
                [InfluxDB VM] as influx_azure
            }
        }
-       
+
        package "Azure Services" {
            [Azure Monitor] as monitor_azure
            [Key Vault] as keyvault
@@ -604,28 +604,28 @@ Azure Deployment
            [Container Registry] as acr
        }
    }
-   
+
    cloud "Internet" {
        [Users] as users_azure
    }
-   
+
    ' Internet connections
    users_azure --> app_gateway
    app_gateway --> lb_azure
    lb_azure --> aks
-   
+
    ' Private subnet connections
    aks --> sql_azure
    aks --> redis_azure
    aks --> influx_azure
-   
+
    ' Azure services
    aks --> monitor_azure
    aks --> keyvault
    aks --> storage_azure
    acr --> aks
    cdn_azure --> users_azure
-   
+
    @enduml
 
 GCP Deployment
@@ -636,14 +636,14 @@ GCP Deployment
 
    @startuml
    !theme plain
-   
+
    package "GCP Project" {
        package "VPC Network" {
            package "Public Subnet" {
                [Cloud Load Balancer] as clb
                [Cloud CDN] as cdn_gcp
            }
-           
+
            package "Private Subnet" {
                [GKE Cluster] as gke
                [Cloud SQL] as sql_gcp
@@ -651,7 +651,7 @@ GCP Deployment
                [Compute Engine] as compute_gcp
            }
        }
-       
+
        package "GCP Services" {
            [Cloud Monitoring] as monitoring_gcp
            [Secret Manager] as secrets_gcp
@@ -660,28 +660,28 @@ GCP Deployment
            [Cloud Build] as build_gcp
        }
    }
-   
+
    cloud "Internet" {
        [Users] as users_gcp
    }
-   
+
    ' Internet connections
    users_gcp --> clb
    clb --> gke
    cdn_gcp --> users_gcp
-   
+
    ' Private subnet connections
    gke --> sql_gcp
    gke --> memorystore
    gke --> compute_gcp
-   
+
    ' GCP services
    gke --> monitoring_gcp
    gke --> secrets_gcp
    gke --> storage_gcp
    gcr --> gke
    build_gcp --> gcr
-   
+
    @enduml
 
 Scaling Strategies
@@ -695,46 +695,46 @@ Horizontal Scaling
 
    @startuml
    !theme plain
-   
+
    [Load Balancer] as lb
-   
+
    package "Application Tier" {
        [Instance 1] as app1
        [Instance 2] as app2
        [Instance 3] as app3
        [Instance N] as appN
    }
-   
+
    package "Database Tier" {
        [Master DB] as db_master
        [Replica 1] as db_replica1
        [Replica 2] as db_replica2
        [Cache Cluster] as cache
    }
-   
+
    package "Monitoring" {
        [Metrics Collector] as metrics
        [Auto Scaler] as scaler
    }
-   
+
    lb --> app1
    lb --> app2
    lb --> app3
    lb --> appN
-   
+
    app1 --> db_master
    app2 --> db_replica1
    app3 --> db_replica2
    appN --> cache
-   
+
    metrics --> app1
    metrics --> app2
    metrics --> app3
    metrics --> appN
-   
+
    scaler --> metrics
    scaler --> lb
-   
+
    @enduml
 
 **Auto-scaling Configuration:**
@@ -789,61 +789,61 @@ Disaster Recovery
 
    @startuml
    !theme plain
-   
+
    package "Primary Region" {
        [Primary Application] as primary_app
        [Primary Database] as primary_db
        [Primary Cache] as primary_cache
        [Primary Storage] as primary_storage
    }
-   
+
    package "Secondary Region" {
        [Secondary Application] as secondary_app
        [Secondary Database] as secondary_db
        [Secondary Cache] as secondary_cache
        [Secondary Storage] as secondary_storage
    }
-   
+
    package "Backup Region" {
        [Backup Storage] as backup_storage
        [Archive Storage] as archive_storage
    }
-   
+
    package "Monitoring" {
        [Health Check] as health
        [Failover Controller] as failover
    }
-   
+
    cloud "Global Users" {
        [Traffic Manager] as traffic
        [Users] as users_dr
    }
-   
+
    ' Normal operations
    users_dr --> traffic
    traffic --> primary_app
    primary_app --> primary_db
    primary_app --> primary_cache
    primary_app --> primary_storage
-   
+
    ' Replication
    primary_db --> secondary_db : Replication
    primary_storage --> secondary_storage : Replication
    primary_storage --> backup_storage : Backup
    backup_storage --> archive_storage : Archive
-   
+
    ' Monitoring and failover
    health --> primary_app
    health --> secondary_app
    failover --> health
    failover --> traffic
-   
+
    ' Disaster recovery
    traffic --> secondary_app : Failover
    secondary_app --> secondary_db
    secondary_app --> secondary_cache
    secondary_app --> secondary_storage
-   
+
    @enduml
 
 **Disaster Recovery Procedures:**
@@ -875,22 +875,22 @@ Performance Optimization
 
    @startuml
    !theme plain
-   
+
    [Client] as client
-   
+
    package "Caching Layers" {
        [CDN Cache] as cdn
        [Application Cache] as app_cache
        [Database Cache] as db_cache
        [Memory Cache] as mem_cache
    }
-   
+
    package "Data Sources" {
        [Database] as database
        [File System] as filesystem
        [External APIs] as apis
    }
-   
+
    client --> cdn
    cdn --> app_cache
    app_cache --> mem_cache
@@ -898,7 +898,7 @@ Performance Optimization
    db_cache --> database
    app_cache --> filesystem
    app_cache --> apis
-   
+
    @enduml
 
 **Monitoring and Observability:**

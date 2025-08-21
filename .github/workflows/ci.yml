@@ -19,13 +19,13 @@ jobs:
         rust: [stable]
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
-      
+
       - name: Cache cargo
         uses: actions/cache@v3
         with:
@@ -36,7 +36,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
         run: |
@@ -48,13 +48,13 @@ jobs:
           # Clean up temporary repository
           sudo rm /etc/apt/sources.list.d/ubuntu22.list
           sudo apt-get update
-      
+
       - name: Check formatting
         run: cargo fmt -- --check
-      
+
       - name: Run clippy on server
         run: cargo clippy --package glsp-mcp-server --all-targets -- -D warnings
-      
+
       - name: Check if web client dist exists
         id: check-dist
         run: |
@@ -64,14 +64,14 @@ jobs:
             echo "dist_exists=false" >> $GITHUB_OUTPUT
           fi
         shell: bash
-      
+
       - name: Run clippy on Tauri
         if: steps.check-dist.outputs.dist_exists == 'true'
         run: cargo clippy --package glsp-desktop --all-targets --all-features -- -D warnings
-      
+
       - name: Run tests on server
         run: cargo test --package glsp-mcp-server
-      
+
       - name: Run tests on Tauri
         if: steps.check-dist.outputs.dist_exists == 'true'
         run: cargo test --package glsp-desktop
@@ -81,18 +81,18 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
           cache-dependency-path: glsp-web-client/package-lock.json
-      
+
       - name: Install dependencies
         working-directory: ./glsp-web-client
         run: npm ci
-      
+
       - name: Build
         working-directory: ./glsp-web-client
         run: npx vite build
@@ -105,15 +105,15 @@ jobs:
         os: [ubuntu-24.04, windows-latest, macOS-latest]
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
         run: |
@@ -125,19 +125,19 @@ jobs:
           # Clean up temporary repository
           sudo rm /etc/apt/sources.list.d/ubuntu22.list
           sudo apt-get update
-      
+
       - name: Install web client dependencies
         working-directory: ./glsp-web-client
         run: npm ci
-      
+
       - name: Build web client
         working-directory: ./glsp-web-client
         run: npx vite build
-      
+
       - name: Install Tauri dependencies
         working-directory: ./glsp-tauri
         run: npm ci
-      
+
       - name: Build Tauri (not bundled for CI speed)
         working-directory: ./glsp-tauri
         run: npx tauri build --debug

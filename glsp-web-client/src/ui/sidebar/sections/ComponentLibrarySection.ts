@@ -9,7 +9,9 @@ import {
 } from "../../views/ComponentGroupDeployView.js";
 import { getService } from "../../../core/ServiceRegistration.js";
 import { WasmRuntimeManager } from "../../../wasm/WasmRuntimeManager.js";
-import { InteractionManager } from "../../InteractionManager.js";
+// InteractionManager integration available via service container
+import { AdvancedComponentSearch } from "../../components/AdvancedComponentSearch.js";
+import { ComponentSearchResponse } from "../../../services/ComponentSearchService.js";
 
 export interface ComponentItem {
   id: string;
@@ -51,20 +53,20 @@ export class ComponentLibrarySection {
   private multiSelectMode = false;
   private onGroupCreated?: (groupData: ComponentGroupData) => void;
   private onGroupUpdated?: (groupData: ComponentGroupData) => void;
-  
+
   // Service references for execution bridge
   private wasmRuntimeManager?: WasmRuntimeManager;
-  private interactionManager?: InteractionManager;
   private servicesInitialized = false;
   private onGroupDeleted?: (groupId: string) => void;
   private componentGroups: Map<string, ComponentGroupData> = new Map();
+  private advancedSearch?: AdvancedComponentSearch; // NEW: Advanced search system
   private showGroups = false;
 
   constructor(options: ComponentLibraryOptions = {}) {
     this.onGroupCreated = options.onGroupCreated;
     this.onGroupUpdated = options.onGroupUpdated;
     this.onGroupDeleted = options.onGroupDeleted;
-    
+
     // Initialize services asynchronously
     this.initializeServices();
   }
@@ -74,20 +76,24 @@ export class ComponentLibrarySection {
    */
   private async initializeServices(): Promise<void> {
     try {
-      console.log('ComponentLibrarySection: Initializing service connections...');
-      
+      console.log(
+        "ComponentLibrarySection: Initializing service connections...",
+      );
+
       // Get service references from the container
-      this.wasmRuntimeManager = await getService<WasmRuntimeManager>('wasmRuntimeManager');
-      this.interactionManager = await getService<InteractionManager>('interactionManager');
-      
+      this.wasmRuntimeManager =
+        await getService<WasmRuntimeManager>("wasmRuntimeManager");
+
       this.servicesInitialized = true;
-      console.log('ComponentLibrarySection: Service connections initialized');
-      
+      console.log("ComponentLibrarySection: Service connections initialized");
+
       // Update component execution capabilities
       this.updateComponentExecutionCapabilities();
-      
     } catch (error) {
-      console.error('ComponentLibrarySection: Failed to initialize services:', error);
+      console.error(
+        "ComponentLibrarySection: Failed to initialize services:",
+        error,
+      );
       this.servicesInitialized = false;
     }
   }
@@ -103,7 +109,8 @@ export class ComponentLibrarySection {
       this.components.set(id, {
         ...component,
         onSelect: () => this.handleComponentSelection(id),
-        onDragStart: (e: DragEvent) => this.handleComponentDragStart(e, component)
+        onDragStart: (e: DragEvent) =>
+          this.handleComponentDragStart(e, component),
       });
     }
 
@@ -119,38 +126,50 @@ export class ComponentLibrarySection {
       return;
     }
 
-    console.log(`ComponentLibrarySection: Component selected for execution: ${component.name}`);
+    console.log(
+      `ComponentLibrarySection: Component selected for execution: ${component.name}`,
+    );
 
     try {
       // Load component for execution if not already loaded
-      const loadedComponent = await this.wasmRuntimeManager.getComponent(componentId);
-      
+      const loadedComponent =
+        await this.wasmRuntimeManager.getComponent(componentId);
+
       if (!loadedComponent) {
         console.log(`Loading component for execution: ${component.name}`);
         // Trigger component loading
-        await this.wasmRuntimeManager.loadComponent(component.path || component.name);
+        await this.wasmRuntimeManager.loadComponent(
+          component.path || component.name,
+        );
       }
 
       // Update component status
-      this.updateComponent(componentId, { status: 'available' });
-      
+      this.updateComponent(componentId, { status: "available" });
     } catch (error) {
-      console.error(`Failed to prepare component for execution: ${component.name}`, error);
-      this.updateComponent(componentId, { status: 'error' });
+      console.error(
+        `Failed to prepare component for execution: ${component.name}`,
+        error,
+      );
+      this.updateComponent(componentId, { status: "error" });
     }
   }
 
   /**
    * Handle component drag start with execution context
    */
-  private handleComponentDragStart(e: DragEvent, component: ComponentItem): void {
+  private handleComponentDragStart(
+    e: DragEvent,
+    component: ComponentItem,
+  ): void {
     if (!this.servicesInitialized) {
-      console.warn('Services not initialized, drag-and-drop may not work properly');
+      console.warn(
+        "Services not initialized, drag-and-drop may not work properly",
+      );
     }
 
     // Standard drag data for canvas drop
     const dragData = {
-      type: 'wasm-component',
+      type: "wasm-component",
       componentId: component.id,
       componentName: component.name,
       componentPath: component.path,
@@ -159,32 +178,43 @@ export class ComponentLibrarySection {
       interfaces: component.interfaces,
       // Add execution context
       executionCapable: true,
-      loadedForExecution: this.wasmRuntimeManager?.isComponentLoaded(component.id) || false
+      loadedForExecution:
+        this.wasmRuntimeManager?.isComponentLoaded(component.id) || false,
     };
 
     if (e.dataTransfer) {
-      e.dataTransfer.effectAllowed = 'copy';
-      e.dataTransfer.setData('application/json', JSON.stringify(dragData));
-      e.dataTransfer.setData('text/plain', component.name);
-      
+      e.dataTransfer.effectAllowed = "copy";
+      e.dataTransfer.setData("application/json", JSON.stringify(dragData));
+      e.dataTransfer.setData("text/plain", component.name);
+
       // Add execution context data
-      e.dataTransfer.setData('application/x-wasm-component-execution', JSON.stringify({
-        componentId: component.id,
-        executionReady: this.servicesInitialized
-      }));
+      e.dataTransfer.setData(
+        "application/x-wasm-component-execution",
+        JSON.stringify({
+          componentId: component.id,
+          executionReady: this.servicesInitialized,
+        }),
+      );
     }
 
-    console.log(`ComponentLibrarySection: Started dragging component: ${component.name}`, dragData);
+    console.log(
+      `ComponentLibrarySection: Started dragging component: ${component.name}`,
+      dragData,
+    );
   }
 
   public addComponent(component: ComponentItem): void {
     // Enhanced component with execution capabilities
     const enhancedComponent: ComponentItem = {
       ...component,
-      onSelect: this.servicesInitialized ? () => this.handleComponentSelection(component.id) : component.onSelect,
-      onDragStart: this.servicesInitialized ? (e: DragEvent) => this.handleComponentDragStart(e, component) : component.onDragStart
+      onSelect: this.servicesInitialized
+        ? () => this.handleComponentSelection(component.id)
+        : component.onSelect,
+      onDragStart: this.servicesInitialized
+        ? (e: DragEvent) => this.handleComponentDragStart(e, component)
+        : component.onDragStart,
     };
-    
+
     this.components.set(component.id, enhancedComponent);
     this.categories.add(component.category);
     this.refresh();
@@ -319,9 +349,9 @@ export class ComponentLibrarySection {
             gap: 12px;
         `;
 
-    // Search and filters
-    const filterBar = this.createFilterBar();
-    container.appendChild(filterBar);
+    // Advanced Search and filters
+    const searchContainer = this.createAdvancedSearchBar();
+    container.appendChild(searchContainer);
 
     // View toggle (grid/list and components/groups)
     const viewControls = this.createViewControls();
@@ -356,83 +386,176 @@ export class ComponentLibrarySection {
     return container;
   }
 
-  private createFilterBar(): HTMLElement {
-    const filterBar = document.createElement("div");
-    filterBar.className = "filter-bar";
-    filterBar.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        `;
+  // createFilterBar method removed - superseded by createAdvancedSearchBar()
 
-    // Search input
-    const searchInput = document.createElement("input");
-    searchInput.type = "text";
-    searchInput.placeholder = "Search components...";
-    searchInput.value = this.filter.search || "";
-    searchInput.style.cssText = `
-            padding: 8px 12px;
-            background: var(--bg-primary, #0F1419);
-            border: 1px solid var(--border-color, #2A3441);
-            border-radius: 6px;
-            color: var(--text-primary, #E6EDF3);
-            font-size: 13px;
-            transition: all 0.2s ease;
-        `;
+  /**
+   * NEW: Create advanced search bar with server/client hybrid search
+   */
+  private createAdvancedSearchBar(): HTMLElement {
+    const container = document.createElement("div");
+    container.className = "advanced-search-container";
+    container.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: var(--bg-secondary, #1A202C);
+      border-radius: 8px;
+      padding: 12px;
+      border: 1px solid var(--border-color, #2A3441);
+    `;
 
-    searchInput.addEventListener("input", (e) => {
-      this.filter.search = (e.target as HTMLInputElement).value;
-      this.refresh();
+    // Initialize advanced search component
+    this.advancedSearch = new AdvancedComponentSearch(container, {
+      placeholder: "Search components by name, interface, dependencies...",
+      showAdvancedFilters: true,
+      showQuickFilters: true,
+      showSearchHistory: true,
+      maxResults: 100,
+      onResults: (response: ComponentSearchResponse) => {
+        console.log("🔍 Search results received:", response);
+        this.handleSearchResults(response);
+      },
+      onError: (error: Error) => {
+        console.error("❌ Search error:", error);
+        this.showSearchError(error.message);
+      },
     });
 
-    searchInput.addEventListener("focus", () => {
-      searchInput.style.borderColor = "var(--accent-wasm, #654FF0)";
+    return container;
+  }
+
+  /**
+   * Handle search results from advanced search
+   */
+  private handleSearchResults(response: ComponentSearchResponse): void {
+    // Convert search results back to ComponentItem format
+    const searchComponents = new Map<string, ComponentItem>();
+
+    response.results.forEach((result) => {
+      const component = result.component;
+      const componentItem: ComponentItem = {
+        id: component.id || component.name,
+        name: component.name,
+        category: component.category || "Unknown",
+        description: component.description,
+        version: (component.metadata as any)?.version || "1.0.0",
+        author: (component.metadata as any)?.author,
+        tags: (component.metadata as any)?.tags || [],
+        status: (component.status as any) || "available",
+        path: component.path,
+        interfaces: component.interfaces,
+      };
+
+      searchComponents.set(componentItem.id, componentItem);
     });
 
-    searchInput.addEventListener("blur", () => {
-      searchInput.style.borderColor = "var(--border-color, #2A3441)";
-    });
+    // Temporarily replace components with search results
+    const originalComponents = this.components;
+    this.components = searchComponents;
 
-    filterBar.appendChild(searchInput);
+    // Update categories for filtering
+    this.updateCategoriesFromComponents();
 
-    // Category filter
-    if (this.categories.size > 1) {
-      const categorySelect = document.createElement("select");
-      categorySelect.style.cssText = `
-                padding: 6px 12px;
-                background: var(--bg-primary, #0F1419);
-                border: 1px solid var(--border-color, #2A3441);
-                border-radius: 4px;
-                color: var(--text-primary, #E6EDF3);
-                font-size: 12px;
-                cursor: pointer;
-            `;
+    // Refresh display
+    this.refresh();
 
-      const allOption = document.createElement("option");
-      allOption.value = "";
-      allOption.textContent = "All Categories";
-      categorySelect.appendChild(allOption);
+    // Show search stats
+    this.showSearchStats(response);
 
-      Array.from(this.categories)
-        .sort()
-        .forEach((category) => {
-          const option = document.createElement("option");
-          option.value = category;
-          option.textContent = category;
-          option.selected = this.filter.category === category;
-          categorySelect.appendChild(option);
-        });
+    // Store original components for restoring later
+    (this as any).originalComponents = originalComponents;
+  }
 
-      categorySelect.addEventListener("change", (e) => {
-        this.filter.category =
-          (e.target as HTMLSelectElement).value || undefined;
-        this.refresh();
-      });
+  /**
+   * Show search error message
+   */
+  private showSearchError(message: string): void {
+    const errorContainer = document.createElement("div");
+    errorContainer.style.cssText = `
+      background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(232, 62, 140, 0.1));
+      border: 1px solid #dc3545;
+      border-radius: 8px;
+      padding: 12px;
+      margin: 8px 0;
+      color: #dc3545;
+      font-size: 14px;
+    `;
+    errorContainer.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <span style="font-size: 16px;">❌</span>
+        <strong>Search Error</strong>
+      </div>
+      <div>${message}</div>
+      <div style="margin-top: 8px; font-size: 12px; opacity: 0.8;">
+        Falling back to local search. Check server connection.
+      </div>
+    `;
 
-      filterBar.appendChild(categorySelect);
+    // Insert error message at the top of the container
+    const container = this.element?.querySelector(".component-display");
+    if (container) {
+      container.insertBefore(errorContainer, container.firstChild);
+
+      // Remove after 5 seconds
+      setTimeout(() => errorContainer.remove(), 5000);
     }
+  }
 
-    return filterBar;
+  /**
+   * Show search statistics
+   */
+  private showSearchStats(response: ComponentSearchResponse): void {
+    const statsContainer = document.createElement("div");
+    statsContainer.className = "search-stats";
+    statsContainer.style.cssText = `
+      background: var(--bg-primary, #0F1419);
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin: 8px 0;
+      font-size: 12px;
+      color: var(--text-secondary, #8B949E);
+      border-left: 3px solid var(--accent-wasm, #654FF0);
+    `;
+
+    statsContainer.innerHTML = `
+      🔍 Found ${response.total} components in ${response.executionTime}ms
+      ${
+        response.suggestions && response.suggestions.length > 0
+          ? `<br>💡 Suggestions: ${response.suggestions.slice(0, 3).join(", ")}`
+          : ""
+      }
+    `;
+
+    // Insert stats at the top of the component display
+    const container = this.element?.querySelector(".component-display");
+    if (container) {
+      container.insertBefore(statsContainer, container.firstChild);
+    }
+  }
+
+  /**
+   * Update categories from current components
+   */
+  private updateCategoriesFromComponents(): void {
+    this.categories.clear();
+    this.components.forEach((component) => {
+      if (component.category) {
+        this.categories.add(component.category);
+      }
+    });
+  }
+
+  /**
+   * Clear search results and restore original components
+   */
+  public clearSearchResults(): void {
+    const originalComponents = (this as any).originalComponents;
+    if (originalComponents) {
+      this.components = originalComponents;
+      this.updateCategoriesFromComponents();
+      this.refresh();
+      delete (this as any).originalComponents;
+    }
   }
 
   private createViewControls(): HTMLElement {
@@ -486,7 +609,9 @@ export class ComponentLibrarySection {
     title: string,
   ): HTMLElement {
     const button = document.createElement("button");
-    button.innerHTML = `${icon} ${mode.charAt(0).toUpperCase() + mode.slice(1)}`;
+    button.innerHTML = `${icon} ${
+      mode.charAt(0).toUpperCase() + mode.slice(1)
+    }`;
     button.title = title;
 
     const isActive = (mode === "groups") === this.showGroups;
@@ -494,7 +619,9 @@ export class ComponentLibrarySection {
     button.style.cssText = `
             flex: 1;
             padding: 8px 12px;
-            background: ${isActive ? "var(--accent-wasm, #654FF0)" : "transparent"};
+            background: ${
+              isActive ? "var(--accent-wasm, #654FF0)" : "transparent"
+            };
             border: none;
             border-radius: 4px;
             color: ${isActive ? "white" : "var(--text-secondary, #7D8590)"};
@@ -557,10 +684,14 @@ export class ComponentLibrarySection {
     button.style.cssText = `
             flex: 1;
             padding: 6px;
-            background: ${this.view === view ? "var(--accent-wasm, #654FF0)" : "transparent"};
+            background: ${
+              this.view === view ? "var(--accent-wasm, #654FF0)" : "transparent"
+            };
             border: none;
             border-radius: 4px;
-            color: ${this.view === view ? "white" : "var(--text-secondary, #7D8590)"};
+            color: ${
+              this.view === view ? "white" : "var(--text-secondary, #7D8590)"
+            };
             cursor: pointer;
             transition: all 0.2s ease;
             font-size: 16px;
@@ -605,10 +736,16 @@ export class ComponentLibrarySection {
       : "Enter multi-select mode";
     multiSelectButton.style.cssText = `
             padding: 6px 10px;
-            background: ${this.multiSelectMode ? "var(--accent-wasm, #654FF0)" : "transparent"};
+            background: ${
+              this.multiSelectMode
+                ? "var(--accent-wasm, #654FF0)"
+                : "transparent"
+            };
             border: 1px solid var(--border-color, #2A3441);
             border-radius: 4px;
-            color: ${this.multiSelectMode ? "white" : "var(--text-primary, #E6EDF3)"};
+            color: ${
+              this.multiSelectMode ? "white" : "var(--text-primary, #E6EDF3)"
+            };
             cursor: pointer;
             font-size: 12px;
             transition: all 0.2s ease;
@@ -726,7 +863,9 @@ export class ComponentLibrarySection {
     // Selection info
     const selectionInfo = document.createElement("div");
     const selectedCount = this.selectedComponents.size;
-    selectionInfo.textContent = `${selectedCount} component${selectedCount !== 1 ? "s" : ""} selected`;
+    selectionInfo.textContent = `${selectedCount} component${
+      selectedCount !== 1 ? "s" : ""
+    } selected`;
     selectionInfo.style.cssText = `
             font-size: 12px;
             font-weight: 600;
@@ -893,7 +1032,11 @@ export class ComponentLibrarySection {
     display.className = "components-display";
     display.style.cssText = `
             display: ${this.view === "grid" ? "grid" : "flex"};
-            ${this.view === "grid" ? "grid-template-columns: repeat(2, 1fr);" : "flex-direction: column;"}
+            ${
+              this.view === "grid"
+                ? "grid-template-columns: repeat(2, 1fr);"
+                : "flex-direction: column;"
+            }
             gap: 8px;
             max-height: 400px;
             overflow-y: auto;
@@ -1309,7 +1452,11 @@ export class ComponentLibrarySection {
 
     item.style.cssText = `
             background: var(--bg-secondary, #151B2C);
-            border: 2px solid ${isSelected ? "var(--accent-wasm, #654FF0)" : "var(--border-color, #2A3441)"};
+            border: 2px solid ${
+              isSelected
+                ? "var(--accent-wasm, #654FF0)"
+                : "var(--border-color, #2A3441)"
+            };
             border-radius: 8px;
             padding: 12px;
             cursor: ${this.multiSelectMode ? "pointer" : "grab"};
@@ -1318,7 +1465,9 @@ export class ComponentLibrarySection {
             flex-direction: column;
             gap: 8px;
             position: relative;
-            ${isSelected ? "box-shadow: 0 0 0 2px rgba(101, 79, 240, 0.3);" : ""}
+            ${
+              isSelected ? "box-shadow: 0 0 0 2px rgba(101, 79, 240, 0.3);" : ""
+            }
         `;
 
     // Selection indicator (checkbox) for multi-select mode
@@ -1330,9 +1479,15 @@ export class ComponentLibrarySection {
                 right: 8px;
                 width: 18px;
                 height: 18px;
-                border: 2px solid ${isSelected ? "var(--accent-wasm, #654FF0)" : "var(--border-color, #2A3441)"};
+                border: 2px solid ${
+                  isSelected
+                    ? "var(--accent-wasm, #654FF0)"
+                    : "var(--border-color, #2A3441)"
+                };
                 border-radius: 3px;
-                background: ${isSelected ? "var(--accent-wasm, #654FF0)" : "transparent"};
+                background: ${
+                  isSelected ? "var(--accent-wasm, #654FF0)" : "transparent"
+                };
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -1429,7 +1584,11 @@ export class ComponentLibrarySection {
 
     item.style.cssText = `
             background: var(--bg-secondary, #151B2C);
-            border: 2px solid ${isSelected ? "var(--accent-wasm, #654FF0)" : "var(--border-color, #2A3441)"};
+            border: 2px solid ${
+              isSelected
+                ? "var(--accent-wasm, #654FF0)"
+                : "var(--border-color, #2A3441)"
+            };
             border-radius: 6px;
             padding: 10px 12px;
             cursor: ${this.multiSelectMode ? "pointer" : "grab"};
@@ -1438,7 +1597,9 @@ export class ComponentLibrarySection {
             align-items: center;
             gap: 12px;
             position: relative;
-            ${isSelected ? "box-shadow: 0 0 0 2px rgba(101, 79, 240, 0.3);" : ""}
+            ${
+              isSelected ? "box-shadow: 0 0 0 2px rgba(101, 79, 240, 0.3);" : ""
+            }
         `;
 
     // Selection indicator (checkbox) for multi-select mode
@@ -1447,9 +1608,15 @@ export class ComponentLibrarySection {
       checkbox.style.cssText = `
                 width: 16px;
                 height: 16px;
-                border: 2px solid ${isSelected ? "var(--accent-wasm, #654FF0)" : "var(--border-color, #2A3441)"};
+                border: 2px solid ${
+                  isSelected
+                    ? "var(--accent-wasm, #654FF0)"
+                    : "var(--border-color, #2A3441)"
+                };
                 border-radius: 3px;
-                background: ${isSelected ? "var(--accent-wasm, #654FF0)" : "transparent"};
+                background: ${
+                  isSelected ? "var(--accent-wasm, #654FF0)" : "transparent"
+                };
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -1494,7 +1661,9 @@ export class ComponentLibrarySection {
     info.appendChild(name);
 
     const meta = document.createElement("div");
-    meta.textContent = `${component.category}${component.version ? ` • v${component.version}` : ""}`;
+    meta.textContent = `${component.category}${
+      component.version ? ` • v${component.version}` : ""
+    }`;
     meta.style.cssText = `
             font-size: 11px;
             color: var(--text-secondary, #7D8590);
@@ -1624,8 +1793,8 @@ export class ComponentLibrarySection {
 
     // Apply tag filter
     if (this.filter.tags && this.filter.tags.length > 0) {
-      components = components.filter((c) =>
-        c.tags?.some((tag) => this.filter.tags!.includes(tag)),
+      components = components.filter(
+        (c) => c.tags?.some((tag) => this.filter.tags!.includes(tag)),
       );
     }
 

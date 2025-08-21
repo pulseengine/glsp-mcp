@@ -87,6 +87,7 @@
 **Location**: Developer machine, GitHub Actions, Jenkins, etc.
 
 **Build Script Example**:
+
 ```bash
 #!/bin/bash
 # build-wasm-components.sh
@@ -117,6 +118,7 @@ npm run build
 ```
 
 **package.json Integration**:
+
 ```json
 {
   "scripts": {
@@ -133,50 +135,51 @@ npm run build
 ### 2. CI/CD Pipeline Example
 
 **GitHub Actions Workflow** (`.github/workflows/build.yml`):
+
 ```yaml
 name: Build and Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v3
-    
-    # Install Rust toolchain
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: wasm32-wasi
-    
-    # Install cargo-component
-    - run: cargo install cargo-component
-    
-    # Install jco
-    - run: npm install -g @bytecodealliance/jco
-    
-    # Build WASM components
-    - run: cargo component build --release --target wasm32-wasi
-    
-    # Transpile components
-    - run: |
-        mkdir -p dist/wasm
-        jco transpile target/wasm32-wasi/release/*.wasm \
-          --out dist/wasm/ \
-          --no-nodejs-compat \
-          --optimize
-    
-    # Build web application
-    - run: npm ci && npm run build
-    
-    # Deploy to your hosting service
-    - uses: actions/deploy-to-netlify@v1
-      with:
-        publish-dir: ./dist
+      - uses: actions/checkout@v3
+
+      # Install Rust toolchain
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-wasi
+
+      # Install cargo-component
+      - run: cargo install cargo-component
+
+      # Install jco
+      - run: npm install -g @bytecodealliance/jco
+
+      # Build WASM components
+      - run: cargo component build --release --target wasm32-wasi
+
+      # Transpile components
+      - run: |
+          mkdir -p dist/wasm
+          jco transpile target/wasm32-wasi/release/*.wasm \
+            --out dist/wasm/ \
+            --no-nodejs-compat \
+            --optimize
+
+      # Build web application
+      - run: npm ci && npm run build
+
+      # Deploy to your hosting service
+      - uses: actions/deploy-to-netlify@v1
+        with:
+          publish-dir: ./dist
 ```
 
 ### 3. Local Development Setup
@@ -205,6 +208,7 @@ echo "Run 'npm run build:wasm' to build components"
 ```
 
 **Directory Structure**:
+
 ```
 glsp-web-client/
 ├── wasm-components/           # Rust WASM component source
@@ -228,47 +232,47 @@ glsp-web-client/
 ## Integration with Your Existing Build
 
 **Update your Vite config** (`vite.config.ts`):
+
 ```typescript
-import { defineConfig } from 'vite'
+import { defineConfig } from "vite";
 
 export default defineConfig({
   // Ensure WASM files are included in build
-  assetsInclude: ['**/*.wasm'],
-  
+  assetsInclude: ["**/*.wasm"],
+
   build: {
     rollupOptions: {
       // Don't bundle WASM components - load them dynamically
-      external: [
-        /^\.\/wasm\/.*\.js$/
-      ]
-    }
+      external: [/^\.\/wasm\/.*\.js$/],
+    },
   },
-  
+
   // Development: serve WASM files correctly
   server: {
     fs: {
-      allow: ['..', './dist/wasm']
-    }
-  }
-})
+      allow: ["..", "./dist/wasm"],
+    },
+  },
+});
 ```
 
 ## Runtime Loading in Your Application
 
 **Enhanced WasmComponentManager**:
+
 ```typescript
 export class WasmComponentManager {
   private componentCache = new Map<string, any>();
-  
+
   async loadComponent(name: string) {
     if (this.componentCache.has(name)) {
       return this.componentCache.get(name);
     }
-    
+
     try {
       // Dynamic import of transpiled component
       const module = await import(`/wasm/${name}.js`);
-      
+
       // Some components may need explicit instantiation
       let component;
       if (module.instantiate) {
@@ -276,24 +280,24 @@ export class WasmComponentManager {
       } else {
         component = module;
       }
-      
+
       this.componentCache.set(name, component);
       console.log(`Loaded WASM component: ${name}`);
-      
+
       return component;
     } catch (error) {
       console.error(`Failed to load WASM component ${name}:`, error);
       throw error;
     }
   }
-  
+
   async preloadComponents(names: string[]) {
-    const promises = names.map(name => 
-      this.loadComponent(name).catch(err => 
-        console.warn(`Failed to preload ${name}:`, err)
-      )
+    const promises = names.map((name) =>
+      this.loadComponent(name).catch((err) =>
+        console.warn(`Failed to preload ${name}:`, err),
+      ),
     );
-    
+
     await Promise.allSettled(promises);
   }
 }
@@ -302,16 +306,19 @@ export class WasmComponentManager {
 ## Deployment Strategies
 
 ### Option 1: Build-Time Transpilation (Recommended)
+
 - **When**: During `npm run build`
 - **Where**: CI/CD pipeline or developer machine
 - **Result**: Static files ready for CDN/web server
 
 ### Option 2: Runtime Transpilation (Not Recommended)
+
 - **When**: In the browser using jco's browser build
 - **Where**: Client-side
 - **Issues**: Larger bundle, slower loading, browser compatibility
 
 ### Option 3: Server-Side Transpilation
+
 - **When**: On-demand server endpoint
 - **Where**: Your backend server
 - **Use case**: Dynamic component loading
@@ -319,6 +326,7 @@ export class WasmComponentManager {
 ## Best Practices for Your Project
 
 1. **Build Integration**:
+
    ```bash
    # Add to package.json
    "prebuild": "npm run build:wasm",
@@ -326,6 +334,7 @@ export class WasmComponentManager {
    ```
 
 2. **Development Workflow**:
+
    ```bash
    # Watch mode for WASM development
    npm run dev:wasm    # Watches Rust files and rebuilds
@@ -344,7 +353,7 @@ export class WasmComponentManager {
 1. **Developer/CI builds** Rust → WebAssembly Component
 2. **jco transpiles** Component → JavaScript ES Module
 3. **Web bundler** (Vite) includes transpiled files in build
-4. **Web server** serves static JavaScript + WASM files  
+4. **Web server** serves static JavaScript + WASM files
 5. **Browser** imports JavaScript modules as needed
 
 The browser never sees raw WebAssembly components - only the transpiled JavaScript modules that jco generates.

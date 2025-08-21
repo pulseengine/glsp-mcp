@@ -1,6 +1,20 @@
+// Copyright (c) 2024 GLSP-Rust Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 mod execution_engine;
 mod filesystem_watcher;
-mod graphics_renderer;
+pub mod graphics_renderer;
 mod pipeline;
 mod security_scanner;
 mod sensor_bridge;
@@ -350,20 +364,38 @@ impl WasmFileWatcher {
 
         // Process each WASM file
         for wasm_path in wasm_files {
-            if let Some(component_name) = wasm_path.file_stem().and_then(OsStr::to_str) {
-                found_components.insert(component_name.to_string());
-
-                // Check if component exists or needs updating
-                if let Some(existing) = self.components.get_mut(component_name) {
-                    existing.file_exists = true;
-                    existing.last_seen = Some(Utc::now());
-                    existing.removed_at = None;
+            // Use directory name instead of file stem to avoid collisions when all files are named "component.wasm"
+            let component_name = if let Some(parent) = wasm_path.parent() {
+                if let Some(dir_name) = parent.file_name().and_then(OsStr::to_str) {
+                    dir_name.to_string()
                 } else {
-                    // New component discovered
-                    let component = self.extract_component_info(&wasm_path).await?;
-                    self.components
-                        .insert(component_name.to_string(), component);
+                    // Fallback to file stem if directory name can't be determined
+                    wasm_path
+                        .file_stem()
+                        .and_then(OsStr::to_str)
+                        .unwrap_or("unknown")
+                        .to_string()
                 }
+            } else {
+                // Fallback to file stem if no parent directory
+                wasm_path
+                    .file_stem()
+                    .and_then(OsStr::to_str)
+                    .unwrap_or("unknown")
+                    .to_string()
+            };
+
+            found_components.insert(component_name.clone());
+
+            // Check if component exists or needs updating
+            if let Some(existing) = self.components.get_mut(&component_name) {
+                existing.file_exists = true;
+                existing.last_seen = Some(Utc::now());
+                existing.removed_at = None;
+            } else {
+                // New component discovered
+                let component = self.extract_component_info(&wasm_path).await?;
+                self.components.insert(component_name, component);
             }
         }
 
@@ -406,11 +438,24 @@ impl WasmFileWatcher {
     }
 
     async fn extract_component_info(&self, wasm_path: &PathBuf) -> anyhow::Result<WasmComponent> {
-        let component_name = wasm_path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("unknown")
-            .to_string();
+        // Use directory name instead of file stem to match the naming logic in scan_components
+        let component_name = if let Some(parent) = wasm_path.parent() {
+            if let Some(dir_name) = parent.file_name().and_then(|s| s.to_str()) {
+                dir_name.to_string()
+            } else {
+                wasm_path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("unknown")
+                    .to_string()
+            }
+        } else {
+            wasm_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown")
+                .to_string()
+        };
 
         debug!("Extracting component info from: {wasm_path:?}");
 

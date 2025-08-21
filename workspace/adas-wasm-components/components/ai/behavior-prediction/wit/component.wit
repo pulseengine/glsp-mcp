@@ -4,11 +4,11 @@ world ai-component {
     /// Import orchestration for FEO compliance and resource management
     import adas:orchestration/execution-control;
     import adas:orchestration/resource-management;
-    
+
     /// Import sensor data for processing
     import adas:data/sensor-data;
-    
-    /// Export standardized AI interfaces  
+
+    /// Export standardized AI interfaces
     export adas:control/ai-control;
     export adas:data/perception-data;
     export adas:data/planning-data;

@@ -2,16 +2,16 @@
 interface component-info {
     /// Get the component version
     get-version: func() -> string;
-    
+
     /// Get the component name
     get-name: func() -> string;
-    
+
     /// Get detailed build information
     get-build-info: func() -> build-info;
-    
+
     /// Get safety certification information (if applicable)
     get-safety-info: func() -> option<safety-info>;
-    
+
     /// Build information structure
     record build-info {
         /// Component version from Cargo.toml
@@ -25,7 +25,7 @@ interface component-info {
         /// Target architecture
         target: string,
     }
-    
+
     /// Safety certification information
     record safety-info {
         /// ASIL level (e.g., "ASIL-B", "ASIL-D")

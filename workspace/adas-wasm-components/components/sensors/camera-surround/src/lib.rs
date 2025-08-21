@@ -1,6 +1,6 @@
 // Camera Surround ECU Component - Multi-interface surround view camera implementation
 use camera_surround_ecu_bindings::exports::adas::camera_surround::{
-    camera_sensor::{self, Config, SurroundView, CameraFrame, Status, Stats},
+    camera_sensor::{self, CameraFrame, Config, Stats, Status, SurroundView},
     diagnostics::{self, Health, TestResult},
 };
 
@@ -63,7 +63,7 @@ impl camera_sensor::Guest for Component {
     fn initialize(cfg: Config) -> Result<(), String> {
         STATE.with(|state| {
             let mut s = state.borrow_mut();
-            
+
             // Validate configuration
             if cfg.camera_count == 0 || cfg.camera_count > 8 {
                 return Err("Invalid camera count (must be 1-8)".to_string());
@@ -71,21 +71,23 @@ impl camera_sensor::Guest for Component {
             if cfg.fps == 0 || cfg.fps > 60 {
                 return Err("Invalid frame rate (must be 1-60 fps)".to_string());
             }
-            
-            println!("Camera Surround: Initializing {} cameras, {}x{} @ {} fps", 
-                cfg.camera_count, cfg.resolution_width, cfg.resolution_height, cfg.fps);
-            
+
+            println!(
+                "Camera Surround: Initializing {} cameras, {}x{} @ {} fps",
+                cfg.camera_count, cfg.resolution_width, cfg.resolution_height, cfg.fps
+            );
+
             s.config = cfg;
             s.status = Status::Initializing;
             s.frames_processed = 0;
             s.frames_dropped = 0;
             s.stitching_failures = 0;
             s.current_view = None;
-            
+
             // Simulate initialization
             s.status = Status::Inactive;
             s.health = Health::Healthy;
-            
+
             Ok(())
         })
     }
@@ -93,16 +95,16 @@ impl camera_sensor::Guest for Component {
     fn start() -> Result<(), String> {
         STATE.with(|state| {
             let mut s = state.borrow_mut();
-            
+
             if matches!(s.status, Status::Active) {
                 return Err("Camera surround already active".to_string());
             }
-            
+
             println!("Camera Surround: Starting capture");
             s.status = Status::Active;
             s.start_time = get_timestamp_ms();
             s.last_frame_time = s.start_time;
-            
+
             Ok(())
         })
     }
@@ -110,15 +112,15 @@ impl camera_sensor::Guest for Component {
     fn stop() -> Result<(), String> {
         STATE.with(|state| {
             let mut s = state.borrow_mut();
-            
+
             if !matches!(s.status, Status::Active) {
                 return Err("Camera surround not active".to_string());
             }
-            
+
             println!("Camera Surround: Stopping capture");
             s.status = Status::Inactive;
             s.current_view = None;
-            
+
             Ok(())
         })
     }
@@ -126,24 +128,33 @@ impl camera_sensor::Guest for Component {
     fn process_frame() -> Result<SurroundView, String> {
         STATE.with(|state| {
             let mut s = state.borrow_mut();
-            
+
             if !matches!(s.status, Status::Active) {
                 return Err("Camera surround not active".to_string());
             }
-            
+
             let now = get_timestamp_ms();
             s.frames_processed += 1;
             s.last_frame_time = now;
-            
+
             // Simulate camera frames from multiple cameras
             let mut camera_frames = Vec::new();
-            let positions = ["front", "rear", "left", "right", "front-left", "front-right", "rear-left", "rear-right"];
-            
+            let positions = [
+                "front",
+                "rear",
+                "left",
+                "right",
+                "front-left",
+                "front-right",
+                "rear-left",
+                "rear-right",
+            ];
+
             for i in 0..s.config.camera_count {
                 let position = positions[i as usize % positions.len()];
                 let exposure_var = (s.frames_processed as f32 * 0.01 + i as f32).sin() * 5.0;
                 let gain_var = (s.frames_processed as f32 * 0.02 + i as f32).cos() * 2.0;
-                
+
                 camera_frames.push(CameraFrame {
                     camera_id: i,
                     position: position.to_string(),
@@ -152,7 +163,7 @@ impl camera_sensor::Guest for Component {
                     gain: 1.0 + gain_var,
                 });
             }
-            
+
             // Simulate stitching process
             let stitched_image = if s.config.stitching_enabled {
                 // Occasionally simulate stitching failure
@@ -166,16 +177,16 @@ impl camera_sensor::Guest for Component {
             } else {
                 None
             };
-            
+
             let surround_view = SurroundView {
                 timestamp: now,
                 frame_number: s.frames_processed,
                 camera_frames,
                 stitched_image,
             };
-            
+
             s.current_view = Some(surround_view.clone());
-            
+
             Ok(surround_view)
         })
     }
@@ -192,17 +203,22 @@ impl camera_sensor::Guest for Component {
             } else {
                 0.0
             };
-            
+
             let stitching_success_rate = if s.frames_processed > 0 && s.config.stitching_enabled {
-                ((s.frames_processed - s.stitching_failures) as f32 / s.frames_processed as f32) * 100.0
+                ((s.frames_processed - s.stitching_failures) as f32 / s.frames_processed as f32)
+                    * 100.0
             } else {
                 100.0
             };
-            
+
             Stats {
                 frames_processed: s.frames_processed,
                 frames_dropped: s.frames_dropped,
-                average_fps: if elapsed_sec > 0.0 { s.frames_processed as f32 / elapsed_sec } else { 0.0 },
+                average_fps: if elapsed_sec > 0.0 {
+                    s.frames_processed as f32 / elapsed_sec
+                } else {
+                    0.0
+                },
                 stitching_success_rate,
                 cpu_percent: 45.0 + (elapsed_sec * 0.02).sin() * 8.0,
                 memory_mb: 512,
@@ -232,10 +248,10 @@ impl diagnostics::Guest for Component {
 
     fn run_diagnostics() -> Vec<TestResult> {
         let mut results = vec![];
-        
+
         STATE.with(|state| {
             let s = state.borrow();
-            
+
             // Test 1: Camera connectivity
             for i in 0..s.config.camera_count {
                 results.push(TestResult {
@@ -245,7 +261,7 @@ impl diagnostics::Guest for Component {
                     duration_ms: 15.0,
                 });
             }
-            
+
             // Test 2: Image processing pipeline
             results.push(TestResult {
                 name: "image_processing".to_string(),
@@ -253,7 +269,7 @@ impl diagnostics::Guest for Component {
                 message: "Image processing pipeline operational".to_string(),
                 duration_ms: 25.0,
             });
-            
+
             // Test 3: Stitching algorithm
             let stitching_ok = s.stitching_failures < s.frames_processed / 50; // Less than 2% failure rate
             results.push(TestResult {
@@ -266,7 +282,7 @@ impl diagnostics::Guest for Component {
                 },
                 duration_ms: 30.0,
             });
-            
+
             // Test 4: Memory usage
             results.push(TestResult {
                 name: "memory_usage".to_string(),
@@ -275,7 +291,7 @@ impl diagnostics::Guest for Component {
                 duration_ms: 10.0,
             });
         });
-        
+
         results
     }
 
@@ -283,7 +299,7 @@ impl diagnostics::Guest for Component {
         STATE.with(|state| {
             let s = state.borrow();
             let stats = <Component as camera_sensor::Guest>::get_stats();
-            
+
             format!(
                 r#"Camera Surround ECU Diagnostic Report
 ======================================
@@ -329,7 +345,11 @@ Camera Info:
                 stats.cpu_percent,
                 stats.memory_mb,
                 stats.bandwidth_mbps,
-                if s.current_view.is_some() { "Available" } else { "None" }
+                if s.current_view.is_some() {
+                    "Available"
+                } else {
+                    "None"
+                }
             )
         })
     }

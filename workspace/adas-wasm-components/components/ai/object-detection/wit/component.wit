@@ -4,13 +4,13 @@ package adas:object-detection@0.1.0;
 world ai-component {
     /// Import common types
     import adas:common-types/types;
-    
+
     /// Import WASI-NN for neural network inference
     import wasi:nn/graph@0.2.0-rc-2024-10-28;
     import wasi:nn/tensor@0.2.0-rc-2024-10-28;
     import wasi:nn/inference@0.2.0-rc-2024-10-28;
     import wasi:nn/errors@0.2.0-rc-2024-10-28;
-    
+
     /// Export standardized AI interfaces
     export adas:control/ai-control;
     export adas:data/perception-data;

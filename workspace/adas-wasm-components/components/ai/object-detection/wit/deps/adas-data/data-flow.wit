@@ -5,7 +5,7 @@ package adas:data@0.1.0;
 
 interface data-flow {
     use adas:common-types/types.{timestamp};
-    
+
     // Video frame data structure
     record video-frame {
         width: u32,
@@ -15,7 +15,7 @@ interface data-flow {
         timestamp: timestamp,
         frame-number: u64,
     }
-    
+
     // Pixel format types
     enum pixel-format {
         rgb24,
@@ -24,7 +24,7 @@ interface data-flow {
         nv12,
         gray8,
     }
-    
+
     // 2D bounding box
     record bounding-box {
         x: f32,
@@ -32,7 +32,7 @@ interface data-flow {
         width: f32,
         height: f32,
     }
-    
+
     // Detected object from AI
     record detected-object {
         object-id: u32,
@@ -41,7 +41,7 @@ interface data-flow {
         bounding-box: bounding-box,
         timestamp: timestamp,
     }
-    
+
     // Detection result batch
     record detection-result {
         frame-number: u64,
@@ -49,51 +49,51 @@ interface data-flow {
         processing-time-ms: f32,
         timestamp: timestamp,
     }
-    
+
     // Data flow events
     variant data-event {
         video-frame(video-frame),
         detection-result(detection-result),
         system-event(string),
     }
-    
+
     // Publisher interface - components that produce data
     resource data-publisher {
         constructor();
-        
+
         // Publish video frame
         publish-frame: func(frame: video-frame) -> result<_, string>;
-        
+
         // Publish detection results
         publish-detections: func(detection: detection-result) -> result<_, string>;
-        
+
         // Publish system event
         publish-event: func(event: string) -> result<_, string>;
-        
+
         // Get publisher status
         get-status: func() -> result<publisher-status, string>;
     }
-    
+
     // Subscriber interface - components that consume data
     resource data-subscriber {
         constructor();
-        
+
         // Subscribe to video frames
         subscribe-frames: func() -> result<_, string>;
-        
+
         // Subscribe to detection results
         subscribe-detections: func() -> result<_, string>;
-        
+
         // Get next available data (non-blocking)
         poll-data: func() -> option<data-event>;
-        
+
         // Wait for next data (blocking with timeout)
         wait-for-data: func(timeout-ms: u32) -> option<data-event>;
-        
+
         // Get subscriber status
         get-status: func() -> result<subscriber-status, string>;
     }
-    
+
     // Publisher status
     record publisher-status {
         total-published: u64,
@@ -101,7 +101,7 @@ interface data-flow {
         last-publish-time: timestamp,
         is-active: bool,
     }
-    
+
     // Subscriber status
     record subscriber-status {
         total-received: u64,

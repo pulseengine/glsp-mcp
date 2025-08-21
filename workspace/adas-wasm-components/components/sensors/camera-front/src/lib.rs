@@ -1,6 +1,6 @@
 // Camera Front ECU Component - Complex multi-interface implementation
 use camera_front_ecu_bindings::exports::adas::camera_front::{
-    camera_sensor::{self, Config, FrameInfo, Status, Stats},
+    camera_sensor::{self, Config, FrameInfo, Stats, Status},
     diagnostics::{self, Health, TestResult},
 };
 
@@ -56,11 +56,11 @@ struct Component;
 
 impl camera_sensor::Guest for Component {
     // === SENSOR OPERATIONS ===
-    
+
     fn initialize(cfg: Config) -> Result<(), String> {
         STATE.with(|state| {
             let mut s = state.borrow_mut();
-            
+
             // Validate configuration
             if cfg.width == 0 || cfg.height == 0 {
                 return Err("Invalid resolution".to_string());
@@ -68,19 +68,21 @@ impl camera_sensor::Guest for Component {
             if cfg.fps == 0 || cfg.fps > 120 {
                 return Err("Invalid frame rate".to_string());
             }
-            
-            println!("Camera Front: Initializing {}x{} @ {} FPS, format: {}", 
-                cfg.width, cfg.height, cfg.fps, cfg.format);
-            
+
+            println!(
+                "Camera Front: Initializing {}x{} @ {} FPS, format: {}",
+                cfg.width, cfg.height, cfg.fps, cfg.format
+            );
+
             s.config = cfg;
             s.status = Status::Initializing;
             s.frames_processed = 0;
             s.frames_dropped = 0;
-            
+
             // Simulate initialization delay
             s.status = Status::Inactive;
             s.health = Health::Healthy;
-            
+
             Ok(())
         })
     }
@@ -88,16 +90,16 @@ impl camera_sensor::Guest for Component {
     fn start() -> Result<(), String> {
         STATE.with(|state| {
             let mut s = state.borrow_mut();
-            
+
             if matches!(s.status, Status::Active) {
                 return Err("Camera already active".to_string());
             }
-            
+
             println!("Camera Front: Starting capture");
             s.status = Status::Active;
             s.start_time = get_timestamp_ms();
             s.last_frame_time = s.start_time;
-            
+
             Ok(())
         })
     }
@@ -105,14 +107,14 @@ impl camera_sensor::Guest for Component {
     fn stop() -> Result<(), String> {
         STATE.with(|state| {
             let mut s = state.borrow_mut();
-            
+
             if !matches!(s.status, Status::Active) {
                 return Err("Camera not active".to_string());
             }
-            
+
             println!("Camera Front: Stopping capture");
             s.status = Status::Inactive;
-            
+
             Ok(())
         })
     }
@@ -120,27 +122,27 @@ impl camera_sensor::Guest for Component {
     fn process_frame() -> Result<FrameInfo, String> {
         STATE.with(|state| {
             let mut s = state.borrow_mut();
-            
+
             if !matches!(s.status, Status::Active) {
                 return Err("Camera not active".to_string());
             }
-            
+
             let now = get_timestamp_ms();
             let frame_interval = 1000 / s.config.fps as u64;
-            
+
             // Check if we're keeping up with frame rate
             if now - s.last_frame_time > frame_interval * 2 {
                 s.frames_dropped += 1;
                 s.health = Health::Degraded;
             }
-            
+
             s.frames_processed += 1;
             s.last_frame_time = now;
-            
+
             // Simulate varying exposure based on frame number
             let exposure_ms = 8.0 + (s.frames_processed as f32 * 0.1).sin() * 2.0;
             let gain = 1.0 + (s.frames_processed as f32 * 0.05).cos() * 0.5;
-            
+
             Ok(FrameInfo {
                 timestamp: now,
                 frame_number: s.frames_processed,
@@ -163,20 +165,21 @@ impl camera_sensor::Guest for Component {
             } else {
                 0.0
             };
-            
+
             let average_fps = if elapsed_sec > 0.0 {
                 (s.frames_processed as f32) / elapsed_sec
             } else {
                 0.0
             };
-            
+
             Stats {
                 frames_processed: s.frames_processed,
                 frames_dropped: s.frames_dropped,
                 average_fps,
                 cpu_percent: 15.5 + (elapsed_sec * 0.1).sin() * 5.0,
                 memory_mb: 128,
-                bandwidth_mbps: (s.config.width * s.config.height * s.config.fps * 12) as f32 / 1_000_000.0,
+                bandwidth_mbps: (s.config.width * s.config.height * s.config.fps * 12) as f32
+                    / 1_000_000.0,
             }
         })
     }
@@ -191,7 +194,6 @@ impl camera_sensor::Guest for Component {
             println!("Camera Front: Statistics reset");
         });
     }
-
 }
 
 impl diagnostics::Guest for Component {
@@ -201,7 +203,7 @@ impl diagnostics::Guest for Component {
 
     fn run_diagnostics() -> Vec<TestResult> {
         let mut results = vec![];
-        
+
         // Test 1: Camera sensor connectivity
         results.push(TestResult {
             name: "sensor_connectivity".to_string(),
@@ -209,7 +211,7 @@ impl diagnostics::Guest for Component {
             message: "MIPI CSI-2 interface operational".to_string(),
             duration_ms: 15.0,
         });
-        
+
         // Test 2: Image Signal Processor
         results.push(TestResult {
             name: "isp_pipeline".to_string(),
@@ -217,24 +219,27 @@ impl diagnostics::Guest for Component {
             message: "ISP pipeline stages configured correctly".to_string(),
             duration_ms: 25.0,
         });
-        
+
         // Test 3: Frame timing
         STATE.with(|state| {
             let s = state.borrow();
             let timing_ok = s.frames_dropped < s.frames_processed / 100; // Less than 1% drop rate
-            
+
             results.push(TestResult {
                 name: "frame_timing".to_string(),
                 passed: timing_ok,
                 message: if timing_ok {
-                    format!("Frame timing within tolerance: {} dropped", s.frames_dropped)
+                    format!(
+                        "Frame timing within tolerance: {} dropped",
+                        s.frames_dropped
+                    )
                 } else {
                     format!("Excessive frame drops: {}", s.frames_dropped)
                 },
                 duration_ms: 5.0,
             });
         });
-        
+
         // Test 4: Temperature check
         let temp_ok = true; // Simulated temperature is always in range
         results.push(TestResult {
@@ -243,7 +248,7 @@ impl diagnostics::Guest for Component {
             message: "Sensor temperature within operating range".to_string(),
             duration_ms: 10.0,
         });
-        
+
         results
     }
 
@@ -251,7 +256,7 @@ impl diagnostics::Guest for Component {
         STATE.with(|state| {
             let s = state.borrow();
             let stats = <Component as camera_sensor::Guest>::get_stats();
-            
+
             format!(
                 r#"Camera Front ECU Diagnostic Report
 =====================================
@@ -279,7 +284,9 @@ Sensor Info:
 "#,
                 s.status,
                 s.health,
-                s.config.width, s.config.height, s.config.fps,
+                s.config.width,
+                s.config.height,
+                s.config.fps,
                 s.config.format,
                 s.config.auto_exposure,
                 s.config.auto_white_balance,

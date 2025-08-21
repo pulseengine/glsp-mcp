@@ -46,7 +46,7 @@ supported_sensors = [
     "lidar",
     "radar",
     "ultrasonic",
-    "imu", 
+    "imu",
     "gnss",
     "wheel_odometry",
     "magnetic_compass"
@@ -55,14 +55,14 @@ supported_sensors = [
 sensor_data_rates = [
     "camera: 30hz",
     "lidar: 10hz",
-    "radar: 20hz", 
+    "radar: 20hz",
     "imu: 100hz",
     "gnss: 10hz"
 ]
 
 data_formats = [
     "ros2_sensor_msgs",
-    "autoware_msgs", 
+    "autoware_msgs",
     "apollo_msgs",
     "custom_binary"
 ]
@@ -85,7 +85,7 @@ data_association = [
 
 track_management = [
     "track_initiation",
-    "track_maintenance", 
+    "track_maintenance",
     "track_deletion",
     "track_splitting_merging"
 ]
@@ -121,7 +121,7 @@ coordinate_transformations = [
 
 calibration_support = [
     "extrinsic_calibration",
-    "intrinsic_calibration", 
+    "intrinsic_calibration",
     "temporal_calibration",
     "online_calibration"
 ]
@@ -137,7 +137,7 @@ reference_frames = [
 uncertainty_models = [
     "gaussian_noise",
     "covariance_matrices",
-    "confidence_intervals", 
+    "confidence_intervals",
     "fuzzy_logic"
 ]
 

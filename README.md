@@ -127,6 +127,28 @@ ollama serve
 
 ## 🔧 Development
 
+### Code Quality & Pre-commit Hooks
+
+This project uses [pre-commit](https://pre-commit.com/) to ensure code quality:
+
+```bash
+# One-time setup
+./setup-pre-commit.sh
+
+# Manual setup
+pip install pre-commit
+pre-commit install
+pre-commit install --hook-type commit-msg
+```
+
+**Configured checks:**
+- ✅ Rust formatting (rustfmt) & linting (clippy)
+- ✅ TypeScript linting (ESLint) & formatting (Prettier)
+- ✅ Type checking & tests
+- ✅ Security scanning & conventional commits
+
+See [PRE_COMMIT.md](PRE_COMMIT.md) for detailed setup and usage.
+
 ### Backend Development
 ```bash
 cd glsp-mcp-server

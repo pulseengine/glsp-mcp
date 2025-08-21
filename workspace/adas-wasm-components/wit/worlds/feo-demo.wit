@@ -7,14 +7,14 @@ world feo-demo-component {
     import adas:orchestration/execution-control;
     import adas:orchestration/data-flow;
     import adas:orchestration/resource-management;
-    
+
     // Import common types
     import adas:common-types/types;
-    
+
     // Import data interfaces for coordination
     import adas:data/sensor-data;
     import adas:data/perception-data;
-    
+
     // Export system control interface
     export adas:control/system-control;
     export adas:diagnostics/health-monitoring;

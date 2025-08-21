@@ -6,11 +6,11 @@ This section documents the demonstration requirements for the ADAS WASM Componen
 .. important::
    **This is demonstration code only!** These requirements are specific to the ADAS workspace example,
    which serves as an educational resource showing:
-   
+
    * How to structure requirements for complex GLSP-MCP applications
    * How to apply domain-specific standards (like ISO 26262) conceptually
    * How to link platform requirements to implementation requirements
-   
+
    **This is NOT a production-ready ADAS implementation.** It demonstrates concepts and patterns
    for learning purposes only.
 
@@ -22,7 +22,7 @@ The ADAS requirements are organized into the following categories:
 .. list-table::
    :header-rows: 1
    :widths: 30 70
-   
+
    * - Category
      - Description
    * - :doc:`adas_components`
@@ -84,7 +84,7 @@ Total ADAS-Specific Requirements
 .. list-table::
    :header-rows: 1
    :widths: 50 20 30
-   
+
    * - Category
      - Count
      - Status
@@ -123,7 +123,7 @@ Next Steps
 
 .. toctree::
    :maxdepth: 2
-   
+
    adas_components
    sensor_components
    ai_components

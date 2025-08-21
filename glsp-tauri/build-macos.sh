@@ -86,13 +86,13 @@ if [ -d "$ROOT_DIR/target/release/bundle/macos" ]; then
     echo ""
     echo "📦 Build artifacts:"
     echo "  App Bundle: $ROOT_DIR/target/release/bundle/macos/WASM Component Designer.app"
-    
+
     # Check for DMG
     DMG_PATH=$(find "$ROOT_DIR/target/release/bundle/dmg" -name "*.dmg" 2>/dev/null | head -n 1)
     if [ -n "$DMG_PATH" ]; then
         echo "  DMG Installer: $DMG_PATH"
     fi
-    
+
     echo ""
     echo "🚀 To run the app:"
     echo "  open \"$ROOT_DIR/target/release/bundle/macos/WASM Component Designer.app\""

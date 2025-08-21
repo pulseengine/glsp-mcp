@@ -8,7 +8,7 @@ package(default_visibility = ["//visibility:public"])
 # Export metadata and configuration files
 exports_files([
     "wac.toml",
-    "wac-working.toml", 
+    "wac-working.toml",
     "adas-system.wac",
     "adas-working.wac",
     "adas-simple.wac",
@@ -34,7 +34,7 @@ wit_library(
 wit_library(
     name = "adas_data",
     srcs = [
-        "wit/interfaces/adas-data/data.wit", 
+        "wit/interfaces/adas-data/data.wit",
         "wit/interfaces/adas-data/data-flow.wit",
     ],
     deps = [":adas_common_types"],
@@ -98,34 +98,34 @@ adas_component_group(
         "radar-front": "//components/sensors/radar-front:radar_front_ecu",
         "radar-corner": "//components/sensors/radar-corner:radar_corner_ecu",
         "ultrasonic": "//components/sensors/ultrasonic:ultrasonic_ecu",
-        
+
         # Input/Processing Layer (FEO Phase 2)
         "video-decoder": "//components/input/video-decoder:video_decoder_ecu",
-        
+
         # AI Processing Layer (FEO Phase 3)
         "object-detection": "//components/ai/object-detection:object_detection_ai",
         "behavior-prediction": "//components/ai/behavior-prediction:behavior_prediction_ai",
-        
+
         # Fusion Layer (FEO Phase 4)
         "sensor-fusion": "//components/fusion/sensor-fusion:sensor_fusion_ecu",
         "perception-fusion": "//components/fusion/perception-fusion:perception_fusion_ecu",
         "tracking-prediction": "//components/fusion/tracking-prediction:tracking_prediction_ecu",
-        
+
         # Control Layer (FEO Phase 5)
         "planning-decision": "//components/control/planning-decision:planning_decision_ecu",
         "vehicle-control": "//components/control/vehicle-control:vehicle_control_ecu",
-        
+
         # System Layer (FEO Phase 6)
         "safety-monitor": "//components/system/safety-monitor:safety_monitor_ecu",
         "domain-controller": "//components/system/domain-controller:domain_controller_ecu",
         "can-gateway": "//components/system/can-gateway:can_gateway_ecu",
         "hmi-interface": "//components/system/hmi-interface:hmi_interface_ecu",
         "feo-demo": "//components/system/feo-demo:feo_demo_ecu",
-        
+
         # Integration Layer (FEO Phase 7)
         "video-ai-pipeline": "//components/integration/video-ai-pipeline:video_ai_pipeline_ecu",
         "adas-visualizer": "//components/graphics/adas-visualizer:adas_visualizer_ecu",
-        
+
         # Orchestration Layer (FEO Phase 8)
         "orchestrator": "//components/orchestrator:adas_orchestrator_ecu",
     },

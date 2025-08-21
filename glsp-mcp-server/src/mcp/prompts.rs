@@ -1,3 +1,17 @@
+// Copyright (c) 2024 GLSP-Rust Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use crate::mcp::protocol::{
     GetPromptParams, GetPromptResult, Prompt, PromptArgument, PromptMessage, TextContent,
 };
@@ -163,7 +177,7 @@ Instructions:
 2. Analyze the description to identify the main steps, decision points, and flow
 3. Use 'create_node' to add nodes for each step:
    - Start/End events
-   - Tasks/Activities  
+   - Tasks/Activities
    - Decision points (gateways)
    - Intermediate events
 4. Use 'create_edge' to connect the nodes in logical flow order

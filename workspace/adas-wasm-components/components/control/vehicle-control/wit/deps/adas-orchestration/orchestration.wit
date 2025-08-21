@@ -4,28 +4,28 @@ package adas:orchestration;
 /// Execution control interface - Fixed Execution Order (FEO) coordination
 interface execution-control {
     use adas:common-types/types.{timestamp};
-    
+
     /// Component execution states for FEO coordination
     enum execution-state {
         idle,              // Component is idle, ready to accept work
-        ready,             // Component has input data and is ready to process  
+        ready,             // Component has input data and is ready to process
         processing,        // Component is currently executing
         completed,         // Component has finished processing this cycle
         blocked,           // Component is blocked waiting for dependencies
         error,             // Component encountered an error
     }
-    
+
     /// Execution phase in the FEO cycle
     enum execution-phase {
         sensor-acquisition,    // Phase 1: Sensor data collection
         preprocessing,         // Phase 2: Data preprocessing and filtering
         perception,           // Phase 3: Object detection and tracking
-        prediction,          // Phase 4: Behavior and trajectory prediction  
+        prediction,          // Phase 4: Behavior and trajectory prediction
         planning,            // Phase 5: Path planning and decision making
         control,             // Phase 6: Vehicle control command generation
         actuator-output,     // Phase 7: Actuator command execution
     }
-    
+
     /// Execution context for coordination
     record execution-context {
         cycle-id: u64,
@@ -33,7 +33,7 @@ interface execution-control {
         deadline: timestamp,
         priority: execution-priority,
     }
-    
+
     enum execution-priority {
         background,
         normal,
@@ -41,16 +41,16 @@ interface execution-control {
         critical,
         emergency,
     }
-    
+
     /// Signal execution state change
     signal-state: func(state: execution-state, context: execution-context);
-    
+
     /// Request permission to execute (for FEO compliance)
     request-execution: func(phase: execution-phase) -> result<execution-context, string>;
-    
+
     /// Register for execution notifications
     register-phase: func(phase: execution-phase, component-id: string);
-    
+
     /// Get current execution status
     get-execution-status: func() -> execution-context;
 }
@@ -58,7 +58,7 @@ interface execution-control {
 /// Data flow coordination interface - Pipeline synchronization
 interface data-flow {
     use adas:common-types/types.{timestamp};
-    
+
     /// Data availability notification
     record data-notification {
         data-type: string,
@@ -68,7 +68,7 @@ interface data-flow {
         data-size: u32,
         quality-score: f32,
     }
-    
+
     /// Data subscription
     record data-subscription {
         data-type: string,
@@ -77,14 +77,14 @@ interface data-flow {
         min-quality-score: f32,
         callback-priority: callback-priority,
     }
-    
+
     enum callback-priority {
         background,
         normal,
         high,
         real-time,
     }
-    
+
     /// Data flow constraints
     record flow-constraint {
         from-component: string,
@@ -93,19 +93,19 @@ interface data-flow {
         max-jitter-ms: u32,
         min-frequency-hz: f32,
     }
-    
+
     /// Subscribe to data notifications
     subscribe: func(subscription: data-subscription) -> result<string, string>;
-    
+
     /// Unsubscribe from data notifications
     unsubscribe: func(subscription-id: string) -> result<_, string>;
-    
+
     /// Notify data availability
     notify-data-available: func(notification: data-notification);
-    
+
     /// Add flow constraint
     add-constraint: func(constraint: flow-constraint) -> result<_, string>;
-    
+
     /// Get data flow status
     get-flow-status: func() -> list<data-notification>;
 }
@@ -113,7 +113,7 @@ interface data-flow {
 /// Resource management interface - Compute and memory allocation
 interface resource-management {
     use adas:common-types/types.{timestamp};
-    
+
     /// Resource allocation request
     record resource-request {
         component-id: string,
@@ -124,7 +124,7 @@ interface resource-management {
         duration-estimate-ms: option<u32>,
         deadline: option<timestamp>,
     }
-    
+
     enum resource-priority {
         background,
         normal,
@@ -132,7 +132,7 @@ interface resource-management {
         critical,
         safety-critical,
     }
-    
+
     /// Resource allocation
     record resource-allocation {
         allocation-id: string,
@@ -141,7 +141,7 @@ interface resource-management {
         granted-gpu-memory-mb: option<u32>,
         expires-at: option<timestamp>,
     }
-    
+
     /// Current resource usage
     record resource-usage {
         component-id: string,
@@ -151,7 +151,7 @@ interface resource-management {
         gpu-memory-used-mb: u32,
         timestamp: timestamp,
     }
-    
+
     /// System resource capacity
     record system-capacity {
         total-cpu-cores: u32,
@@ -161,22 +161,22 @@ interface resource-management {
         available-memory-mb: u32,
         available-gpu-memory-mb: u32,
     }
-    
+
     /// Request resource allocation
     request-resources: func(request: resource-request) -> result<resource-allocation, string>;
-    
+
     /// Release resource allocation
     release-resources: func(allocation-id: string) -> result<_, string>;
-    
+
     /// Update resource usage
     update-usage: func(usage: resource-usage);
-    
+
     /// Get system capacity
     get-capacity: func() -> system-capacity;
-    
+
     /// Get component resource usage
     get-usage: func(component-id: string) -> option<resource-usage>;
-    
+
     /// Get all resource allocations
     get-allocations: func() -> list<resource-allocation>;
 }

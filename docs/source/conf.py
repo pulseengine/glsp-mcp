@@ -61,7 +61,7 @@ def get_versions():
                     versions.append(tag)
     except Exception as e:
         print(f"Error getting versions: {e}")
-    
+
     return sorted(versions, key=lambda v: v if v == 'main' else [int(x) for x in v.split('.')])
 
 # Available versions for the switcher
@@ -134,12 +134,12 @@ html_theme_options = {
         "json_url": f"{version_path_prefix}switcher.json",
         "version_match": current_version,
     },
-    # Put logo on far left, search and utilities on the right  
+    # Put logo on far left, search and utilities on the right
     "navbar_start": ["navbar-logo"],
     # Keep center empty to move main nav to sidebar
     "navbar_center": [],
     # Group version switcher with search and theme switcher on the right
-    "navbar_end": ["version-switcher", "search-button", "theme-switcher"], 
+    "navbar_end": ["version-switcher", "search-button", "theme-switcher"],
     # Control navigation bar behavior
     "navbar_align": "left", # Align content to left
     # "use_navbar_nav_drop_shadow": True,  # Unsupported in current theme version
@@ -563,7 +563,7 @@ def extract_reqs(app, need, needs, *args, **kwargs):
         return ""
 
     absolute_src_file_path = (pathlib.Path(app.confdir) / relative_file_path_from_doc_source).resolve()
-    
+
     try:
         text = absolute_src_file_path.read_text(errors="ignore")
         ids  = REQ_RE.findall(text)
@@ -588,22 +588,22 @@ needs_string_links = {
 # Custom setup function with monkeypatch for handling NoneType errors
 def setup(app):
     """Custom setup function to handle various sphinx-needs configurations."""
-    
+
     # Monkeypatch to handle NoneType errors in sphinx-needs
     def safe_str(value):
         if value is None:
             return ""
         return str(value)
-    
+
     # Register the extract_reqs function as a dynamic function
     # Note: Dynamic functions are handled by sphinx-needs automatically
-    
+
     # Add custom CSS for better styling
     app.add_css_file('custom.css')
-    
+
     # Add custom JavaScript for diagram interaction
     app.add_js_file('diagram-zoom.js')
-    
+
     # Configure additional metadata for builds
     app.add_config_value('build_metadata', {}, 'env')
     app.config.build_metadata = {
@@ -611,7 +611,7 @@ def setup(app):
         'version': release,
         'environment': os.environ.get('BUILD_ENV', 'development')
     }
-    
+
     return {
         'version': '0.1',
         'parallel_read_safe': True,

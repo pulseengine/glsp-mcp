@@ -1,39 +1,48 @@
-import { ComponentUploadService, UploadProgress as ServiceUploadProgress } from '../../services/ComponentUploadService.js';
-import { ValidationService } from '../../services/ValidationService.js';
+import {
+  ComponentUploadService,
+  UploadProgress as ServiceUploadProgress,
+} from "../../services/ComponentUploadService.js";
+import { ValidationService } from "../../services/ValidationService.js";
 
 export interface UploadProgress {
-    stage: 'uploading' | 'validating' | 'transpiling' | 'registering' | 'complete' | 'error';
-    progress: number; // 0-100
-    message: string;
-    error?: string;
+  stage:
+    | "uploading"
+    | "validating"
+    | "transpiling"
+    | "registering"
+    | "complete"
+    | "error";
+  progress: number; // 0-100
+  message: string;
+  error?: string;
 }
 
 export class ComponentUploadPanel {
-    private element: HTMLElement & { _selectedFile?: File | null };
-    private uploadService: ComponentUploadService;
-    private validationService: ValidationService;
-    private onUploadComplete?: (componentId: string) => void;
-    private onUploadError?: (error: string) => void;
-    private validationCache: Map<string, any> = new Map(); // Cache validation results
+  private element: HTMLElement & { _selectedFile?: File | null };
+  private uploadService: ComponentUploadService;
+  private validationService: ValidationService;
+  private onUploadComplete?: (componentId: string) => void;
+  private onUploadError?: (error: string) => void;
+  private validationCache: Map<string, any> = new Map(); // Cache validation results
 
-    constructor(
-        uploadService: ComponentUploadService,
-        validationService: ValidationService,
-        onUploadComplete?: (componentId: string) => void,
-        onUploadError?: (error: string) => void
-    ) {
-        this.uploadService = uploadService;
-        this.validationService = validationService;
-        this.onUploadComplete = onUploadComplete;
-        this.onUploadError = onUploadError;
-        this.element = this.createElement();
-        this.setupEventHandlers();
-    }
+  constructor(
+    uploadService: ComponentUploadService,
+    validationService: ValidationService,
+    onUploadComplete?: (componentId: string) => void,
+    onUploadError?: (error: string) => void,
+  ) {
+    this.uploadService = uploadService;
+    this.validationService = validationService;
+    this.onUploadComplete = onUploadComplete;
+    this.onUploadError = onUploadError;
+    this.element = this.createElement();
+    this.setupEventHandlers();
+  }
 
-    private createElement(): HTMLElement {
-        const panel = document.createElement('div');
-        panel.className = 'component-upload-panel';
-        panel.style.cssText = `
+  private createElement(): HTMLElement {
+    const panel = document.createElement("div");
+    panel.className = "component-upload-panel";
+    panel.style.cssText = `
             position: fixed;
             top: 50%;
             left: 50%;
@@ -50,7 +59,7 @@ export class ComponentUploadPanel {
             color: var(--text-primary, #E5E9F0);
         `;
 
-        panel.innerHTML = `
+    panel.innerHTML = `
             <div class="upload-header">
                 <h3 style="margin: 0 0 15px 0; color: var(--text-primary, #E5E9F0);">Upload WASM Component</h3>
                 <button class="close-btn" style="
@@ -212,441 +221,547 @@ export class ComponentUploadPanel {
             </div>
         `;
 
-        return panel;
+    return panel;
+  }
+
+  private setupEventHandlers(): void {
+    const uploadArea = this.element.querySelector(
+      ".upload-area",
+    ) as HTMLElement;
+    const fileInput = this.element.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const closeBtn = this.element.querySelector(
+      ".close-btn",
+    ) as HTMLButtonElement;
+    const cancelBtn = this.element.querySelector(
+      ".cancel-btn",
+    ) as HTMLButtonElement;
+    const uploadBtn = this.element.querySelector(
+      ".upload-btn",
+    ) as HTMLButtonElement;
+    const componentNameInput = this.element.querySelector(
+      ".component-name-input",
+    ) as HTMLInputElement;
+
+    // File drop and click handlers
+    uploadArea.addEventListener("click", () => fileInput.click());
+    uploadArea.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = "var(--accent-color, #4A9EFF)";
+      uploadArea.style.backgroundColor = "rgba(74, 158, 255, 0.05)";
+    });
+    uploadArea.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = "var(--border-color, #2A3441)";
+      uploadArea.style.backgroundColor = "transparent";
+    });
+    uploadArea.addEventListener("drop", (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = "var(--border-color, #2A3441)";
+      uploadArea.style.backgroundColor = "transparent";
+
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        this.handleFileSelection(files[0]);
+      }
+    });
+
+    fileInput.addEventListener("change", (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files && files.length > 0) {
+        this.handleFileSelection(files[0]);
+      }
+    });
+
+    // Button handlers
+    closeBtn.addEventListener("click", () => this.hide());
+    cancelBtn.addEventListener("click", () => this.hide());
+    uploadBtn.addEventListener("click", () => this.handleUpload());
+
+    // Enable upload button when name is entered
+    componentNameInput.addEventListener("input", () => {
+      uploadBtn.disabled = !componentNameInput.value.trim();
+    });
+
+    // Bring to front on click
+    this.element.addEventListener("mousedown", () => {
+      this.bringToFront();
+    });
+  }
+
+  private handleFileSelection(file: File): void {
+    if (!file.name.endsWith(".wasm")) {
+      this.showError("Please select a valid .wasm file");
+      return;
     }
 
-    private setupEventHandlers(): void {
-        const uploadArea = this.element.querySelector('.upload-area') as HTMLElement;
-        const fileInput = this.element.querySelector('input[type="file"]') as HTMLInputElement;
-        const closeBtn = this.element.querySelector('.close-btn') as HTMLButtonElement;
-        const cancelBtn = this.element.querySelector('.cancel-btn') as HTMLButtonElement;
-        const uploadBtn = this.element.querySelector('.upload-btn') as HTMLButtonElement;
-        const componentNameInput = this.element.querySelector('.component-name-input') as HTMLInputElement;
-
-        // File drop and click handlers
-        uploadArea.addEventListener('click', () => fileInput.click());
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = 'var(--accent-color, #4A9EFF)';
-            uploadArea.style.backgroundColor = 'rgba(74, 158, 255, 0.05)';
-        });
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = 'var(--border-color, #2A3441)';
-            uploadArea.style.backgroundColor = 'transparent';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = 'var(--border-color, #2A3441)';
-            uploadArea.style.backgroundColor = 'transparent';
-
-            const files = e.dataTransfer?.files;
-            if (files && files.length > 0) {
-                this.handleFileSelection(files[0]);
-            }
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            const files = (e.target as HTMLInputElement).files;
-            if (files && files.length > 0) {
-                this.handleFileSelection(files[0]);
-            }
-        });
-
-        // Button handlers
-        closeBtn.addEventListener('click', () => this.hide());
-        cancelBtn.addEventListener('click', () => this.hide());
-        uploadBtn.addEventListener('click', () => this.handleUpload());
-
-        // Enable upload button when name is entered
-        componentNameInput.addEventListener('input', () => {
-            uploadBtn.disabled = !componentNameInput.value.trim();
-        });
-
-        // Bring to front on click
-        this.element.addEventListener('mousedown', () => {
-            this.bringToFront();
-        });
+    if (file.size > 50 * 1024 * 1024) {
+      this.showError("File too large. Maximum size is 50MB");
+      return;
     }
 
-    private handleFileSelection(file: File): void {
-        if (!file.name.endsWith('.wasm')) {
-            this.showError('Please select a valid .wasm file');
-            return;
-        }
+    // Show file info
+    const componentInfo = this.element.querySelector(
+      ".component-info",
+    ) as HTMLElement;
+    const fileName = this.element.querySelector(".file-name") as HTMLElement;
+    const fileSize = this.element.querySelector(".file-size") as HTMLElement;
+    const componentNameInput = this.element.querySelector(
+      ".component-name-input",
+    ) as HTMLInputElement;
 
-        if (file.size > 50 * 1024 * 1024) {
-            this.showError('File too large. Maximum size is 50MB');
-            return;
-        }
+    fileName.textContent = file.name;
+    fileSize.textContent = this.formatFileSize(file.size);
 
-        // Show file info
-        const componentInfo = this.element.querySelector('.component-info') as HTMLElement;
-        const fileName = this.element.querySelector('.file-name') as HTMLElement;
-        const fileSize = this.element.querySelector('.file-size') as HTMLElement;
-        const componentNameInput = this.element.querySelector('.component-name-input') as HTMLInputElement;
+    // Auto-generate component name from filename
+    const baseName = file.name
+      .replace(".wasm", "")
+      .replace(/[^a-zA-Z0-9-_]/g, "-");
+    componentNameInput.value = baseName;
 
-        fileName.textContent = file.name;
-        fileSize.textContent = this.formatFileSize(file.size);
-        
-        // Auto-generate component name from filename
-        const baseName = file.name.replace('.wasm', '').replace(/[^a-zA-Z0-9-_]/g, '-');
-        componentNameInput.value = baseName;
-        
-        componentInfo.style.display = 'block';
-        
-        // Store file for upload
-        this.element._selectedFile = file;
-        
-        // Enable upload button
-        const uploadBtn = this.element.querySelector('.upload-btn') as HTMLButtonElement;
+    componentInfo.style.display = "block";
+
+    // Store file for upload
+    this.element._selectedFile = file;
+
+    // Enable upload button
+    const uploadBtn = this.element.querySelector(
+      ".upload-btn",
+    ) as HTMLButtonElement;
+    uploadBtn.disabled = false;
+
+    // Hide error if showing
+    this.hideError();
+  }
+
+  private async handleUpload(): Promise<void> {
+    const file = this.element._selectedFile;
+    const componentNameInput = this.element.querySelector(
+      ".component-name-input",
+    ) as HTMLInputElement;
+    const componentName = componentNameInput.value.trim();
+
+    if (!file || !componentName) {
+      this.showError("Please select a file and enter a component name");
+      return;
+    }
+
+    // Disable upload button during upload
+    const uploadBtn = this.element.querySelector(
+      ".upload-btn",
+    ) as HTMLButtonElement;
+    uploadBtn.disabled = true;
+
+    try {
+      // First, validate the component and show results
+      const fileArrayBuffer = await this.readFileAsArrayBuffer(file);
+      const base64 = this.arrayBufferToBase64(fileArrayBuffer);
+
+      // Show validation progress
+      this.showProgress({
+        stage: "validating",
+        progress: 10,
+        message: "Validating component...",
+      });
+
+      const validationResult =
+        await this.uploadService.validateComponent(base64);
+
+      // Show validation results in UI
+      await this.showValidationResults(validationResult);
+
+      // If validation failed with errors, stop here
+      if (!validationResult.isValid) {
         uploadBtn.disabled = false;
+        return;
+      }
 
-        // Hide error if showing
-        this.hideError();
+      // Continue with upload if validation passed
+      const componentId = await this.uploadService.uploadComponent(
+        file,
+        componentName,
+        undefined, // description
+        "1.0.0", // version
+        (progress: ServiceUploadProgress) => {
+          // Map service progress to UI progress
+          const uiProgress: UploadProgress = {
+            stage:
+              progress.stage === "complete"
+                ? "complete"
+                : progress.stage === "error"
+                  ? "error"
+                  : progress.stage,
+            progress: progress.progress,
+            message: progress.message,
+            error: progress.error,
+          };
+
+          if (progress.stage === "uploading" && progress.progress === 0) {
+            this.showProgress(uiProgress);
+          } else {
+            this.updateProgress(uiProgress);
+          }
+        },
+      );
+
+      // Complete
+      setTimeout(() => {
+        this.onUploadComplete?.(componentId);
+        this.hide();
+      }, 1500);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      this.showError(errorMessage);
+      this.onUploadError?.(errorMessage);
+      uploadBtn.disabled = false;
+    }
+  }
+
+  private showProgress(progress: UploadProgress): void {
+    const progressSection = this.element.querySelector(
+      ".progress-section",
+    ) as HTMLElement;
+    progressSection.style.display = "block";
+    this.updateProgress(progress);
+
+    // Hide other sections
+    this.element
+      .querySelector(".component-info")!
+      .setAttribute("style", "display: none !important");
+    this.element
+      .querySelector(".action-buttons")!
+      .setAttribute("style", "display: none !important");
+    this.hideError();
+  }
+
+  private updateProgress(progress: UploadProgress): void {
+    const progressText = this.element.querySelector(
+      ".progress-text",
+    ) as HTMLElement;
+    const progressBar = this.element.querySelector(
+      ".progress-bar",
+    ) as HTMLElement;
+    const progressDetails = this.element.querySelector(
+      ".progress-details",
+    ) as HTMLElement;
+
+    progressText.textContent = progress.message;
+    progressBar.style.width = `${progress.progress}%`;
+    progressDetails.textContent = `${progress.stage} (${progress.progress}%)`;
+  }
+
+  private showError(message: string): void {
+    const errorSection = this.element.querySelector(
+      ".error-section",
+    ) as HTMLElement;
+    const errorMessage = this.element.querySelector(
+      ".error-message",
+    ) as HTMLElement;
+
+    errorMessage.textContent = message;
+    errorSection.style.display = "block";
+
+    // Hide validation section when showing error
+    this.hideValidation();
+  }
+
+  private hideError(): void {
+    const errorSection = this.element.querySelector(
+      ".error-section",
+    ) as HTMLElement;
+    errorSection.style.display = "none";
+  }
+
+  private showValidation(validation: {
+    isValid: boolean;
+    warnings?: string[];
+    errors?: string[];
+    securityScan?: any;
+    witAnalysis?: any;
+  }): void {
+    const validationSection = this.element.querySelector(
+      ".validation-section",
+    ) as HTMLElement;
+    const validationIcon = this.element.querySelector(
+      ".validation-icon",
+    ) as HTMLElement;
+    const securityScoreDiv = this.element.querySelector(
+      ".security-score",
+    ) as HTMLElement;
+    const scoreValue = this.element.querySelector(
+      ".score-value",
+    ) as HTMLElement;
+    const warningsDiv = this.element.querySelector(
+      ".validation-warnings",
+    ) as HTMLElement;
+    const warningsList = warningsDiv.querySelector("ul") as HTMLElement;
+    const errorsDiv = this.element.querySelector(
+      ".validation-errors",
+    ) as HTMLElement;
+    const errorsList = errorsDiv.querySelector("ul") as HTMLElement;
+
+    // Show validation section
+    validationSection.style.display = "block";
+
+    // Update validation icon based on result
+    if (validation.isValid) {
+      validationIcon.textContent =
+        validation.warnings && validation.warnings.length > 0 ? "⚠️" : "✅";
+    } else {
+      validationIcon.textContent = "❌";
     }
 
-    private async handleUpload(): Promise<void> {
-        const file = this.element._selectedFile;
-        const componentNameInput = this.element.querySelector('.component-name-input') as HTMLInputElement;
-        const componentName = componentNameInput.value.trim();
+    // Show security score if available
+    if (validation.securityScan) {
+      securityScoreDiv.style.display = "block";
+      scoreValue.textContent = validation.securityScan.score.toString();
 
-        if (!file || !componentName) {
-            this.showError('Please select a file and enter a component name');
-            return;
-        }
-
-        // Disable upload button during upload
-        const uploadBtn = this.element.querySelector('.upload-btn') as HTMLButtonElement;
-        uploadBtn.disabled = true;
-
-        try {
-            // First, validate the component and show results
-            const fileArrayBuffer = await this.readFileAsArrayBuffer(file);
-            const base64 = this.arrayBufferToBase64(fileArrayBuffer);
-            
-            // Show validation progress
-            this.showProgress({
-                stage: 'validating',
-                progress: 10,
-                message: 'Validating component...'
-            });
-
-            const validationResult = await this.uploadService.validateComponent(base64);
-            
-            // Show validation results in UI
-            await this.showValidationResults(validationResult);
-            
-            // If validation failed with errors, stop here
-            if (!validationResult.isValid) {
-                uploadBtn.disabled = false;
-                return;
-            }
-            
-            // Continue with upload if validation passed
-            const componentId = await this.uploadService.uploadComponent(
-                file,
-                componentName,
-                undefined, // description
-                '1.0.0',   // version
-                (progress: ServiceUploadProgress) => {
-                    // Map service progress to UI progress
-                    const uiProgress: UploadProgress = {
-                        stage: progress.stage === 'complete' ? 'complete' : 
-                               progress.stage === 'error' ? 'error' : progress.stage,
-                        progress: progress.progress,
-                        message: progress.message,
-                        error: progress.error
-                    };
-                    
-                    if (progress.stage === 'uploading' && progress.progress === 0) {
-                        this.showProgress(uiProgress);
-                    } else {
-                        this.updateProgress(uiProgress);
-                    }
-                }
-            );
-
-            // Complete
-            setTimeout(() => {
-                this.onUploadComplete?.(componentId);
-                this.hide();
-            }, 1500);
-
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-            this.showError(errorMessage);
-            this.onUploadError?.(errorMessage);
-            uploadBtn.disabled = false;
-        }
+      // Color code the score
+      if (validation.securityScan.score >= 80) {
+        scoreValue.style.color = "var(--accent-success, #3FB950)";
+      } else if (validation.securityScan.score >= 60) {
+        scoreValue.style.color = "var(--accent-warning, #F0B72F)";
+      } else {
+        scoreValue.style.color = "var(--accent-error, #F85149)";
+      }
+    } else {
+      securityScoreDiv.style.display = "none";
     }
 
-
-    private showProgress(progress: UploadProgress): void {
-        const progressSection = this.element.querySelector('.progress-section') as HTMLElement;
-        progressSection.style.display = 'block';
-        this.updateProgress(progress);
-
-        // Hide other sections
-        this.element.querySelector('.component-info')!.setAttribute('style', 'display: none !important');
-        this.element.querySelector('.action-buttons')!.setAttribute('style', 'display: none !important');
-        this.hideError();
+    // Show warnings
+    if (validation.warnings && validation.warnings.length > 0) {
+      warningsDiv.style.display = "block";
+      warningsList.innerHTML = validation.warnings
+        .map((w: string) => `<li>${this.escapeHtml(w)}</li>`)
+        .join("");
+    } else {
+      warningsDiv.style.display = "none";
     }
 
-    private updateProgress(progress: UploadProgress): void {
-        const progressText = this.element.querySelector('.progress-text') as HTMLElement;
-        const progressBar = this.element.querySelector('.progress-bar') as HTMLElement;
-        const progressDetails = this.element.querySelector('.progress-details') as HTMLElement;
-
-        progressText.textContent = progress.message;
-        progressBar.style.width = `${progress.progress}%`;
-        progressDetails.textContent = `${progress.stage} (${progress.progress}%)`;
+    // Show errors
+    if (validation.errors && validation.errors.length > 0) {
+      errorsDiv.style.display = "block";
+      errorsList.innerHTML = validation.errors
+        .map((e: string) => `<li>${this.escapeHtml(e)}</li>`)
+        .join("");
+    } else {
+      errorsDiv.style.display = "none";
     }
 
-    private showError(message: string): void {
-        const errorSection = this.element.querySelector('.error-section') as HTMLElement;
-        const errorMessage = this.element.querySelector('.error-message') as HTMLElement;
-        
-        errorMessage.textContent = message;
-        errorSection.style.display = 'block';
-        
-        // Hide validation section when showing error
-        this.hideValidation();
-    }
-
-    private hideError(): void {
-        const errorSection = this.element.querySelector('.error-section') as HTMLElement;
-        errorSection.style.display = 'none';
-    }
-    
-    private showValidation(validation: { isValid: boolean; warnings?: string[]; errors?: string[]; securityScan?: any; witAnalysis?: any }): void {
-        const validationSection = this.element.querySelector('.validation-section') as HTMLElement;
-        const validationIcon = this.element.querySelector('.validation-icon') as HTMLElement;
-        const securityScoreDiv = this.element.querySelector('.security-score') as HTMLElement;
-        const scoreValue = this.element.querySelector('.score-value') as HTMLElement;
-        const warningsDiv = this.element.querySelector('.validation-warnings') as HTMLElement;
-        const warningsList = warningsDiv.querySelector('ul') as HTMLElement;
-        const errorsDiv = this.element.querySelector('.validation-errors') as HTMLElement;
-        const errorsList = errorsDiv.querySelector('ul') as HTMLElement;
-        
-        // Show validation section
-        validationSection.style.display = 'block';
-        
-        // Update validation icon based on result
-        if (validation.isValid) {
-            validationIcon.textContent = validation.warnings && validation.warnings.length > 0 ? '⚠️' : '✅';
-        } else {
-            validationIcon.textContent = '❌';
-        }
-        
-        // Show security score if available
-        if (validation.securityScan) {
-            securityScoreDiv.style.display = 'block';
-            scoreValue.textContent = validation.securityScan.score.toString();
-            
-            // Color code the score
-            if (validation.securityScan.score >= 80) {
-                scoreValue.style.color = 'var(--accent-success, #3FB950)';
-            } else if (validation.securityScan.score >= 60) {
-                scoreValue.style.color = 'var(--accent-warning, #F0B72F)';
-            } else {
-                scoreValue.style.color = 'var(--accent-error, #F85149)';
-            }
-        } else {
-            securityScoreDiv.style.display = 'none';
-        }
-        
-        // Show warnings
-        if (validation.warnings && validation.warnings.length > 0) {
-            warningsDiv.style.display = 'block';
-            warningsList.innerHTML = validation.warnings.map((w: string) => `<li>${this.escapeHtml(w)}</li>`).join('');
-        } else {
-            warningsDiv.style.display = 'none';
-        }
-        
-        // Show errors
-        if (validation.errors && validation.errors.length > 0) {
-            errorsDiv.style.display = 'block';
-            errorsList.innerHTML = validation.errors.map((e: string) => `<li>${this.escapeHtml(e)}</li>`).join('');
-        } else {
-            errorsDiv.style.display = 'none';
-        }
-        
-        // Add success message if no issues
-        if (validation.isValid && (!validation.warnings || validation.warnings.length === 0) && (!validation.errors || validation.errors.length === 0)) {
-            const successMsg = document.createElement('div');
-            successMsg.style.cssText = `
+    // Add success message if no issues
+    if (
+      validation.isValid &&
+      (!validation.warnings || validation.warnings.length === 0) &&
+      (!validation.errors || validation.errors.length === 0)
+    ) {
+      const successMsg = document.createElement("div");
+      successMsg.style.cssText = `
                 color: var(--accent-success, #3FB950);
                 text-align: center;
                 padding: 8px;
                 font-weight: 500;
             `;
-            successMsg.textContent = '✅ Component validation passed successfully!';
-            validationSection.querySelector('.validation-details')?.appendChild(successMsg);
-        }
-        
-        // Hide error section when showing validation
-        this.hideError();
+      successMsg.textContent = "✅ Component validation passed successfully!";
+      validationSection
+        .querySelector(".validation-details")
+        ?.appendChild(successMsg);
     }
 
-    private escapeHtml(text: string): string {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    // Hide error section when showing validation
+    this.hideError();
+  }
+
+  private escapeHtml(text: string): string {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  private hideValidation(): void {
+    const validationSection = this.element.querySelector(
+      ".validation-section",
+    ) as HTMLElement;
+    validationSection.style.display = "none";
+  }
+
+  private formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  // Helper methods for file processing
+  private readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
     }
-    
-    private hideValidation(): void {
-        const validationSection = this.element.querySelector('.validation-section') as HTMLElement;
-        validationSection.style.display = 'none';
+    return btoa(binary);
+  }
+
+  private async showValidationResults(validation: any): Promise<void> {
+    // Hide progress temporarily to show validation
+    const progressSection = this.element.querySelector(
+      ".progress-section",
+    ) as HTMLElement;
+    progressSection.style.display = "none";
+
+    // Get security analysis and WIT analysis from backend if available
+    let securityScan = null;
+    let witAnalysis = null;
+
+    try {
+      // Try to get additional validation data
+      if (validation.metadata?.interfaces) {
+        // Component has interfaces, get more detailed analysis
+        securityScan = await this.getSecurityAnalysis(validation);
+        witAnalysis = await this.getWitAnalysis(validation);
+      }
+    } catch (error) {
+      console.warn("Could not fetch additional validation data:", error);
     }
 
-    private formatFileSize(bytes: number): string {
-        if (bytes < 1024) return `${bytes} B`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    // Prepare validation data for display
+    const validationDisplay = {
+      isValid: validation.isValid,
+      warnings: validation.warnings || [],
+      errors: validation.errors || [],
+      securityScan: securityScan
+        ? {
+            score:
+              securityScan.overall_risk === "Low"
+                ? 85
+                : securityScan.overall_risk === "Medium"
+                  ? 65
+                  : securityScan.overall_risk === "High"
+                    ? 45
+                    : 25,
+          }
+        : null,
+      witAnalysis,
+    };
+
+    // Show validation section
+    this.showValidation(validationDisplay);
+
+    // Add retry button if validation failed
+    if (!validation.isValid) {
+      this.addRetryButton();
     }
 
-    // Helper methods for file processing
-    private readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as ArrayBuffer);
-            reader.onerror = () => reject(new Error('Failed to read file'));
-            reader.readAsArrayBuffer(file);
+    // Show progress again after a delay
+    setTimeout(() => {
+      if (validation.isValid) {
+        progressSection.style.display = "block";
+        this.updateProgress({
+          stage: "validating",
+          progress: 100,
+          message: "Validation passed! Proceeding with upload...",
         });
-    }
+      }
+    }, 2000);
+  }
 
-    private arrayBufferToBase64(buffer: ArrayBuffer): string {
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return btoa(binary);
-    }
+  private async getSecurityAnalysis(_validation: any) {
+    try {
+      // Use file name as component identifier for now
+      const file = this.element._selectedFile;
+      if (!file) return null;
 
-    private async showValidationResults(validation: any): Promise<void> {
-        // Hide progress temporarily to show validation
-        const progressSection = this.element.querySelector('.progress-section') as HTMLElement;
-        progressSection.style.display = 'none';
-        
-        // Get security analysis and WIT analysis from backend if available
-        let securityScan = null;
-        let witAnalysis = null;
-        
-        try {
-            // Try to get additional validation data
-            if (validation.metadata?.interfaces) {
-                // Component has interfaces, get more detailed analysis
-                securityScan = await this.getSecurityAnalysis(validation);
-                witAnalysis = await this.getWitAnalysis(validation);
-            }
-        } catch (error) {
-            console.warn('Could not fetch additional validation data:', error);
-        }
-        
-        // Prepare validation data for display
-        const validationDisplay = {
-            isValid: validation.isValid,
-            warnings: validation.warnings || [],
-            errors: validation.errors || [],
-            securityScan: securityScan ? {
-                score: securityScan.overall_risk === 'Low' ? 85 : 
-                       securityScan.overall_risk === 'Medium' ? 65 : 
-                       securityScan.overall_risk === 'High' ? 45 : 25
-            } : null,
-            witAnalysis
-        };
-        
-        // Show validation section
-        this.showValidation(validationDisplay);
-        
-        // Add retry button if validation failed
-        if (!validation.isValid) {
-            this.addRetryButton();
-        }
-        
-        // Show progress again after a delay
-        setTimeout(() => {
-            if (validation.isValid) {
-                progressSection.style.display = 'block';
-                this.updateProgress({
-                    stage: 'validating',
-                    progress: 100,
-                    message: 'Validation passed! Proceeding with upload...'
-                });
-            }
-        }, 2000);
-    }
+      const componentName = file.name.replace(".wasm", "");
+      const cacheKey = `security_${componentName}`;
 
-    private async getSecurityAnalysis(validation: any) {
-        try {
-            // Use file name as component identifier for now
-            const file = this.element._selectedFile;
-            if (!file) return null;
-            
-            const componentName = file.name.replace('.wasm', '');
-            const cacheKey = `security_${componentName}`;
-            
-            // Check cache first
-            if (this.validationCache.has(cacheKey)) {
-                return this.validationCache.get(cacheKey);
-            }
-            
-            // Request security analysis from backend
-            const securityAnalysis = await this.validationService.requestSecurityAnalysis(componentName);
-            
-            // Cache the result
-            if (securityAnalysis) {
-                this.validationCache.set(cacheKey, securityAnalysis);
-            }
-            
-            return securityAnalysis;
-        } catch (error) {
-            console.warn('Failed to get security analysis:', error);
-            return null;
-        }
-    }
+      // Check cache first
+      if (this.validationCache.has(cacheKey)) {
+        return this.validationCache.get(cacheKey);
+      }
 
-    private async getWitAnalysis(validation: any) {
-        try {
-            // Use file name as component identifier for now
-            const file = this.element._selectedFile;
-            if (!file) return null;
-            
-            const componentName = file.name.replace('.wasm', '');
-            const cacheKey = `wit_${componentName}`;
-            
-            // Check cache first
-            if (this.validationCache.has(cacheKey)) {
-                return this.validationCache.get(cacheKey);
-            }
-            
-            // Request WIT analysis from backend
-            const witAnalysis = await this.validationService.requestWitValidation(componentName);
-            
-            // Cache the result
-            if (witAnalysis) {
-                this.validationCache.set(cacheKey, witAnalysis);
-            }
-            
-            return witAnalysis;
-        } catch (error) {
-            console.warn('Failed to get WIT analysis:', error);
-            return null;
-        }
-    }
+      // Integrate validation data into security analysis
+      // const securityData = {
+      //   componentName,
+      //   validationResults: validation || {},
+      //   timestamp: Date.now(),
+      // };
 
-    private addRetryButton(): void {
-        const actionButtons = this.element.querySelector('.action-buttons') as HTMLElement;
-        
-        // Check if retry button already exists
-        if (this.element.querySelector('.retry-btn')) return;
-        
-        const retryBtn = document.createElement('button');
-        retryBtn.className = 'retry-btn';
-        retryBtn.textContent = 'Retry Validation';
-        retryBtn.style.cssText = `
+      // Request security analysis from backend with validation context
+      const securityAnalysis =
+        await this.validationService.requestSecurityAnalysis(componentName);
+
+      // Cache the result
+      if (securityAnalysis) {
+        this.validationCache.set(cacheKey, securityAnalysis);
+      }
+
+      return securityAnalysis;
+    } catch (error) {
+      console.warn("Failed to get security analysis:", error);
+      return null;
+    }
+  }
+
+  private async getWitAnalysis(_validation: any) {
+    try {
+      // Use file name as component identifier for now
+      const file = this.element._selectedFile;
+      if (!file) return null;
+
+      const componentName = file.name.replace(".wasm", "");
+      const cacheKey = `wit_${componentName}`;
+
+      // Check cache first
+      if (this.validationCache.has(cacheKey)) {
+        return this.validationCache.get(cacheKey);
+      }
+
+      // Integrate validation data into WIT analysis
+      // const witData = {
+      //   componentName,
+      //   validationResults: validation || {},
+      //   timestamp: Date.now(),
+      //   includeInterfaces: true,
+      //   includeTypes: true,
+      // };
+
+      // Request WIT analysis from backend with validation context
+      const witAnalysis =
+        await this.validationService.requestWitValidation(componentName);
+
+      // Cache the result
+      if (witAnalysis) {
+        this.validationCache.set(cacheKey, witAnalysis);
+      }
+
+      return witAnalysis;
+    } catch (error) {
+      console.warn("Failed to get WIT analysis:", error);
+      return null;
+    }
+  }
+
+  private addRetryButton(): void {
+    const actionButtons = this.element.querySelector(
+      ".action-buttons",
+    ) as HTMLElement;
+
+    // Check if retry button already exists
+    if (this.element.querySelector(".retry-btn")) return;
+
+    const retryBtn = document.createElement("button");
+    retryBtn.className = "retry-btn";
+    retryBtn.textContent = "Retry Validation";
+    retryBtn.style.cssText = `
             padding: 8px 16px;
             background: linear-gradient(90deg, #F59E0B, #D97706);
             border: none;
@@ -657,66 +772,78 @@ export class ComponentUploadPanel {
             font-weight: 500;
             margin-right: 8px;
         `;
-        
-        retryBtn.addEventListener('click', async () => {
-            // Clear validation display and retry
-            this.hideValidation();
-            this.hideError();
-            retryBtn.remove();
-            
-            // Re-trigger upload
-            await this.handleUpload();
-        });
-        
-        // Insert before upload button
-        const uploadBtn = actionButtons.querySelector('.upload-btn');
-        actionButtons.insertBefore(retryBtn, uploadBtn);
-        actionButtons.style.display = 'flex';
-    }
 
-    show(): void {
-        this.element.style.display = 'block';
-        this.bringToFront();
-        document.body.appendChild(this.element);
-    }
+    retryBtn.addEventListener("click", async () => {
+      // Clear validation display and retry
+      this.hideValidation();
+      this.hideError();
+      retryBtn.remove();
 
-    private bringToFront(): void {
-        // Find highest z-index among all floating panels
-        const panels = document.querySelectorAll('.floating-panel, .ai-assistant-panel, .wasm-component-panel, .component-upload-panel');
-        let maxZ = 1000;
-        
-        panels.forEach(panel => {
-            if (panel !== this.element) {
-                const z = parseInt((panel as HTMLElement).style.zIndex || '0');
-                if (z >= maxZ) maxZ = z;
-            }
-        });
-        
-        this.element.style.zIndex = (maxZ + 1).toString();
-    }
+      // Re-trigger upload
+      await this.handleUpload();
+    });
 
-    hide(): void {
-        this.element.style.display = 'none';
-        
-        // Reset form
-        const componentInfo = this.element.querySelector('.component-info') as HTMLElement;
-        const progressSection = this.element.querySelector('.progress-section') as HTMLElement;
-        const actionButtons = this.element.querySelector('.action-buttons') as HTMLElement;
-        const componentNameInput = this.element.querySelector('.component-name-input') as HTMLInputElement;
-        const uploadBtn = this.element.querySelector('.upload-btn') as HTMLButtonElement;
+    // Insert before upload button
+    const uploadBtn = actionButtons.querySelector(".upload-btn");
+    actionButtons.insertBefore(retryBtn, uploadBtn);
+    actionButtons.style.display = "flex";
+  }
 
-        componentInfo.style.display = 'none';
-        progressSection.style.display = 'none';
-        actionButtons.style.display = 'flex';
-        componentNameInput.value = '';
-        uploadBtn.disabled = true;
-        
-        this.hideError();
-        this.hideValidation();
-        this.element._selectedFile = null;
-    }
+  show(): void {
+    this.element.style.display = "block";
+    this.bringToFront();
+    document.body.appendChild(this.element);
+  }
 
-    getElement(): HTMLElement {
-        return this.element;
-    }
+  private bringToFront(): void {
+    // Find highest z-index among all floating panels
+    const panels = document.querySelectorAll(
+      ".floating-panel, .ai-assistant-panel, .wasm-component-panel, .component-upload-panel",
+    );
+    let maxZ = 1000;
+
+    panels.forEach((panel) => {
+      if (panel !== this.element) {
+        const z = parseInt((panel as HTMLElement).style.zIndex || "0");
+        if (z >= maxZ) maxZ = z;
+      }
+    });
+
+    this.element.style.zIndex = (maxZ + 1).toString();
+  }
+
+  hide(): void {
+    this.element.style.display = "none";
+
+    // Reset form
+    const componentInfo = this.element.querySelector(
+      ".component-info",
+    ) as HTMLElement;
+    const progressSection = this.element.querySelector(
+      ".progress-section",
+    ) as HTMLElement;
+    const actionButtons = this.element.querySelector(
+      ".action-buttons",
+    ) as HTMLElement;
+    const componentNameInput = this.element.querySelector(
+      ".component-name-input",
+    ) as HTMLInputElement;
+    const uploadBtn = this.element.querySelector(
+      ".upload-btn",
+    ) as HTMLButtonElement;
+
+    componentInfo.style.display = "none";
+    progressSection.style.display = "none";
+    actionButtons.style.display = "flex";
+    componentNameInput.value = "";
+    uploadBtn.disabled = true;
+
+    this.hideError();
+    this.hideValidation();
+    this.element._selectedFile = null;
+  }
+
+  getElement(): HTMLElement {
+    return this.element;
+  }
 }

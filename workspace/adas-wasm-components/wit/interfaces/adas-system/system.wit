@@ -14,85 +14,85 @@ interface complete-system-interface {
         timestamp,
         error-code
     };
-    
+
     /// === SYSTEM LIFECYCLE ===
-    
+
     /// Initialize the complete ADAS system
     /// Sets up all components and their interconnections
     init-system: func(config: system-config) -> result<system-handle, initialization-error>;
-    
+
     /// Start the complete system execution
     /// Begins Fixed Execution Order (FEO) pipeline
     start-system: func(handle: system-handle) -> result<_, execution-error>;
-    
+
     /// Stop the complete system
     /// Gracefully shuts down all components
     stop-system: func(handle: system-handle) -> result<_, execution-error>;
-    
+
     /// Reset the complete system
     /// Restarts all components to initial state
     reset-system: func(handle: system-handle) -> result<_, execution-error>;
-    
+
     /// Get current system state
     get-system-state: func(handle: system-handle) -> system-state;
-    
+
     /// === EXECUTION CONTROL ===
-    
+
     /// Execute one FEO cycle
     /// Runs all components in fixed execution order
     execute-cycle: func(handle: system-handle) -> result<cycle-result, execution-error>;
-    
+
     /// Execute continuous operation
     /// Runs system in continuous FEO cycles
     execute-continuous: func(handle: system-handle, duration-ms: u32) -> result<continuous-result, execution-error>;
-    
+
     /// Pause system execution
     pause-system: func(handle: system-handle) -> result<_, execution-error>;
-    
+
     /// Resume system execution
     resume-system: func(handle: system-handle) -> result<_, execution-error>;
-    
+
     /// === CONFIGURATION ===
-    
+
     /// Update system configuration
     update-config: func(handle: system-handle, config: system-config) -> result<_, configuration-error>;
-    
+
     /// Get current configuration
     get-config: func(handle: system-handle) -> system-config;
-    
+
     /// Validate configuration
     validate-config: func(config: system-config) -> result<_, configuration-error>;
-    
+
     /// === MONITORING ===
-    
+
     /// Get system performance metrics
     get-performance-metrics: func(handle: system-handle) -> performance-metrics;
-    
+
     /// Get system health status
     get-health-status: func(handle: system-handle) -> health-status;
-    
+
     /// Get component status
     get-component-status: func(handle: system-handle, component: component-id) -> component-status;
-    
+
     /// Get all component statuses
     get-all-component-status: func(handle: system-handle) -> list<component-status-info>;
-    
+
     /// === DIAGNOSTICS ===
-    
+
     /// Run system diagnostics
     run-diagnostics: func(handle: system-handle) -> result<diagnostic-result, diagnostic-error>;
-    
+
     /// Get fault information
     get-faults: func(handle: system-handle) -> list<fault-info>;
-    
+
     /// Clear faults
     clear-faults: func(handle: system-handle) -> result<_, diagnostic-error>;
-    
+
     /// === DATA TYPES ===
-    
+
     /// System handle for managing system instance
     type system-handle = u64;
-    
+
     /// System configuration
     record system-config {
         /// Component enablement flags
@@ -102,135 +102,135 @@ interface complete-system-interface {
         enable-control: bool,
         enable-safety: bool,
         enable-communication: bool,
-        
+
         /// FEO timing configuration
         cycle-time-ms: u32,
         safety-margin-ms: u32,
         max-jitter-ms: u32,
-        
+
         /// Resource allocation
         max-memory-mb: u32,
         max-cpu-cores: u32,
         memory-reserve-mb: u32,
-        
+
         /// AI model configuration
         object-detection-model: string,
         behavior-prediction-model: string,
         ai-inference-timeout-ms: u32,
-        
+
         /// Safety parameters
         safety-level: safety-level,
         emergency-response-enabled: bool,
         watchdog-timeout-ms: u32,
-        
+
         /// Communication settings
         can-bus-speed: u32,
         hmi-update-rate: u32,
-        
+
         /// Logging and debugging
         log-level: log-level,
         debug-mode: bool,
         performance-monitoring: bool,
     }
-    
+
     /// Execution cycle result
     record cycle-result {
         /// Cycle identification
         cycle-id: u64,
         timestamp: timestamp,
-        
+
         /// Timing information
         execution-time-ms: u32,
         target-time-ms: u32,
         jitter-ms: s32,
-        
+
         /// Component execution status
         component-executions: list<component-execution-status>,
-        
+
         /// Data flow statistics
         data-flow-stats: data-flow-statistics,
-        
+
         /// Performance metrics for this cycle
         cycle-performance: cycle-performance-metrics,
-        
+
         /// Safety status
         safety-status: cycle-safety-status,
-        
+
         /// Quality metrics
         quality-metrics: quality-metrics,
     }
-    
+
     /// Continuous execution result
     record continuous-result {
         /// Total cycles executed
         cycles-executed: u32,
-        
+
         /// Execution duration
         actual-duration-ms: u32,
-        
+
         /// Aggregate statistics
         avg-cycle-time-ms: f32,
         max-cycle-time-ms: u32,
         min-cycle-time-ms: u32,
-        
+
         /// Performance summary
         performance-summary: performance-summary,
-        
+
         /// Error summary
         error-summary: error-summary,
     }
-    
+
     /// Component execution status within a cycle
     record component-execution-status {
         component-id: component-id,
         component-name: string,
         execution-phase: execution-phase,
         status: component-status,
-        
+
         /// Timing
         start-time-ms: u32,
         execution-time-ms: u32,
         timeout-ms: u32,
-        
+
         /// Resource usage
         memory-usage-mb: u32,
         cpu-utilization-percent: f32,
-        
+
         /// Data processing
         input-data-size: u32,
         output-data-size: u32,
-        
+
         /// Quality metrics
         processing-quality: f32,
         error-count: u32,
     }
-    
+
     /// Data flow statistics
     record data-flow-statistics {
         /// Message throughput
         messages-processed: u32,
         messages-per-second: f32,
-        
+
         /// Data throughput
         data-processed-mb: f32,
         data-throughput-mbps: f32,
-        
+
         /// Queue statistics
         sensor-queue-depth: u32,
         ai-queue-depth: u32,
         control-queue-depth: u32,
         max-queue-depth: u32,
-        
+
         /// Latency metrics
         end-to-end-latency-ms: u32,
         avg-latency-ms: f32,
         max-latency-ms: u32,
-        
+
         /// Error statistics
         message-errors: u32,
         data-corruption-count: u32,
     }
-    
+
     /// Performance metrics for a single cycle
     record cycle-performance-metrics {
         /// CPU usage
@@ -238,37 +238,37 @@ interface complete-system-interface {
         sensor-cpu-percent: f32,
         ai-cpu-percent: f32,
         control-cpu-percent: f32,
-        
+
         /// Memory usage
         total-memory-mb: u32,
         peak-memory-mb: u32,
         memory-fragmentation: f32,
-        
+
         /// Processing rates
         sensor-processing-rate: f32,
         ai-inference-rate: f32,
         control-update-rate: f32,
-        
+
         /// Quality indicators
         data-quality-score: f32,
         processing-efficiency: f32,
     }
-    
+
     /// Safety status for a cycle
     record cycle-safety-status {
         overall-safety-level: safety-level,
         safety-violations: u32,
         watchdog-status: watchdog-status,
         emergency-status: emergency-status,
-        
+
         /// Component safety status
         component-safety-status: list<component-safety-status>,
-        
+
         /// Fault information
         active-faults: list<fault-info>,
         new-faults: list<fault-info>,
     }
-    
+
     /// Quality metrics for system output
     record quality-metrics {
         /// AI quality metrics
@@ -276,54 +276,54 @@ interface complete-system-interface {
         detection-precision: f32,
         detection-recall: f32,
         prediction-confidence: f32,
-        
+
         /// Control quality metrics
         control-precision: f32,
         control-stability: f32,
         response-time-ms: u32,
-        
+
         /// Overall system quality
         system-reliability: f32,
         data-integrity: f32,
     }
-    
+
     /// Performance summary for continuous execution
     record performance-summary {
         /// Timing statistics
         avg-cycle-time-ms: f32,
         cycle-time-std-dev: f32,
         missed-deadlines: u32,
-        
+
         /// Resource statistics
         avg-cpu-usage: f32,
         peak-cpu-usage: f32,
         avg-memory-usage: f32,
         peak-memory-usage: f32,
-        
+
         /// Throughput statistics
         avg-throughput: f32,
         peak-throughput: f32,
-        
+
         /// Quality statistics
         avg_quality_score: f32,
         quality_degradation_events: u32,
     }
-    
+
     /// Error summary for continuous execution
     record error-summary {
         total-errors: u32,
         error-rate: f32,
-        
+
         /// Error categories
         timeout-errors: u32,
         resource-errors: u32,
         communication-errors: u32,
         safety-errors: u32,
-        
+
         /// Component error breakdown
         component-errors: list<component-error-summary>,
     }
-    
+
     /// Component error summary
     record component-error-summary {
         component-id: component-id,
@@ -332,54 +332,54 @@ interface complete-system-interface {
         last-error-time: timestamp,
         error-types: list<error-code>,
     }
-    
+
     /// Overall system performance metrics
     record performance-metrics {
         /// System-level metrics
         system-cpu-percent: f32,
         system-memory-mb: u32,
         system-throughput-fps: f32,
-        
+
         /// Subsystem metrics
         sensor-fusion-fps: f32,
         ai-inference-fps: f32,
         control-update-rate: f32,
-        
+
         /// Quality metrics
         detection-accuracy: f32,
         prediction-confidence: f32,
         control-precision: f32,
-        
+
         /// Real-time metrics
         avg-cycle-time-ms: f32,
         max-cycle-time-ms: u32,
         deadline-miss-rate: f32,
-        
+
         /// Resource efficiency
         cpu-efficiency: f32,
         memory-efficiency: f32,
         power-consumption: f32,
     }
-    
+
     /// System health status
     record health-status {
         overall-health: health-level,
         component-health: list<component-health-status>,
-        
+
         /// Health indicators
         uptime-ms: u64,
         error-rate: f32,
         performance-degradation: f32,
-        
+
         /// Predictive health
         predicted-failure-time: option<timestamp>,
         maintenance-required: bool,
-        
+
         /// Health trends
         health-trend: health-trend,
         reliability-score: f32,
     }
-    
+
     /// Component status information
     record component-status-info {
         component-id: component-id,
@@ -390,24 +390,24 @@ interface complete-system-interface {
         error-count: u32,
         performance-score: f32,
     }
-    
+
     /// Component health status
     record component-health-status {
         component-id: component-id,
         health-level: health-level,
         last-health-check: timestamp,
         health-score: f32,
-        
+
         /// Health indicators
         cpu-health: f32,
         memory-health: f32,
         response-time-health: f32,
         error-rate_health: f32,
-        
+
         /// Predictive indicators
         predicted-issues: list<predicted-issue>,
     }
-    
+
     /// Component safety status
     record component-safety-status {
         component-id: component-id,
@@ -416,7 +416,7 @@ interface complete-system-interface {
         last-safety-check: timestamp,
         safety-score: f32,
     }
-    
+
     /// Fault information
     record fault-info {
         fault-id: u64,
@@ -425,21 +425,21 @@ interface complete-system-interface {
         severity: fault-severity,
         timestamp: timestamp,
         description: string,
-        
+
         /// Fault context
         system-state: system-state,
         component-state: component-status,
-        
+
         /// Diagnostic information
         diagnostic-data: option<list<u8>>,
         stack-trace: option<string>,
-        
+
         /// Resolution information
         resolution-action: option<string>,
         resolved: bool,
         resolution-time: option<timestamp>,
     }
-    
+
     /// Predicted issue
     record predicted-issue {
         issue-type: string,
@@ -447,21 +447,21 @@ interface complete-system-interface {
         estimated-time: timestamp,
         recommended-action: string,
     }
-    
+
     /// Diagnostic result
     record diagnostic-result {
         overall-result: diagnostic-status,
         component-results: list<component-diagnostic-result>,
-        
+
         /// Test results
         interface-tests: list<interface-test-result>,
         performance-tests: list<performance-test-result>,
         safety-tests: list<safety-test-result>,
-        
+
         /// Recommendations
         recommendations: list<diagnostic-recommendation>,
     }
-    
+
     /// Component diagnostic result
     record component-diagnostic-result {
         component-id: component-id,
@@ -470,7 +470,7 @@ interface complete-system-interface {
         tests-failed: u32,
         test-results: list<test-result>,
     }
-    
+
     /// Test result
     record test-result {
         test-name: string,
@@ -478,7 +478,7 @@ interface complete-system-interface {
         execution-time-ms: u32,
         details: option<string>,
     }
-    
+
     /// Interface test result
     record interface-test-result {
         interface-name: string,
@@ -487,7 +487,7 @@ interface complete-system-interface {
         throughput-mbps: f32,
         error-rate: f32,
     }
-    
+
     /// Performance test result
     record performance-test-result {
         test-name: string,
@@ -496,7 +496,7 @@ interface complete-system-interface {
         expected-value: f32,
         tolerance: f32,
     }
-    
+
     /// Safety test result
     record safety-test-result {
         test-name: string,
@@ -504,7 +504,7 @@ interface complete-system-interface {
         safety-level: safety-level,
         violations: u32,
     }
-    
+
     /// Diagnostic recommendation
     record diagnostic-recommendation {
         priority: recommendation-priority,
@@ -513,9 +513,9 @@ interface complete-system-interface {
         action: string,
         estimated-impact: string,
     }
-    
+
     /// === ENUMERATIONS ===
-    
+
     /// Log levels
     enum log-level {
         trace,
@@ -525,7 +525,7 @@ interface complete-system-interface {
         error,
         fatal,
     }
-    
+
     /// Health levels
     enum health-level {
         excellent,
@@ -534,7 +534,7 @@ interface complete-system-interface {
         poor,
         critical,
     }
-    
+
     /// Health trends
     enum health-trend {
         improving,
@@ -542,7 +542,7 @@ interface complete-system-interface {
         degrading,
         failing,
     }
-    
+
     /// Watchdog status
     enum watchdog-status {
         active,
@@ -550,7 +550,7 @@ interface complete-system-interface {
         triggered,
         reset,
     }
-    
+
     /// Emergency status
     enum emergency-status {
         normal,
@@ -558,7 +558,7 @@ interface complete-system-interface {
         emergency,
         failsafe,
     }
-    
+
     /// Fault types
     enum fault-type {
         hardware,
@@ -569,7 +569,7 @@ interface complete-system-interface {
         safety,
         user,
     }
-    
+
     /// Fault severity
     enum fault-severity {
         low,
@@ -577,7 +577,7 @@ interface complete-system-interface {
         high,
         critical,
     }
-    
+
     /// Diagnostic status
     enum diagnostic-status {
         passed,
@@ -585,7 +585,7 @@ interface complete-system-interface {
         warning,
         skipped,
     }
-    
+
     /// Test status
     enum test-status {
         passed,
@@ -594,7 +594,7 @@ interface complete-system-interface {
         error,
         skipped,
     }
-    
+
     /// Recommendation priority
     enum recommendation-priority {
         low,
@@ -602,7 +602,7 @@ interface complete-system-interface {
         high,
         critical,
     }
-    
+
     /// Recommendation category
     enum recommendation-category {
         performance,
@@ -611,9 +611,9 @@ interface complete-system-interface {
         maintenance,
         configuration,
     }
-    
+
     /// === ERROR TYPES ===
-    
+
     /// System initialization errors
     variant initialization-error {
         component-failure(string),
@@ -623,7 +623,7 @@ interface complete-system-interface {
         dependency-failure(string),
         hardware-failure(string),
     }
-    
+
     /// System execution errors
     variant execution-error {
         component-timeout(string),
@@ -633,7 +633,7 @@ interface complete-system-interface {
         feo-violation(string),
         system-failure(string),
     }
-    
+
     /// Configuration errors
     variant configuration-error {
         invalid-parameter(string),
@@ -641,7 +641,7 @@ interface complete-system-interface {
         incompatible-configuration(string),
         missing-required-parameter(string),
     }
-    
+
     /// Diagnostic errors
     variant diagnostic-error {
         test-execution-failed(string),

@@ -1,3 +1,17 @@
+// Copyright (c) 2024 GLSP-Rust Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //! PostgreSQL database backend implementation with TimescaleDB support
 
 #[cfg(feature = "postgresql")]
@@ -71,8 +85,8 @@ impl PostgreSQLBackend {
 
         // Create TimescaleDB hypertable with 1-day chunks for optimal performance
         let hypertable_result = sqlx::query(
-            "SELECT create_hypertable('sensor_readings', 'timestamp_us', 
-             if_not_exists => TRUE, 
+            "SELECT create_hypertable('sensor_readings', 'timestamp_us',
+             if_not_exists => TRUE,
              chunk_time_interval => 86400000000,
              partitioning_column => 'sensor_id',
              number_partitions => 4)",
@@ -118,7 +132,7 @@ impl PostgreSQLBackend {
 
         // Create optimized indexes for time-series queries
         sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_sensor_readings_sensor_time_desc 
+            "CREATE INDEX IF NOT EXISTS idx_sensor_readings_sensor_time_desc
              ON sensor_readings (sensor_id, timestamp_us DESC)",
         )
         .execute(pool)
@@ -128,7 +142,7 @@ impl PostgreSQLBackend {
         })?;
 
         sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_sensor_readings_timestamp_desc 
+            "CREATE INDEX IF NOT EXISTS idx_sensor_readings_timestamp_desc
              ON sensor_readings (timestamp_us DESC)",
         )
         .execute(pool)
@@ -138,7 +152,7 @@ impl PostgreSQLBackend {
         })?;
 
         sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_sensor_readings_quality 
+            "CREATE INDEX IF NOT EXISTS idx_sensor_readings_quality
              ON sensor_readings (sensor_id, quality) WHERE quality < 1.0",
         )
         .execute(pool)
@@ -146,7 +160,7 @@ impl PostgreSQLBackend {
         .map_err(|e| DatabaseError::QueryFailed(format!("Failed to create quality index: {e}")))?;
 
         sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_sensor_readings_data_type 
+            "CREATE INDEX IF NOT EXISTS idx_sensor_readings_data_type
              ON sensor_readings USING GIN (data_type)",
         )
         .execute(pool)
@@ -187,7 +201,7 @@ impl PostgreSQLBackend {
         sqlx::query(
             r#"
             CREATE MATERIALIZED VIEW IF NOT EXISTS sensor_statistics AS
-            SELECT 
+            SELECT
                 sensor_id,
                 COUNT(*) as reading_count,
                 MIN(timestamp_us) as first_reading,
@@ -197,7 +211,7 @@ impl PostgreSQLBackend {
                 MAX(quality) as max_quality,
                 SUM(LENGTH(payload)) as total_data_bytes,
                 COUNT(DISTINCT data_type) as data_type_count
-            FROM sensor_readings 
+            FROM sensor_readings
             GROUP BY sensor_id
             "#,
         )
@@ -209,7 +223,7 @@ impl PostgreSQLBackend {
 
         // Create index on materialized view
         sqlx::query(
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_sensor_statistics_sensor_id 
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_sensor_statistics_sensor_id
              ON sensor_statistics (sensor_id)",
         )
         .execute(pool)
@@ -304,7 +318,7 @@ impl PostgreSQLBackend {
 
         // Create index on dataset time range for efficient queries
         sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_sensor_datasets_time_range 
+            "CREATE INDEX IF NOT EXISTS idx_sensor_datasets_time_range
              ON sensor_datasets (start_time_us, end_time_us)",
         )
         .execute(pool)
@@ -352,18 +366,18 @@ impl PostgreSQLBackend {
 
         // Create refresh policies for continuous aggregates
         let _ = sqlx::query(
-            "SELECT add_continuous_aggregate_policy('sensor_readings_1h', 
-             start_offset => INTERVAL '1 day', 
-             end_offset => INTERVAL '1 hour', 
+            "SELECT add_continuous_aggregate_policy('sensor_readings_1h',
+             start_offset => INTERVAL '1 day',
+             end_offset => INTERVAL '1 hour',
              schedule_interval => INTERVAL '1 hour')",
         )
         .execute(pool)
         .await;
 
         let _ = sqlx::query(
-            "SELECT add_continuous_aggregate_policy('sensor_readings_1d', 
-             start_offset => INTERVAL '7 days', 
-             end_offset => INTERVAL '1 day', 
+            "SELECT add_continuous_aggregate_policy('sensor_readings_1d',
+             start_offset => INTERVAL '7 days',
+             end_offset => INTERVAL '1 day',
              schedule_interval => INTERVAL '1 day')",
         )
         .execute(pool)
@@ -482,7 +496,7 @@ impl SensorDataRepository for PostgreSQLBackend {
 
         sqlx::query(
             r#"
-            INSERT INTO sensor_readings 
+            INSERT INTO sensor_readings
             (sensor_id, timestamp_us, data_type, payload, quality, metadata, checksum)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#,
@@ -525,7 +539,7 @@ impl SensorDataRepository for PostgreSQLBackend {
         for reading in &batch.readings {
             sqlx::query(
                 r#"
-                INSERT INTO sensor_readings 
+                INSERT INTO sensor_readings
                 (sensor_id, timestamp_us, data_type, payload, quality, metadata, checksum)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT (sensor_id, timestamp_us) DO UPDATE SET
@@ -580,7 +594,7 @@ impl SensorDataRepository for PostgreSQLBackend {
 
             sqlx::query(
                 r#"
-                INSERT INTO sensor_metadata 
+                INSERT INTO sensor_metadata
                 (sensor_id, name, sensor_type, first_seen, last_seen, total_readings, data_size_bytes, avg_quality)
                 VALUES ($1, $1, '{"type": "unknown"}', NOW(), NOW(), $2, $3, $4)
                 ON CONFLICT (sensor_id) DO UPDATE SET
@@ -615,8 +629,8 @@ impl SensorDataRepository for PostgreSQLBackend {
         // Use optimized query with TimescaleDB features when available
         let mut sql = String::from(
             r#"
-            SELECT sensor_id, timestamp_us, data_type, payload, quality, metadata, checksum 
-            FROM sensor_readings 
+            SELECT sensor_id, timestamp_us, data_type, payload, quality, metadata, checksum
+            FROM sensor_readings
             WHERE timestamp_us >= $1 AND timestamp_us <= $2
             "#,
         );
@@ -649,10 +663,10 @@ impl SensorDataRepository for PostgreSQLBackend {
                 // Use time_bucket for downsampling if TimescaleDB is available
                 sql = format!(
                     r#"
-                    SELECT DISTINCT ON (sensor_id, time_bucket) 
+                    SELECT DISTINCT ON (sensor_id, time_bucket)
                            sensor_id, timestamp_us, data_type, payload, quality, metadata, checksum,
                            time_bucket(INTERVAL '{downsample_interval_us} microseconds', to_timestamp(timestamp_us / 1000000)) as time_bucket
-                    FROM sensor_readings 
+                    FROM sensor_readings
                     WHERE timestamp_us >= $1 AND timestamp_us <= $2
                     "#
                 );
@@ -746,7 +760,7 @@ impl SensorDataRepository for PostgreSQLBackend {
         let row = sqlx::query(
             r#"
             SELECT sensor_id, timestamp_us, data_type, payload, quality, metadata, checksum
-            FROM sensor_readings 
+            FROM sensor_readings
             WHERE sensor_id = $1
             ORDER BY ABS(timestamp_us - $2)
             LIMIT 1
@@ -785,12 +799,12 @@ impl SensorDataRepository for PostgreSQLBackend {
 
         let row = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 MIN(timestamp_us) as start_time,
                 MAX(timestamp_us) as end_time,
                 COUNT(*) as reading_count,
                 SUM(LENGTH(payload)) as data_size
-            FROM sensor_readings 
+            FROM sensor_readings
             WHERE sensor_id = $1
             "#,
         )
@@ -825,7 +839,7 @@ impl SensorDataRepository for PostgreSQLBackend {
 
         let row = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 MIN(timestamp_us) as start_time,
                 MAX(timestamp_us) as end_time,
                 COUNT(*) as reading_count,
@@ -881,10 +895,10 @@ impl SensorDataRepository for PostgreSQLBackend {
 
         let row = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 AVG(quality) as avg_quality,
                 COUNT(*) as reading_count
-            FROM sensor_readings 
+            FROM sensor_readings
             WHERE sensor_id = $1
             "#,
         )
@@ -957,7 +971,7 @@ impl TimeSeriesStore for PostgreSQLBackend {
         // Use TimescaleDB time_bucket if available, otherwise fall back to simple grouping
         let rows = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 sensor_id,
                 (timestamp_us / $4) * $4 as bucket_time,
                 data_type,
@@ -965,7 +979,7 @@ impl TimeSeriesStore for PostgreSQLBackend {
                 AVG(quality) as avg_quality,
                 metadata,
                 checksum
-            FROM sensor_readings 
+            FROM sensor_readings
             WHERE sensor_id = $1 AND timestamp_us >= $2 AND timestamp_us <= $3
             GROUP BY sensor_id, bucket_time, data_type, payload, metadata, checksum
             ORDER BY bucket_time
@@ -1048,8 +1062,8 @@ impl MetadataStore for PostgreSQLBackend {
 
         sqlx::query(
             r#"
-            INSERT INTO sensor_metadata 
-            (sensor_id, name, sensor_type, location, sampling_rate_hz, calibration, 
+            INSERT INTO sensor_metadata
+            (sensor_id, name, sensor_type, location, sampling_rate_hz, calibration,
              first_seen, last_seen, is_active)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ON CONFLICT (sensor_id) DO UPDATE SET
@@ -1094,9 +1108,9 @@ impl MetadataStore for PostgreSQLBackend {
 
         let row = sqlx::query(
             r#"
-            SELECT sensor_id, name, sensor_type, location, sampling_rate_hz, 
+            SELECT sensor_id, name, sensor_type, location, sampling_rate_hz,
                    calibration, first_seen, last_seen, is_active
-            FROM sensor_metadata 
+            FROM sensor_metadata
             WHERE sensor_id = $1
             "#,
         )
@@ -1133,9 +1147,9 @@ impl MetadataStore for PostgreSQLBackend {
 
         let rows = sqlx::query(
             r#"
-            SELECT sensor_id, name, sensor_type, location, sampling_rate_hz, 
+            SELECT sensor_id, name, sensor_type, location, sampling_rate_hz,
                    calibration, first_seen, last_seen, is_active
-            FROM sensor_metadata 
+            FROM sensor_metadata
             ORDER BY sensor_id
             "#,
         )

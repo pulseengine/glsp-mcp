@@ -48,11 +48,11 @@ impl ComponentManager {
             pipeline_order: Vec::new(),
         }
     }
-    
+
     /// Initialize the 5-component pipeline
     pub fn initialize_pipeline_components(&mut self) -> Result<(), String> {
         println!("🔧 Initializing 5-component ADAS pipeline");
-        
+
         // Define the pipeline execution order
         self.pipeline_order = vec![
             "video-decoder".to_string(),
@@ -61,7 +61,7 @@ impl ComponentManager {
             "safety-monitor".to_string(),
             "orchestrator".to_string(),
         ];
-        
+
         // Register each component with default info
         for component_id in &self.pipeline_order {
             let info = ComponentInfo {
@@ -70,18 +70,24 @@ impl ComponentManager {
                 interface_version: "0.1.0".to_string(),
                 capabilities: self.get_component_capabilities(component_id),
             };
-            
+
             self.register_component(info)?;
         }
-        
-        println!("✅ Initialized {} components in pipeline", self.components.len());
+
+        println!(
+            "✅ Initialized {} components in pipeline",
+            self.components.len()
+        );
         Ok(())
     }
-    
+
     /// Register a new component
     pub fn register_component(&mut self, info: ComponentInfo) -> Result<(), String> {
-        println!("📝 Registering component: {} ({})", info.id, info.component_type);
-        
+        println!(
+            "📝 Registering component: {} ({})",
+            info.id, info.component_type
+        );
+
         let runtime = ComponentRuntime {
             info: info.clone(),
             state: ComponentState::Registered,
@@ -90,29 +96,29 @@ impl ComponentManager {
             message_count: 0,
             error_count: 0,
         };
-        
+
         self.components.insert(info.id.clone(), runtime);
         Ok(())
     }
-    
+
     /// Start all components in pipeline order
     pub fn start_all_components(&mut self) -> Result<(), String> {
         println!("🚀 Starting all components in pipeline order");
-        
+
         for component_id in &self.pipeline_order.clone() {
             self.start_component(component_id)?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Start a specific component
     pub fn start_component(&mut self, component_id: &str) -> Result<(), String> {
         if let Some(component) = self.components.get_mut(component_id) {
             println!("▶️  Starting component: {}", component_id);
-            
+
             component.state = ComponentState::Initializing;
-            
+
             // Simulate component startup based on type
             match component.info.component_type.as_str() {
                 "input" => {
@@ -144,60 +150,60 @@ impl ComponentManager {
                     println!("  ✅ Generic component ready");
                 }
             }
-            
+
             Ok(())
         } else {
             Err(format!("Component not found: {}", component_id))
         }
     }
-    
+
     /// Stop all components in reverse order
     pub fn stop_all_components(&mut self) -> Result<(), String> {
         println!("🛑 Stopping all components");
-        
+
         let mut reverse_order = self.pipeline_order.clone();
         reverse_order.reverse();
-        
+
         for component_id in &reverse_order {
             self.stop_component(component_id)?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Stop a specific component
     pub fn stop_component(&mut self, component_id: &str) -> Result<(), String> {
         if let Some(component) = self.components.get_mut(component_id) {
             println!("⏹️  Stopping component: {}", component_id);
-            
+
             component.state = ComponentState::Stopping;
-            
+
             // Simulate graceful shutdown
             std::thread::sleep(std::time::Duration::from_millis(10));
-            
+
             component.state = ComponentState::Offline;
             component.start_time = None;
-            
+
             Ok(())
         } else {
             Err(format!("Component not found: {}", component_id))
         }
     }
-    
+
     /// Update component heartbeat
     pub fn update_heartbeat(&mut self, component_id: &str) {
         if let Some(component) = self.components.get_mut(component_id) {
             component.last_heartbeat = Some(Instant::now());
         }
     }
-    
+
     /// Increment message count for component
     pub fn increment_message_count(&mut self, component_id: &str) {
         if let Some(component) = self.components.get_mut(component_id) {
             component.message_count += 1;
         }
     }
-    
+
     /// Record error for component
     pub fn record_error(&mut self, component_id: &str, error: String) {
         if let Some(component) = self.components.get_mut(component_id) {
@@ -205,25 +211,26 @@ impl ComponentManager {
             component.state = ComponentState::Error(error);
         }
     }
-    
+
     /// Get component state
     pub fn get_component_state(&self, component_id: &str) -> Option<ComponentState> {
         self.components.get(component_id).map(|c| c.state.clone())
     }
-    
+
     /// Get all component states
     pub fn get_all_states(&self) -> HashMap<String, ComponentState> {
-        self.components.iter()
+        self.components
+            .iter()
             .map(|(id, runtime)| (id.clone(), runtime.state.clone()))
             .collect()
     }
-    
+
     /// Get pipeline health summary
     pub fn get_pipeline_health(&self) -> PipelineHealth {
         let mut healthy_count = 0;
         let mut error_count = 0;
         let mut offline_count = 0;
-        
+
         for runtime in self.components.values() {
             match runtime.state {
                 ComponentState::Running | ComponentState::Ready => healthy_count += 1,
@@ -232,7 +239,7 @@ impl ComponentManager {
                 _ => {}
             }
         }
-        
+
         PipelineHealth {
             total_components: self.components.len(),
             healthy_components: healthy_count,
@@ -240,7 +247,7 @@ impl ComponentManager {
             offline_components: offline_count,
         }
     }
-    
+
     /// Get component type based on ID
     fn get_component_type(&self, component_id: &str) -> String {
         match component_id {
@@ -252,7 +259,7 @@ impl ComponentManager {
             _ => "unknown".to_string(),
         }
     }
-    
+
     /// Get component capabilities based on ID
     fn get_component_capabilities(&self, component_id: &str) -> Vec<String> {
         match component_id {
@@ -299,7 +306,7 @@ impl PipelineHealth {
     pub fn is_healthy(&self) -> bool {
         self.error_components == 0 && self.healthy_components > 0
     }
-    
+
     pub fn health_percentage(&self) -> f32 {
         if self.total_components == 0 {
             return 0.0;

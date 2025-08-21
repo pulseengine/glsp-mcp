@@ -15,7 +15,7 @@ This document demonstrates how automotive safety standards concepts could be app
 Overview
 --------
 
-This demo shows how an ADAS system could be structured to follow **ISO 26262 ASIL-B** principles. 
+This demo shows how an ADAS system could be structured to follow **ISO 26262 ASIL-B** principles.
 It serves as an educational example of applying safety standards to WebAssembly component systems.
 
 ISO 26262 Compliance Requirements
@@ -31,7 +31,7 @@ Functional Safety Management
    :iso_reference: ISO 26262-2:2018
    :component_category: safety
    :links: SAFETY_031
-   
+
    The ADAS system shall follow the complete safety lifecycle from concept through decommissioning,
    with documented safety plans, assessments, and validation reports per ISO 26262-2.
 
@@ -41,7 +41,7 @@ Functional Safety Management
    :asil_level: B
    :iso_reference: ISO 26262-2:2018 Clause 5
    :component_category: safety
-   
+
    Development team shall demonstrate competence in functional safety with documented training
    records and qualification evidence for ASIL-B development.
 
@@ -51,7 +51,7 @@ Functional Safety Management
    :asil_level: B
    :iso_reference: ISO 26262-2:2018 Clause 6
    :component_category: safety
-   
+
    A comprehensive safety case shall document all safety arguments, evidence, and assumptions
    demonstrating ASIL-B compliance for the ADAS system.
 
@@ -64,7 +64,7 @@ Hazard Analysis and Risk Assessment
    :asil_level: B
    :iso_reference: ISO 26262-3:2018
    :component_category: safety
-   
+
    Hazard Analysis and Risk Assessment (HARA) shall identify all hazards with severity (S),
    exposure (E), and controllability (C) ratings determining ASIL levels.
 
@@ -74,7 +74,7 @@ Hazard Analysis and Risk Assessment
    :asil_level: B
    :iso_reference: ISO 26262-3:2018 Clause 7
    :component_category: safety
-   
+
    Top-level safety goals shall be derived from HARA with measurable acceptance criteria:
    - SG1: Prevent unintended acceleration (ASIL-B)
    - SG2: Maintain safe following distance (ASIL-B)
@@ -91,7 +91,7 @@ Technical Safety Requirements
    :component_category: safety
    :latency_requirement: 100ms
    :links: ADAS_REQ_009
-   
+
    The system shall detect safety-critical faults within 100ms including sensor failures,
    communication errors, and processing anomalies with diagnostic coverage >90%.
 
@@ -101,10 +101,10 @@ Technical Safety Requirements
    :asil_level: B
    :iso_reference: ISO 26262-4:2018
    :component_category: safety
-   
+
    Safe states shall be defined for all failure modes:
    - Sensor failure: Degraded operation with remaining sensors
-   - AI failure: Fallback to rule-based algorithms  
+   - AI failure: Fallback to rule-based algorithms
    - Communication failure: Local autonomous operation
    - Complete failure: Driver takeover with warnings
 
@@ -114,7 +114,7 @@ Technical Safety Requirements
    :asil_level: B
    :iso_reference: ISO 26262-5:2018 Clause 9
    :component_category: safety
-   
+
    The system shall implement fault tolerance through:
    - Redundant sensors (2oo3 voting for critical functions)
    - Diverse algorithms (AI + rule-based)
@@ -130,7 +130,7 @@ Software Safety Requirements
    :iso_reference: ISO 26262-6:2018
    :component_category: safety
    :links: ADAS_REQ_002
-   
+
    Software architecture shall ensure freedom from interference between ASIL-B and QM
    components using WebAssembly sandboxing and typed interfaces.
 
@@ -140,7 +140,7 @@ Software Safety Requirements
    :asil_level: B
    :iso_reference: ISO 26262-6:2018 Clause 8
    :component_category: safety
-   
+
    Software units shall follow MISRA C guidelines with static analysis achieving:
    - Zero critical violations
    - <5 major violations per KLOC
@@ -152,7 +152,7 @@ Software Safety Requirements
    :asil_level: B
    :iso_reference: ISO 26262-6:2018 Clause 10
    :component_category: safety
-   
+
    Integration testing shall achieve:
    - 100% interface coverage
    - Resource usage testing (memory, CPU)
@@ -168,7 +168,7 @@ Hardware-Software Integration
    :asil_level: B
    :iso_reference: ISO 26262-4:2018 Clause 7
    :component_category: safety
-   
+
    Hardware-Software Interface (HSI) shall specify:
    - Sensor interfaces and failure modes
    - Actuator command limits and diagnostics
@@ -183,7 +183,7 @@ Hardware-Software Integration
    :component_category: safety
    :latency_requirement: 100ms
    :links: ADAS_REQ_003
-   
+
    Worst-Case Execution Time (WCET) analysis shall prove timing constraints:
    - Sensor to perception: <50ms
    - Perception to control: <30ms
@@ -198,7 +198,7 @@ Verification and Validation
    :asil_level: B
    :iso_reference: ISO 26262-4:2018 Clause 9
    :component_category: safety
-   
+
    Safety validation shall include:
    - Vehicle-level testing on proving grounds
    - HIL testing with fault injection
@@ -211,7 +211,7 @@ Verification and Validation
    :asil_level: B
    :iso_reference: ISO 26262-8:2018 Clause 14
    :component_category: safety
-   
+
    Components with proven in use arguments (WebAssembly runtime, Linux kernel)
    shall document operational history >10^7 hours with failure analysis.
 
@@ -225,7 +225,7 @@ Safety Monitoring Requirements
    :component_category: safety
    :wit_interface: system/safety-monitor.wit
    :bazel_target: //components/system/safety-monitor
-   
+
    The safety monitor component shall continuously verify:
    - Component health status (100ms cycle)
    - Data flow integrity checks
@@ -237,7 +237,7 @@ Safety Monitoring Requirements
    :status: implemented
    :asil_level: B
    :component_category: safety
-   
+
    All sensor data shall undergo plausibility checks:
    - Physical constraints (max velocity, acceleration)
    - Cross-sensor validation
@@ -249,7 +249,7 @@ Safety Monitoring Requirements
    :status: implemented
    :asil_level: B
    :component_category: safety
-   
+
    The system shall collect safety metrics:
    - Fault detection rate
    - False positive/negative rates
@@ -265,7 +265,7 @@ Production and Operation
    :asil_level: B
    :iso_reference: ISO 26262-7:2018
    :component_category: safety
-   
+
    Production shall include:
    - Software build reproducibility
    - Configuration management per ASIL-B
@@ -278,7 +278,7 @@ Production and Operation
    :asil_level: B
    :iso_reference: ISO 26262-7:2018 Clause 6
    :component_category: safety
-   
+
    Field monitoring shall track:
    - Safety-related field failures
    - Near-miss events
@@ -305,7 +305,7 @@ Compliance Matrix
 .. list-table::
    :header-rows: 1
    :widths: 40 20 20 20
-   
+
    * - ISO 26262 Part
      - Clauses Addressed
      - ASIL Level

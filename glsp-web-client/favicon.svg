@@ -5,16 +5,16 @@
       <stop offset="100%" style="stop-color:#8B5CF6;stop-opacity:1" />
     </linearGradient>
   </defs>
-  
+
   <!-- Background -->
   <rect width="32" height="32" rx="6" fill="#0A0E1A"/>
-  
+
   <!-- WASM Icon - stylized W -->
-  <path d="M 6 10 L 10 22 L 12 22 L 16 14 L 20 22 L 22 22 L 26 10 L 23 10 L 21 18 L 17 10 L 15 10 L 11 18 L 9 10 Z" 
-        fill="url(#wasmGradient)" 
-        stroke="#654FF0" 
+  <path d="M 6 10 L 10 22 L 12 22 L 16 14 L 20 22 L 22 22 L 26 10 L 23 10 L 21 18 L 17 10 L 15 10 L 11 18 L 9 10 Z"
+        fill="url(#wasmGradient)"
+        stroke="#654FF0"
         stroke-width="0.5"/>
-  
+
   <!-- Subtle glow effect -->
   <circle cx="16" cy="16" r="14" fill="none" stroke="url(#wasmGradient)" stroke-width="0.5" opacity="0.3"/>
 </svg>

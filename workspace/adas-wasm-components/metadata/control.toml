@@ -60,7 +60,7 @@ lateral_controllers = [
 longitudinal_controllers = [
     "pid_cruise",
     "adaptive_cruise",
-    "mpc_longitudinal", 
+    "mpc_longitudinal",
     "feedforward_compensation"
 ]
 
@@ -75,7 +75,7 @@ advanced_controllers = [
 supported_models = [
     "bicycle_model",
     "single_track",
-    "double_track", 
+    "double_track",
     "full_vehicle_14dof"
 ]
 
@@ -96,7 +96,7 @@ actuator_models = [
 [actuation_interfaces]
 steering_control = [
     "angle_control",
-    "torque_control", 
+    "torque_control",
     "rate_control"
 ]
 
@@ -128,7 +128,7 @@ monitoring_functions = [
 
 failsafe_mechanisms = [
     "graceful_degradation",
-    "emergency_stop", 
+    "emergency_stop",
     "safe_state_transition",
     "limp_home_mode"
 ]
@@ -195,7 +195,7 @@ can_bus_protocols = [
 
 automotive_protocols = [
     "lin",
-    "flexray", 
+    "flexray",
     "most",
     "automotive_ethernet"
 ]

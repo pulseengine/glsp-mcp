@@ -1,9 +1,9 @@
 // Data Flow Manager - Handles pub/sub messaging between components
 
-use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Arc, Mutex};
 
 /// Data event types that flow through the system
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,9 +59,9 @@ pub struct MessageBus {
 impl MessageBus {
     pub fn new() -> Self {
         let (video_frame_tx, video_frame_rx) = bounded(100); // Buffer 100 video frames
-        let (detection_tx, detection_rx) = bounded(50);       // Buffer 50 detection results
+        let (detection_tx, detection_rx) = bounded(50); // Buffer 50 detection results
         let (system_event_tx, system_event_rx) = unbounded(); // Unlimited system events
-        
+
         Self {
             video_frame_tx,
             video_frame_rx,
@@ -71,40 +71,43 @@ impl MessageBus {
             system_event_rx,
         }
     }
-    
+
     /// Publish video frame to the bus
     pub fn publish_video_frame(&self, frame: DataEvent) -> Result<(), String> {
-        self.video_frame_tx.send(frame)
+        self.video_frame_tx
+            .send(frame)
             .map_err(|e| format!("Failed to publish video frame: {}", e))
     }
-    
+
     /// Subscribe to video frames
     pub fn subscribe_video_frames(&self) -> Receiver<DataEvent> {
         self.video_frame_rx.clone()
     }
-    
+
     /// Publish detection result to the bus
     pub fn publish_detection_result(&self, result: DataEvent) -> Result<(), String> {
-        self.detection_tx.send(result)
+        self.detection_tx
+            .send(result)
             .map_err(|e| format!("Failed to publish detection result: {}", e))
     }
-    
+
     /// Subscribe to detection results
     pub fn subscribe_detection_results(&self) -> Receiver<DataEvent> {
         self.detection_rx.clone()
     }
-    
+
     /// Publish system event to the bus
     pub fn publish_system_event(&self, event: DataEvent) -> Result<(), String> {
-        self.system_event_tx.send(event)
+        self.system_event_tx
+            .send(event)
             .map_err(|e| format!("Failed to publish system event: {}", e))
     }
-    
+
     /// Subscribe to system events
     pub fn subscribe_system_events(&self) -> Receiver<DataEvent> {
         self.system_event_rx.clone()
     }
-    
+
     /// Get bus statistics
     pub fn get_stats(&self) -> MessageBusStats {
         MessageBusStats {
@@ -140,7 +143,7 @@ struct PublisherInfo {
     last_publish_time: u64,
 }
 
-/// Subscriber information  
+/// Subscriber information
 #[derive(Debug)]
 struct SubscriberInfo {
     component_id: String,
@@ -168,28 +171,38 @@ impl DataFlowManager {
             message_stats: MessageStats::default(),
         }
     }
-    
+
     /// Initialize the message bus system
     pub fn initialize_message_bus(&mut self) -> Result<(), String> {
         println!("📡 Initializing message bus for data flow");
-        
+
         // Register default publishers and subscribers for the 5-component pipeline
         self.register_publisher("video-decoder".to_string(), "video-frame".to_string())?;
         self.register_subscriber("object-detection".to_string(), "video-frame".to_string())?;
-        
-        self.register_publisher("object-detection".to_string(), "detection-result".to_string())?;
+
+        self.register_publisher(
+            "object-detection".to_string(),
+            "detection-result".to_string(),
+        )?;
         self.register_subscriber("visualizer".to_string(), "detection-result".to_string())?;
         self.register_subscriber("safety-monitor".to_string(), "detection-result".to_string())?;
-        
-        println!("✅ Message bus initialized with {} publishers, {} subscribers", 
-                 self.publishers.len(), self.subscribers.len());
+
+        println!(
+            "✅ Message bus initialized with {} publishers, {} subscribers",
+            self.publishers.len(),
+            self.subscribers.len()
+        );
         Ok(())
     }
-    
+
     /// Register a new publisher
-    pub fn register_publisher(&mut self, component_id: String, data_type: String) -> Result<(), String> {
+    pub fn register_publisher(
+        &mut self,
+        component_id: String,
+        data_type: String,
+    ) -> Result<(), String> {
         let publisher_key = format!("{}:{}", component_id, data_type);
-        
+
         let publisher_info = PublisherInfo {
             component_id: component_id.clone(),
             data_type: data_type.clone(),
@@ -197,16 +210,23 @@ impl DataFlowManager {
             bytes_published: 0,
             last_publish_time: 0,
         };
-        
+
         self.publishers.insert(publisher_key, publisher_info);
-        println!("📤 Registered publisher: {} for {}", component_id, data_type);
+        println!(
+            "📤 Registered publisher: {} for {}",
+            component_id, data_type
+        );
         Ok(())
     }
-    
+
     /// Register a new subscriber
-    pub fn register_subscriber(&mut self, component_id: String, data_type: String) -> Result<(), String> {
+    pub fn register_subscriber(
+        &mut self,
+        component_id: String,
+        data_type: String,
+    ) -> Result<(), String> {
         let subscriber_key = format!("{}:{}", component_id, data_type);
-        
+
         let subscriber_info = SubscriberInfo {
             component_id: component_id.clone(),
             data_type: data_type.clone(),
@@ -214,12 +234,15 @@ impl DataFlowManager {
             bytes_received: 0,
             last_receive_time: 0,
         };
-        
+
         self.subscribers.insert(subscriber_key, subscriber_info);
-        println!("📥 Registered subscriber: {} for {}", component_id, data_type);
+        println!(
+            "📥 Registered subscriber: {} for {}",
+            component_id, data_type
+        );
         Ok(())
     }
-    
+
     /// Update publisher statistics
     pub fn update_publisher_stats(&mut self, component_id: &str, data_type: &str, bytes: u64) {
         let publisher_key = format!("{}:{}", component_id, data_type);
@@ -228,11 +251,11 @@ impl DataFlowManager {
             publisher.bytes_published += bytes;
             publisher.last_publish_time = crate::get_timestamp();
         }
-        
+
         self.message_stats.total_messages += 1;
         self.message_stats.total_bytes += bytes;
     }
-    
+
     /// Update subscriber statistics
     pub fn update_subscriber_stats(&mut self, component_id: &str, data_type: &str, bytes: u64) {
         let subscriber_key = format!("{}:{}", component_id, data_type);
@@ -242,27 +265,27 @@ impl DataFlowManager {
             subscriber.last_receive_time = crate::get_timestamp();
         }
     }
-    
+
     /// Get data flow statistics
     pub fn get_stats(&self) -> &MessageStats {
         &self.message_stats
     }
-    
+
     /// Get publisher count
     pub fn get_publisher_count(&self) -> usize {
         self.publishers.len()
     }
-    
+
     /// Get subscriber count
     pub fn get_subscriber_count(&self) -> usize {
         self.subscribers.len()
     }
-    
+
     /// List all registered publishers
     pub fn list_publishers(&self) -> Vec<String> {
         self.publishers.keys().cloned().collect()
     }
-    
+
     /// List all registered subscribers
     pub fn list_subscribers(&self) -> Vec<String> {
         self.subscribers.keys().cloned().collect()

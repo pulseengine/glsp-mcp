@@ -17,12 +17,12 @@ Welcome to the documentation for the **ADAS WASM Components Demo** - a comprehen
 
 .. important::
    **This is demonstration code only!** This workspace contains example implementations that showcase:
-   
+
    * How GLSP-MCP can be used for complex modeling scenarios
    * Concepts from ISO 26262 applied to WebAssembly components
    * AI integration patterns using WASI-NN
    * Multi-component system architecture
-   
+
    **This code is NOT intended for production use.** It serves as a learning resource and proof-of-concept
    for developers exploring the capabilities of the GLSP-MCP platform.
 
@@ -41,10 +41,10 @@ System Architecture
 -------------------
 
 .. plantuml::
-   
+
    @startuml
    !theme plain
-   
+
    package "Sensor Components" {
        [Camera Front] as cam_front
        [Camera Surround] as cam_surround
@@ -53,52 +53,52 @@ System Architecture
        [Radar Corner] as radar_c
        [Ultrasonic] as ultrasonic
    }
-   
+
    package "AI/ML Components" {
        [Object Detection\n(YOLOv5n)] as obj_detect
        [Behavior Prediction] as behavior
    }
-   
+
    package "Fusion Components" {
        [Sensor Fusion] as sensor_fusion
        [Perception Fusion] as perception_fusion
        [Tracking Prediction] as tracking
    }
-   
+
    package "Control Components" {
        [Vehicle Control] as vehicle_ctrl
        [Planning Decision] as planning
    }
-   
+
    package "System Components" {
        [Safety Monitor\n(ASIL-B)] as safety
        [Domain Controller] as domain
        [CAN Gateway] as can
        [HMI Interface] as hmi
    }
-   
+
    cam_front --> obj_detect
    cam_surround --> obj_detect
    obj_detect --> perception_fusion
-   
+
    lidar --> sensor_fusion
    radar_f --> sensor_fusion
    radar_c --> sensor_fusion
    ultrasonic --> sensor_fusion
-   
+
    sensor_fusion --> perception_fusion
    perception_fusion --> tracking
-   
+
    tracking --> behavior
    behavior --> planning
-   
+
    planning --> vehicle_ctrl
    safety --> vehicle_ctrl
-   
+
    vehicle_ctrl --> domain
    domain --> can
    domain --> hmi
-   
+
    @enduml
 
 Documentation Structure
@@ -107,7 +107,7 @@ Documentation Structure
 .. toctree::
    :maxdepth: 2
    :caption: Requirements
-   
+
    requirements/index
    requirements/adas_components
    requirements/sensor_components
@@ -118,7 +118,7 @@ Documentation Structure
 .. toctree::
    :maxdepth: 2
    :caption: Architecture
-   
+
    architecture/index
    architecture/component_design
    architecture/data_flow
@@ -128,7 +128,7 @@ Documentation Structure
 .. toctree::
    :maxdepth: 2
    :caption: Implementation
-   
+
    implementation/build_system
    implementation/wit_interfaces
    implementation/testing
@@ -175,10 +175,10 @@ Quick Start
    # Build all components
    cd workspace/adas-wasm-components
    bazel build //...
-   
+
    # Run tests
    bazel test //...
-   
+
    # Build composed system
    ./build-composed.sh
 
@@ -188,7 +188,7 @@ Component Categories
 .. list-table::
    :header-rows: 1
    :widths: 20 15 65
-   
+
    * - Category
      - Count
      - Components
@@ -227,7 +227,7 @@ This workspace example is part of the GLSP-Rust project and is licensed under th
 
 .. note::
    This documentation describes demonstration code for the ADAS WASM Components workspace example.
-   It shows how GLSP-MCP concepts can be applied to complex domains. For core GLSP-Rust platform 
+   It shows how GLSP-MCP concepts can be applied to complex domains. For core GLSP-Rust platform
    documentation, see the main documentation.
 
 .. warning::

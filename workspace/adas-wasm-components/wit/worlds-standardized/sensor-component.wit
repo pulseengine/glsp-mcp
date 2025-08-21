@@ -4,7 +4,7 @@ world sensor-component {
     /// Import orchestration for FEO compliance and resource management
     import adas:orchestration/execution-control;
     import adas:orchestration/resource-management;
-    
+
     /// Export standardized sensor interfaces
     export adas:control/sensor-control;
     export adas:data/sensor-data;

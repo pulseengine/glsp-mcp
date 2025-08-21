@@ -3,22 +3,22 @@ package adas:control@0.1.0;
 /// Graphics control interface for visualization components
 interface graphics-control {
     use adas:common-types/types.{video-frame, detection-result, error-code};
-    
+
     /// Initialize graphics system
     init-graphics: func(config: graphics-config) -> result<_, error-code>;
-    
+
     /// Render video frame with overlays
     render-frame: func(frame: video-frame, detections: list<detection-result>) -> result<video-frame, graphics-error>;
-    
+
     /// Set graphics parameters
     set-parameters: func(params: graphics-parameters) -> result<_, graphics-error>;
-    
+
     /// Get current graphics statistics
     get-graphics-stats: func() -> graphics-statistics;
-    
+
     /// Shutdown graphics system
     shutdown-graphics: func() -> result<_, error-code>;
-    
+
     /// Graphics configuration
     record graphics-config {
         frame-width: u32,
@@ -27,7 +27,7 @@ interface graphics-control {
         vsync-enabled: bool,
         max-fps: u32,
     }
-    
+
     /// Graphics parameters
     record graphics-parameters {
         overlay-enabled: bool,
@@ -38,7 +38,7 @@ interface graphics-control {
         box-thickness: u32,
         font-size: u32,
     }
-    
+
     /// Graphics statistics
     record graphics-statistics {
         frames-rendered: u32,
@@ -47,7 +47,7 @@ interface graphics-control {
         memory-usage-mb: u32,
         gpu-utilization: f32,
     }
-    
+
     /// Color format enumeration
     enum color-format {
         rgb24,
@@ -56,7 +56,7 @@ interface graphics-control {
         bgra32,
         yuv420,
     }
-    
+
     variant graphics-error {
         invalid-frame,
         invalid-parameters,

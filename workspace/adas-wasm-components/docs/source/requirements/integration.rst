@@ -22,7 +22,7 @@ Component Composition Requirements
    :component_category: integration
    :bazel_target: //:adas-complete-system
    :links: WASM_046
-   
+
    The ADAS system shall use WebAssembly Composition (WAC) to statically link components
    into deployable units with verified interface compatibility at build time.
 
@@ -31,7 +31,7 @@ Component Composition Requirements
    :status: implemented
    :asil_level: B
    :component_category: integration
-   
+
    Component composition shall validate:
    - WIT interface version compatibility
    - Resource requirement conflicts
@@ -43,7 +43,7 @@ Component Composition Requirements
    :status: implemented
    :asil_level: QM
    :component_category: integration
-   
+
    The system shall support multiple composition profiles:
    - Full ADAS: All 15 components
    - Basic ADAS: Essential safety components only
@@ -60,7 +60,7 @@ Interface Management Requirements
    :component_category: integration
    :wit_interface: adas-common/versioning.wit
    :links: ADAS_REQ_011
-   
+
    All WIT interfaces shall use semantic versioning with backward compatibility
    guaranteed within major versions and deprecation notices for breaking changes.
 
@@ -69,7 +69,7 @@ Interface Management Requirements
    :status: implemented
    :asil_level: B
    :component_category: integration
-   
+
    A central interface registry shall maintain:
    - All WIT interface definitions
    - Version compatibility matrix
@@ -86,7 +86,7 @@ Data Flow Integration
    :component_category: integration
    :wit_interface: orchestration/data-flow.wit
    :bazel_target: //components/orchestrator
-   
+
    The orchestrator component shall manage data flow between components ensuring:
    - Correct execution order
    - Data availability checking
@@ -99,7 +99,7 @@ Data Flow Integration
    :asil_level: B
    :component_category: integration
    :latency_requirement: 1ms
-   
+
    Large data transfers (camera frames, point clouds) shall use zero-copy mechanisms
    through shared memory with ownership transfer completing within 1ms.
 
@@ -108,7 +108,7 @@ Data Flow Integration
    :status: implemented
    :asil_level: B
    :component_category: integration
-   
+
    All components shall use standardized data formats:
    - Images: YUV420, RGB888
    - Point clouds: PCL2 format
@@ -126,7 +126,7 @@ Vehicle Integration Requirements
    :wit_interface: system/can-gateway.wit
    :bazel_target: //components/system/can-gateway
    :links: ADAS_REQ_015
-   
+
    The CAN gateway shall support:
    - CAN-FD up to 8 Mbps
    - J1939 protocol for commercial vehicles
@@ -139,7 +139,7 @@ Vehicle Integration Requirements
    :asil_level: B
    :component_category: integration
    :latency_requirement: 10ms
-   
+
    Actuator commands shall be transmitted with:
    - Dual-channel redundancy
    - CRC protection
@@ -151,7 +151,7 @@ Vehicle Integration Requirements
    :status: implemented
    :asil_level: B
    :component_category: integration
-   
+
    The system shall integrate vehicle state including:
    - Speed, acceleration, yaw rate
    - Steering angle and rate
@@ -167,7 +167,7 @@ Development Integration
    :asil_level: QM
    :component_category: integration
    :links: REQ_001
-   
+
    The ADAS system architecture shall be maintainable through GLSP diagrams
    with automatic code generation for component interfaces and data flow.
 
@@ -177,7 +177,7 @@ Development Integration
    :asil_level: QM
    :component_category: integration
    :links: SIM_001
-   
+
    Components shall support simulation mode with:
    - Synthetic sensor data injection
    - Time scaling (faster/slower than real-time)
@@ -190,7 +190,7 @@ Development Integration
    :asil_level: QM
    :component_category: integration
    :wit_interface: debug/debug-interface.wit
-   
+
    All components shall expose debug interfaces for:
    - Internal state inspection
    - Performance profiling
@@ -205,7 +205,7 @@ Deployment Integration
    :status: implemented
    :asil_level: QM
    :component_category: integration
-   
+
    The ADAS system shall support containerized deployment with:
    - OCI-compliant containers
    - Resource limits enforcement
@@ -217,7 +217,7 @@ Deployment Integration
    :status: implemented
    :asil_level: B
    :component_category: integration
-   
+
    The system shall support deployment on:
    - ARM Cortex-A72 (primary target)
    - x86-64 (development/simulation)
@@ -233,7 +233,7 @@ Monitoring and Diagnostics
    :asil_level: B
    :component_category: integration
    :wit_interface: monitoring/system-monitor.wit
-   
+
    System monitoring shall track:
    - Component health status
    - Resource utilization
@@ -245,7 +245,7 @@ Monitoring and Diagnostics
    :status: implemented
    :asil_level: B
    :component_category: integration
-   
+
    The system shall generate DTCs (Diagnostic Trouble Codes) compatible
    with OBD-II/UDS protocols for workshop diagnostics.
 
@@ -254,7 +254,7 @@ Monitoring and Diagnostics
    :status: implemented
    :asil_level: B
    :component_category: integration
-   
+
    An event data recorder shall capture:
    - Pre-crash data (5 seconds)
    - System state at fault detection
@@ -266,7 +266,7 @@ Monitoring and Diagnostics
    :status: implemented
    :asil_level: QM
    :component_category: integration
-   
+
    The system shall support secure remote diagnostics including:
    - Log file retrieval
    - Configuration updates

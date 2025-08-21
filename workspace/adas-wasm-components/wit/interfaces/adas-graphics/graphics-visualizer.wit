@@ -6,7 +6,7 @@ package adas:graphics@0.1.0;
 interface graphics-visualizer {
     use adas:common-types/types.{timestamp};
     use adas:data/data-flow.{video-frame, detected-object, detection-result};
-    
+
     // Graphics configuration
     record graphics-config {
         width: u32,
@@ -16,14 +16,14 @@ interface graphics-visualizer {
         show-metrics: bool,
         overlay-style: overlay-style,
     }
-    
+
     // Overlay rendering style
     enum overlay-style {
         minimal,
         detailed,
         debug,
     }
-    
+
     // Color representation (RGBA)
     record color {
         r: u8,
@@ -31,13 +31,13 @@ interface graphics-visualizer {
         b: u8,
         a: u8,
     }
-    
+
     // 2D point
     record point2d {
         x: f32,
         y: f32,
     }
-    
+
     // Rectangle for bounding boxes
     record rectangle {
         x: f32,
@@ -45,7 +45,7 @@ interface graphics-visualizer {
         width: f32,
         height: f32,
     }
-    
+
     // Render statistics
     record render-stats {
         frames-rendered: u64,
@@ -54,39 +54,39 @@ interface graphics-visualizer {
         frame-rate: f32,
         memory-usage-mb: u32,
     }
-    
+
     // Graphics operations
     resource graphics-renderer {
         constructor(config: graphics-config);
-        
+
         // Frame rendering
         render-video-frame: func(frame: video-frame) -> result<_, string>;
         render-detection-overlay: func(detections: detection-result) -> result<_, string>;
-        
-        // Drawing primitives  
+
+        // Drawing primitives
         draw-rectangle: func(rect: rectangle, color: color, filled: bool) -> result<_, string>;
         draw-text: func(text: string, position: point2d, color: color) -> result<_, string>;
         draw-line: func(start: point2d, end: point2d, color: color, thickness: f32) -> result<_, string>;
-        
+
         // Frame management
         present-frame: func() -> result<_, string>;
         clear-frame: func(color: color) -> result<_, string>;
-        
+
         // Export capabilities
         export-frame-png: func() -> result<list<u8>, string>;
         export-frame-raw: func() -> result<list<u8>, string>;
-        
+
         // Configuration
         update-config: func(config: graphics-config) -> result<_, string>;
         get-render-stats: func() -> render-stats;
-        
+
         // Cleanup
         cleanup: func() -> result<_, string>;
     }
-    
+
     // Predefined colors for object classes
     get-object-color: func(class-name: string) -> color;
-    
+
     // Utility functions
     interpolate-color: func(color1: color, color2: color, factor: f32) -> color;
     scale-rectangle: func(rect: rectangle, scale: f32) -> rectangle;

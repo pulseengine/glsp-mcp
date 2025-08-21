@@ -1,13 +1,15 @@
 {
   "name": "glsp-web-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.build.json && vite build",
     "preview": "vite preview",
+    "type-check": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives",
-    "lint:strict": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint:strict": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "test": "echo 'No tests configured yet' && exit 0"
   },
   "dependencies": {
     "@bytecodealliance/jco": "^1.0.0",

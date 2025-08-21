@@ -1,14 +1,14 @@
-/// Standardized Sensor Component World  
+/// Standardized Sensor Component World
 /// All sensor components (camera, radar, lidar, ultrasonic) use this world
 world sensor-component {
     /// Import orchestration for FEO compliance and resource management
     import adas:orchestration/execution-control;
     import adas:orchestration/resource-management;
-    
+
     /// Import data types for creating sensor data structures
     import adas:data/sensor-data;
     import adas:common-types/types;
-    
+
     /// Export standardized sensor interfaces
     export adas:control/sensor-control;
     export adas:data/sensor-data;

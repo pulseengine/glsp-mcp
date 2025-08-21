@@ -12,7 +12,7 @@ interface sensor-data {
         timestamp,
         data-quality
     };
-    
+
     /// Generic sensor reading
     record sensor-reading {
         sensor-id: string,
@@ -20,18 +20,18 @@ interface sensor-data {
         quality: data-quality,
         sensor-pose: sensor-pose,
     }
-    
+
     record sensor-pose {
         position: position3d,
         orientation: orientation,
     }
-    
+
     record orientation {
         yaw: f32,
         pitch: f32,
         roll: f32,
     }
-    
+
     /// Camera frame data
     record camera-frame {
         reading: sensor-reading,
@@ -42,7 +42,7 @@ interface sensor-data {
         exposure-time: f32,
         gain: f32,
     }
-    
+
     enum pixel-format {
         rgb8,
         rgba8,
@@ -50,26 +50,26 @@ interface sensor-data {
         yuv422,
         raw,
     }
-    
+
     /// Radar detection data
     record radar-detection {
         reading: sensor-reading,
         objects: list<radar-object>,
     }
-    
+
     record radar-object {
         position: position3d,
         velocity: velocity3d,
         rcs: f32,  // Radar cross section
         confidence: f32,
     }
-    
+
     /// LiDAR point cloud data
     record lidar-pointcloud {
         reading: sensor-reading,
         points: list<lidar-point>,
     }
-    
+
     record lidar-point {
         position: position3d,
         intensity: f32,
@@ -87,7 +87,7 @@ interface perception-data {
         object-type,
         timestamp
     };
-    
+
     /// Detected and tracked object
     record perceived-object {
         object-id: u32,
@@ -100,14 +100,14 @@ interface perception-data {
         tracking-state: tracking-state,
         timestamp: timestamp,
     }
-    
+
     enum tracking-state {
         new,
         stable,
         unstable,
         lost,
     }
-    
+
     /// Scene understanding
     record scene-model {
         objects: list<perceived-object>,
@@ -115,7 +115,7 @@ interface perception-data {
         timestamp: timestamp,
         confidence: f32,
     }
-    
+
     record ego-vehicle-state {
         position: position3d,
         velocity: velocity3d,
@@ -133,7 +133,7 @@ interface prediction-data {
         timestamp
     };
     use perception-data.{perceived-object};
-    
+
     /// Object trajectory prediction
     record trajectory-prediction {
         object-id: u32,
@@ -143,14 +143,14 @@ interface prediction-data {
         confidence: f32,
         timestamp: timestamp,
     }
-    
+
     record predicted-state {
         position: position3d,
         velocity: velocity3d,
         timestamp-offset: f32,
         probability: f32,
     }
-    
+
     /// Behavior prediction
     record behavior-prediction {
         object-id: u32,
@@ -159,7 +159,7 @@ interface prediction-data {
         time-to-action: option<f32>,
         timestamp: timestamp,
     }
-    
+
     enum predicted-behavior {
         lane-keeping,
         lane-change-left,
@@ -182,7 +182,7 @@ interface planning-data {
         acceleration3d,
         timestamp
     };
-    
+
     /// Planned trajectory
     record planned-trajectory {
         trajectory-id: u32,
@@ -193,7 +193,7 @@ interface planning-data {
         feasibility: f32,
         timestamp: timestamp,
     }
-    
+
     record trajectory-point {
         position: position3d,
         velocity: velocity3d,
@@ -202,7 +202,7 @@ interface planning-data {
         curvature: f32,
         time-offset: f32,
     }
-    
+
     /// Planning decision
     record planning-decision {
         selected-trajectory: planned-trajectory,
@@ -211,7 +211,7 @@ interface planning-data {
         confidence: f32,
         timestamp: timestamp,
     }
-    
+
     enum maneuver-type {
         follow-lane,
         lane-change-left,

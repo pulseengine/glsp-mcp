@@ -1,3 +1,17 @@
+// Copyright (c) 2024 GLSP-Rust Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //! Simplified GLSP Backend implementation for MCP framework
 //!
 //! This is a simplified version to get the basic structure working first.
@@ -216,7 +230,7 @@ impl From<GlspError> for Error {
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let config = GlspConfig::parse();
 ///     let backend = GlspBackend::initialize(config).await?;
-///     
+///
 ///     // Backend is now ready for MCP operations
 ///     Ok(())
 /// }

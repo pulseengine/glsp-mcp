@@ -1,15 +1,15 @@
 /// Standardized Control Component World
-/// All control components (vehicle-control, planning-decision) use this world  
+/// All control components (vehicle-control, planning-decision) use this world
 world control-component {
     /// Import orchestration for FEO compliance and resource management
     import adas:orchestration/execution-control;
     import adas:orchestration/resource-management;
     import adas:orchestration/data-flow;
-    
+
     /// Import perception and prediction data
     import adas:data/perception-data;
     import adas:data/prediction-data;
-    
+
     /// Export standardized control interfaces
     export adas:control/vehicle-control;
     export adas:data/planning-data;

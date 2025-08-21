@@ -12,7 +12,7 @@ bazel_dep(name = "rules_wasm_component", version = "0.1.0")
 # Add platforms dependency for constraint definitions
 bazel_dep(name = "platforms", version = "0.0.11")
 
-# Add bazel_skylib dependency  
+# Add bazel_skylib dependency
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 
 # Add rules_rust with WASI P2 support
@@ -52,7 +52,7 @@ rust.toolchain(
     versions = ["1.82.0"],
     extra_target_triples = [
         "wasm32-wasip2",
-        "wasm32-wasip1", 
+        "wasm32-wasip1",
         "wasm32-unknown-unknown",
     ],
 )

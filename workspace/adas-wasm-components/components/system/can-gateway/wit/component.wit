@@ -5,12 +5,12 @@ world system-component {
     /// System control and resource management
     import adas:orchestration/execution-control;
     import adas:orchestration/resource-management;
-    
+
     /// Import all data types for monitoring
     import adas:data/sensor-data;
     import adas:data/perception-data;
     import adas:data/planning-data;
-    
+
     /// Export diagnostics and monitoring
     export adas:diagnostics/health-monitoring;
     export adas:diagnostics/performance-monitoring;

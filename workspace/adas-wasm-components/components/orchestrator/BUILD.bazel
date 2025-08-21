@@ -11,7 +11,7 @@ wit_library(
     srcs = ["wit/world.wit"],
     deps = [
         "//:adas_common_types",
-        "//:adas_control", 
+        "//:adas_control",
         "//:adas_data",
         "//:adas_diagnostics",
         "//:adas_orchestration",
@@ -40,7 +40,7 @@ rust_wasm_component_test(
 
 # For compatibility with existing system
 alias(
-    name = "adas_orchestrator", 
+    name = "adas_orchestrator",
     actual = ":adas_orchestrator_ecu_release",
     visibility = ["//visibility:public"],
 )# Orchestrator components group

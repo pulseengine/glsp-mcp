@@ -9,41 +9,41 @@ world adas-working-system {
     import wasi:clocks/monotonic-clock@0.2.0;
     import wasi:random/random@0.2.0;
     import wasi:io/streams@0.2.0;
-    
+
     // === ADAS INTERFACE IMPORTS ===
     // Import standardized ADAS interfaces
     import adas:common-types/types;
     import adas:orchestration/execution-control;
     import adas:orchestration/data-flow;
     import adas:orchestration/resource-management;
-    
+
     // === SYSTEM EXPORTS ===
     // Export the working system interface
     export adas:system/working-system-interface;
-    
+
     // === CONTROL EXPORTS ===
     // Export unified control interfaces
     export adas:control/system-control;
     export adas:control/vehicle-control;
-    
+
     // === DATA EXPORTS ===
     // Export consolidated data interfaces
     export adas:data/sensor-data;
     export adas:data/perception-data;
     export adas:data/planning-data;
-    
+
     // === DIAGNOSTICS EXPORTS ===
     // Export comprehensive diagnostics
     export adas:diagnostics/health-monitoring;
     export adas:diagnostics/performance-monitoring;
-    
+
     // === SPECIALIZED EXPORTS ===
     // Export AI capabilities
     export adas:ai/behavior-prediction;
-    
+
     // Export safety monitoring
     export adas:safety/safety-monitoring;
-    
+
     // Export communication interfaces
     export adas:communication/can-gateway;
 }
@@ -51,24 +51,24 @@ world adas-working-system {
 /// Working system interface
 interface working-system-interface {
     use adas:common-types/types.{system-state, execution-phase, component-status};
-    
+
     /// System lifecycle management
-    
+
     /// Initialize the working ADAS system
     init-working-system: func(config: working-system-config) -> result<_, initialization-error>;
-    
+
     /// Start the working system execution
     start-working-system: func() -> result<_, execution-error>;
-    
+
     /// Stop the working system
     stop-working-system: func() -> result<_, execution-error>;
-    
+
     /// Get current system state
     get-working-system-state: func() -> system-state;
-    
+
     /// Execute one simplified FEO cycle
     execute-working-cycle: func() -> result<working-cycle-result, execution-error>;
-    
+
     /// Working system configuration
     record working-system-config {
         /// Enable/disable available subsystems
@@ -77,43 +77,43 @@ interface working-system-interface {
         enable-control: bool,
         enable-safety: bool,
         enable-communication: bool,
-        
+
         /// Simplified FEO timing configuration
         cycle-time-ms: u32,
         safety-margin-ms: u32,
-        
+
         /// Resource allocation
         max-memory-mb: u32,
         max-cpu-cores: u32,
-        
+
         /// AI configuration
         behavior-prediction-enabled: bool,
-        
+
         /// Safety parameters
         safety-level: safety-level,
         emergency-response-enabled: bool,
     }
-    
+
     /// Working cycle result
     record working-cycle-result {
         /// Cycle identification
         cycle-id: u64,
         timestamp: u64,
-        
+
         /// Timing information
         execution-time-ms: u32,
         target-time-ms: u32,
-        
+
         /// Component execution status
         component-executions: list<working-component-execution>,
-        
+
         /// Simplified performance metrics
         performance-metrics: working-performance-metrics,
-        
+
         /// Safety status
         safety-status: working-safety-status,
     }
-    
+
     /// Working component execution
     record working-component-execution {
         component-name: string,
@@ -122,23 +122,23 @@ interface working-system-interface {
         execution-time-ms: u32,
         memory-usage-mb: u32,
     }
-    
+
     /// Working performance metrics
     record working-performance-metrics {
         /// System-level metrics
         system-cpu-percent: f32,
         system-memory-mb: u32,
-        
+
         /// Component metrics
         sensor-fps: f32,
         ai-processing-fps: f32,
         control-update-rate: f32,
-        
+
         /// Quality metrics
         prediction-confidence: f32,
         control-precision: f32,
     }
-    
+
     /// Working safety status
     record working-safety-status {
         overall-safety-level: safety-level,
@@ -146,7 +146,7 @@ interface working-system-interface {
         emergency-status: emergency-status,
         active-faults: u32,
     }
-    
+
     /// Safety levels
     enum safety-level {
         critical,
@@ -154,7 +154,7 @@ interface working-system-interface {
         nominal,
         optimal,
     }
-    
+
     /// Emergency status
     enum emergency-status {
         normal,
@@ -162,7 +162,7 @@ interface working-system-interface {
         emergency,
         failsafe,
     }
-    
+
     /// Initialization errors
     variant initialization-error {
         component-failure(string),
@@ -170,7 +170,7 @@ interface working-system-interface {
         interface-binding-failure(string),
         configuration-error(string),
     }
-    
+
     /// Execution errors
     variant execution-error {
         component-timeout(string),
@@ -184,20 +184,20 @@ interface working-system-interface {
 /// AI behavior prediction interface
 interface behavior-prediction {
     use adas:common-types/types.{trajectory, prediction-result};
-    
+
     /// Predict behavior from trajectory
     predict-behavior: func(trajectory: trajectory) -> result<prediction-result, prediction-error>;
-    
+
     /// Get prediction statistics
     get-prediction-stats: func() -> prediction-statistics;
-    
+
     /// Prediction statistics
     record prediction-statistics {
         predictions-made: u32,
         prediction-confidence: f32,
         processing-time-ms: u32,
     }
-    
+
     variant prediction-error {
         invalid-trajectory,
         model-not-loaded,
@@ -208,23 +208,23 @@ interface behavior-prediction {
 /// Safety monitoring interface
 interface safety-monitoring {
     use adas:common-types/types.{safety-status, fault-info};
-    
+
     /// Get current safety status
     get-safety-status: func() -> safety-status;
-    
+
     /// Report fault to safety monitor
     report-fault: func(fault: fault-info) -> result<_, safety-error>;
-    
+
     /// Get safety statistics
     get-safety-stats: func() -> safety-statistics;
-    
+
     /// Safety statistics
     record safety-statistics {
         safety-checks-performed: u32,
         faults-detected: u32,
         system-uptime-ms: u64,
     }
-    
+
     variant safety-error {
         safety-violation,
         emergency-active,
@@ -235,13 +235,13 @@ interface safety-monitoring {
 /// CAN gateway interface
 interface can-gateway {
     use adas:common-types/types.{can-message, can-status};
-    
+
     /// Send CAN message
     send-message: func(message: can-message) -> result<_, can-error>;
-    
+
     /// Get CAN status
     get-can-status: func() -> can-status;
-    
+
     variant can-error {
         bus-error,
         message-error,

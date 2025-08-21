@@ -6,65 +6,65 @@ package adas:complete-system@0.1.0;
 world adas-complete-system {
     // === EXTERNAL WASI IMPORTS ===
     // Required WASI interfaces for the complete system
-    
+
     // Clock and timing for FEO execution
     import wasi:clocks/wall-clock@0.2.0;
     import wasi:clocks/monotonic-clock@0.2.0;
-    
+
     // Random number generation for AI components
     import wasi:random/random@0.2.0;
-    
+
     // WASI-NN for AI inference (object detection, behavior prediction)
     import wasi:nn/graph@0.2.0-rc-2024-10-28;
     import wasi:nn/tensor@0.2.0-rc-2024-10-28;
     import wasi:nn/inference@0.2.0-rc-2024-10-28;
     import wasi:nn/errors@0.2.0-rc-2024-10-28;
-    
+
     // I/O for data handling
     import wasi:io/streams@0.2.0;
-    
+
     // === ADAS INTERFACE IMPORTS ===
     // Import all standardized ADAS interfaces
     import adas:common-types/types;
     import adas:orchestration/execution-control;
     import adas:orchestration/data-flow;
     import adas:orchestration/resource-management;
-    
+
     // === SYSTEM EXPORTS ===
     // Export the main complete system interface
     export adas:system/complete-system-interface;
-    
+
     // === CONTROL EXPORTS ===
     // Export unified control interfaces
     export adas:control/system-control;
     export adas:control/vehicle-control;
     export adas:control/ai-control;
-    
+
     // === DATA EXPORTS ===
     // Export consolidated data interfaces
     export adas:data/sensor-data;
     export adas:data/perception-data;
     export adas:data/prediction-data;
     export adas:data/planning-data;
-    
+
     // === DIAGNOSTICS EXPORTS ===
     // Export comprehensive diagnostics
     export adas:diagnostics/health-monitoring;
     export adas:diagnostics/performance-monitoring;
     export adas:diagnostics/fault-detection;
-    
+
     // === SPECIALIZED EXPORTS ===
     // Export video processing for demonstration
     export adas:video/video-processing;
-    
+
     // Export AI capabilities
     export adas:ai/object-detection;
     export adas:ai/behavior-prediction;
-    
+
     // Export safety monitoring
     export adas:safety/safety-monitoring;
     export adas:safety/emergency-response;
-    
+
     // Export communication interfaces
     export adas:communication/can-gateway;
     export adas:communication/hmi-interface;
@@ -73,28 +73,28 @@ world adas-complete-system {
 /// Main complete system interface
 interface complete-system-interface {
     use adas:common-types/types.{system-state, execution-phase, component-status};
-    
+
     /// System lifecycle management
-    
+
     /// Initialize the complete ADAS system
     /// Sets up all components and their connections
     init-system: func(config: system-config) -> result<_, initialization-error>;
-    
+
     /// Start the complete system execution
     /// Begins Fixed Execution Order (FEO) pipeline
     start-system: func() -> result<_, execution-error>;
-    
+
     /// Stop the complete system
     /// Gracefully shuts down all components
     stop-system: func() -> result<_, execution-error>;
-    
+
     /// Get current system state
     get-system-state: func() -> system-state;
-    
+
     /// Execute one FEO cycle
     /// Runs all components in fixed execution order
     execute-cycle: func() -> result<cycle-result, execution-error>;
-    
+
     /// System configuration
     record system-config {
         /// Enable/disable specific subsystems
@@ -103,42 +103,42 @@ interface complete-system-interface {
         enable-fusion: bool,
         enable-control: bool,
         enable-safety: bool,
-        
+
         /// FEO timing configuration
         cycle-time-ms: u32,
         safety-margin-ms: u32,
-        
+
         /// Resource allocation
         max-memory-mb: u32,
         max-cpu-cores: u32,
-        
+
         /// AI model configuration
         object-detection-model: string,
         behavior-prediction-model: string,
-        
+
         /// Safety parameters
         safety-level: safety-level,
         emergency-response-enabled: bool,
     }
-    
+
     /// Execution cycle result
     record cycle-result {
         /// Cycle execution time
         execution-time-ms: u32,
-        
+
         /// Component execution status
         component-status: list<component-execution-status>,
-        
+
         /// Data flow statistics
         data-flow-stats: data-flow-statistics,
-        
+
         /// Performance metrics
         performance-metrics: performance-metrics,
-        
+
         /// Safety status
         safety-status: safety-status,
     }
-    
+
     /// Component execution status
     record component-execution-status {
         component-name: string,
@@ -148,42 +148,42 @@ interface complete-system-interface {
         memory-usage-mb: u32,
         cpu-utilization-percent: f32,
     }
-    
+
     /// Data flow statistics
     record data-flow-statistics {
         /// Messages processed per second
         messages-per-second: u32,
-        
+
         /// Data throughput in MB/s
         data-throughput-mbps: f32,
-        
+
         /// Queue depths
         sensor-queue-depth: u32,
         ai-queue-depth: u32,
         control-queue-depth: u32,
-        
+
         /// Processing latency
         end-to-end-latency-ms: u32,
     }
-    
+
     /// Performance metrics
     record performance-metrics {
         /// Overall system performance
         system-cpu-percent: f32,
         system-memory-mb: u32,
         system-throughput-fps: f32,
-        
+
         /// Component-specific metrics
         sensor-fusion-fps: f32,
         ai-inference-fps: f32,
         control-update-rate: f32,
-        
+
         /// Quality metrics
         detection-accuracy: f32,
         prediction-confidence: f32,
         control-precision: f32,
     }
-    
+
     /// Safety status
     record safety-status {
         overall-safety-level: safety-level,
@@ -192,7 +192,7 @@ interface complete-system-interface {
         fault-count: u32,
         last-fault-time: option<u64>,
     }
-    
+
     /// Safety levels
     enum safety-level {
         critical,
@@ -200,7 +200,7 @@ interface complete-system-interface {
         nominal,
         optimal,
     }
-    
+
     /// Watchdog status
     enum watchdog-status {
         active,
@@ -208,7 +208,7 @@ interface complete-system-interface {
         triggered,
         reset,
     }
-    
+
     /// Emergency response status
     enum emergency-status {
         normal,
@@ -216,7 +216,7 @@ interface complete-system-interface {
         emergency,
         failsafe,
     }
-    
+
     /// System errors
     variant initialization-error {
         component-failure(string),
@@ -224,7 +224,7 @@ interface complete-system-interface {
         interface-binding-failure(string),
         configuration-error(string),
     }
-    
+
     variant execution-error {
         component-timeout(string),
         resource-exhaustion(string),
@@ -237,13 +237,13 @@ interface complete-system-interface {
 /// Video processing interface for demonstration
 interface video-processing {
     use adas:common-types/types.{video-frame, detection-result};
-    
+
     /// Process video frame through AI pipeline
     process-frame: func(frame: video-frame) -> result<detection-result, processing-error>;
-    
+
     /// Get current video statistics
     get-video-stats: func() -> video-statistics;
-    
+
     /// Video processing statistics
     record video-statistics {
         frames-processed: u32,
@@ -251,7 +251,7 @@ interface video-processing {
         objects-detected: u32,
         processing-time-ms: u32,
     }
-    
+
     variant processing-error {
         invalid-frame,
         ai-inference-failed,
@@ -262,13 +262,13 @@ interface video-processing {
 /// AI capabilities interface
 interface object-detection {
     use adas:common-types/types.{sensor-data, detection-result};
-    
+
     /// Detect objects in sensor data
     detect-objects: func(data: sensor-data) -> result<detection-result, detection-error>;
-    
+
     /// Get detection statistics
     get-detection-stats: func() -> detection-statistics;
-    
+
     /// Detection statistics
     record detection-statistics {
         objects-detected: u32,
@@ -276,7 +276,7 @@ interface object-detection {
         inference-time-ms: u32,
         model-accuracy: f32,
     }
-    
+
     variant detection-error {
         invalid-input,
         model-not-loaded,
@@ -287,13 +287,13 @@ interface object-detection {
 /// Behavior prediction interface
 interface behavior-prediction {
     use adas:common-types/types.{trajectory, prediction-result};
-    
+
     /// Predict behavior from trajectory
     predict-behavior: func(trajectory: trajectory) -> result<prediction-result, prediction-error>;
-    
+
     /// Get prediction statistics
     get-prediction-stats: func() -> prediction-statistics;
-    
+
     /// Prediction statistics
     record prediction-statistics {
         predictions-made: u32,
@@ -301,7 +301,7 @@ interface behavior-prediction {
         prediction-accuracy: f32,
         processing-time-ms: u32,
     }
-    
+
     variant prediction-error {
         invalid-trajectory,
         model-not-loaded,
@@ -312,19 +312,19 @@ interface behavior-prediction {
 /// Safety monitoring interface
 interface safety-monitoring {
     use adas:common-types/types.{safety-status, fault-info};
-    
+
     /// Get current safety status
     get-safety-status: func() -> safety-status;
-    
+
     /// Report fault to safety monitor
     report-fault: func(fault: fault-info) -> result<_, safety-error>;
-    
+
     /// Trigger emergency response
     trigger-emergency: func(reason: string) -> result<_, safety-error>;
-    
+
     /// Get safety statistics
     get-safety-stats: func() -> safety-statistics;
-    
+
     /// Safety statistics
     record safety-statistics {
         safety-checks-performed: u32,
@@ -332,7 +332,7 @@ interface safety-monitoring {
         emergency-responses: u32,
         system-uptime-ms: u64,
     }
-    
+
     variant safety-error {
         safety-violation,
         emergency-active,
@@ -343,13 +343,13 @@ interface safety-monitoring {
 /// Emergency response interface
 interface emergency-response {
     use adas:common-types/types.{emergency-action, response-result};
-    
+
     /// Execute emergency response
     execute-response: func(action: emergency-action) -> result<response-result, response-error>;
-    
+
     /// Get emergency response capabilities
     get-response-capabilities: func() -> list<emergency-action>;
-    
+
     variant response-error {
         action-not-supported,
         system-unavailable,
@@ -360,16 +360,16 @@ interface emergency-response {
 /// CAN gateway interface
 interface can-gateway {
     use adas:common-types/types.{can-message, can-status};
-    
+
     /// Send CAN message
     send-message: func(message: can-message) -> result<_, can-error>;
-    
+
     /// Receive CAN message
     receive-message: func() -> result<can-message, can-error>;
-    
+
     /// Get CAN status
     get-can-status: func() -> can-status;
-    
+
     variant can-error {
         bus-error,
         message-error,
@@ -380,13 +380,13 @@ interface can-gateway {
 /// HMI interface
 interface hmi-interface {
     use adas:common-types/types.{hmi-display-data, hmi-input};
-    
+
     /// Update HMI display
     update-display: func(data: hmi-display-data) -> result<_, hmi-error>;
-    
+
     /// Get user input
     get-input: func() -> result<hmi-input, hmi-error>;
-    
+
     variant hmi-error {
         display-error,
         input-error,
