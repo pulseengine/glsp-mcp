@@ -1153,6 +1153,57 @@ impl GlspBackend {
                     "required": ["workspace_path"]
                 }),
             },
+            // UML diagram tools
+            Tool {
+                name: "add_uml_class".to_string(),
+                description: "Add a UML class node to a UML diagram".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "diagramId": { "type": "string", "description": "ID of the UML diagram" },
+                        "name": { "type": "string", "description": "Class name" },
+                        "attributes": { "type": "array", "items": { "type": "string" }, "description": "Class attributes" },
+                        "methods": { "type": "array", "items": { "type": "string" }, "description": "Class methods" },
+                        "position": {
+                            "type": "object",
+                            "properties": {
+                                "x": { "type": "number" },
+                                "y": { "type": "number" }
+                            },
+                            "required": ["x", "y"],
+                            "description": "Position of the class node"
+                        }
+                    },
+                    "required": ["diagramId", "name"]
+                }),
+            },
+            Tool {
+                name: "remove_uml_class".to_string(),
+                description: "Remove a UML class node from a diagram".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "diagramId": { "type": "string", "description": "ID of the diagram" },
+                        "classId": { "type": "string", "description": "ID of the class node to remove" }
+                    },
+                    "required": ["diagramId", "classId"]
+                }),
+            },
+            Tool {
+                name: "update_uml_class".to_string(),
+                description: "Update a UML class node's properties in a diagram".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "diagramId": { "type": "string", "description": "ID of the diagram" },
+                        "classId": { "type": "string", "description": "ID of the class node to update" },
+                        "name": { "type": "string", "description": "New class name" },
+                        "attributes": { "type": "array", "items": { "type": "object" }, "description": "Updated attributes" },
+                        "methods": { "type": "array", "items": { "type": "object" }, "description": "Updated methods" }
+                    },
+                    "required": ["diagramId", "classId"]
+                }),
+            },
         ];
 
         Ok(ListToolsResult {
@@ -1202,6 +1253,10 @@ impl GlspBackend {
                 self.create_workspace_structure_tool(request.arguments)
                     .await
             }
+            // UML tools
+            "add_uml_class" => self.add_uml_class(request.arguments).await,
+            "remove_uml_class" => self.remove_uml_class(request.arguments).await,
+            "update_uml_class" => self.update_uml_class(request.arguments).await,
 
             _ => Err(GlspError::NotImplemented(format!(
                 "Tool not implemented: {}",
@@ -2969,6 +3024,149 @@ impl GlspBackend {
             ))],
             is_error: Some(false),
         })
+    }
+
+    async fn add_uml_class(
+        &self,
+        args: Option<serde_json::Value>,
+    ) -> std::result::Result<CallToolResult, GlspError> {
+        use crate::model::{ModelElement, ElementType, Bounds};
+        let args = args.ok_or_else(|| GlspError::ToolExecution("Missing arguments".to_string()))?;
+        let diagram_id = args["diagramId"].as_str().ok_or_else(|| GlspError::ToolExecution("Missing diagramId".to_string()))?;
+        let name = args["name"].as_str().ok_or_else(|| GlspError::ToolExecution("Missing class name".to_string()))?;
+        
+        // Accept attributes/methods as array of objects or strings, convert to array of objects
+        let attributes = args.get("attributes").and_then(|v| v.as_array()).map(|arr| {
+            arr.iter().map(|item| {
+                if let Some(s) = item.as_str() {
+                    serde_json::json!({"name": s, "type": "", "visibility": "public"})
+                } else if let Some(obj) = item.as_object() {
+                    serde_json::Value::Object(obj.clone())
+                } else {
+                    serde_json::json!({"name": "attribute", "type": "", "visibility": "public"})
+                }
+            }).collect::<Vec<_>>()
+        }).unwrap_or_default();
+        
+        let methods = args.get("methods").and_then(|v| v.as_array()).map(|arr| {
+            arr.iter().map(|item| {
+                if let Some(s) = item.as_str() {
+                    serde_json::json!({"name": s, "returnType": "", "visibility": "public"})
+            } else if let Some(obj) = item.as_object() {
+                serde_json::Value::Object(obj.clone())
+            } else {
+                serde_json::json!({"name": "method", "returnType": "", "visibility": "public"})
+            }
+        }).collect::<Vec<_>>()
+    }).unwrap_or_default();
+        
+        let (x, y) = if let Some(pos) = args.get("position") {
+            let x = pos.get("x").and_then(|v| v.as_f64()).unwrap_or(100.0);
+            let y = pos.get("y").and_then(|v| v.as_f64()).unwrap_or(100.0);
+            (x, y)
+        } else {
+            (100.0, 100.0)
+        };
+        
+        let class_id = uuid::Uuid::new_v4().to_string();
+        let mut properties = std::collections::HashMap::new();
+        properties.insert("name".to_string(), serde_json::Value::String(name.to_string()));
+        properties.insert("attributes".to_string(), serde_json::Value::Array(attributes));
+        properties.insert("methods".to_string(), serde_json::Value::Array(methods));
+        
+        let class_node = ModelElement {
+            id: class_id.clone(),
+            element_type: ElementType::Custom("uml_class".to_string()),
+            children: None,
+            bounds: Some(Bounds { x, y, width: 120.0, height: 80.0 }),
+            layout_options: None,
+            properties,
+            label: Some(name.to_string()),
+            source_id: None,
+            target_id: None,
+            route: None,
+            visible: true,
+            z_index: Some(1),
+            style: std::collections::HashMap::new(),
+        };
+        
+        let mut models = self.models.lock().await;
+        let diagram = models.get_mut(diagram_id).ok_or_else(|| GlspError::ToolExecution("Diagram not found".to_string()))?;
+        diagram.elements.insert(class_id.clone(), class_node);
+        if let Some(root) = diagram.elements.get_mut(&diagram.root.id) {
+            if let Some(children) = &mut root.children {
+                children.push(class_id.clone());
+            }
+        }
+        
+        Ok(CallToolResult {
+            content: vec![Content::text(format!("Added UML class '{}' with ID: {}", name, class_id))],
+            is_error: Some(false),
+        })
+    }
+
+    async fn remove_uml_class(
+        &self,
+        args: Option<serde_json::Value>,
+    ) -> std::result::Result<CallToolResult, GlspError> {
+        let args = args.ok_or_else(|| GlspError::ToolExecution("Missing arguments".to_string()))?;
+        let diagram_id = args["diagramId"].as_str().ok_or_else(|| GlspError::ToolExecution("Missing diagramId".to_string()))?;
+        let class_id = args["classId"].as_str().ok_or_else(|| GlspError::ToolExecution("Missing classId".to_string()))?;
+        
+        let mut models = self.models.lock().await;
+        let diagram = models.get_mut(diagram_id).ok_or_else(|| GlspError::ToolExecution("Diagram not found".to_string()))?;
+        
+        if diagram.elements.remove(class_id).is_some() {
+            // Remove from root's children
+            if let Some(root) = diagram.elements.get_mut(&diagram.root.id) {
+                if let Some(children) = &mut root.children {
+                    children.retain(|id| id != class_id);
+                }
+            }
+            Ok(CallToolResult {
+                content: vec![Content::text(format!("Removed UML class node with ID: {}", class_id))],
+                is_error: Some(false),
+            })
+        } else {
+            Ok(CallToolResult {
+                content: vec![Content::text(format!("Class node with ID: {} not found", class_id))],
+                is_error: Some(true),
+            })
+        }
+    }
+
+    async fn update_uml_class(
+        &self,
+        args: Option<serde_json::Value>,
+    ) -> std::result::Result<CallToolResult, GlspError> {
+        let args = args.ok_or_else(|| GlspError::ToolExecution("Missing arguments".to_string()))?;
+        let diagram_id = args["diagramId"].as_str().ok_or_else(|| GlspError::ToolExecution("Missing diagramId".to_string()))?;
+        let class_id = args["classId"].as_str().ok_or_else(|| GlspError::ToolExecution("Missing classId".to_string()))?;
+        
+        let mut models = self.models.lock().await;
+        let diagram = models.get_mut(diagram_id).ok_or_else(|| GlspError::ToolExecution("Diagram not found".to_string()))?;
+        
+        if let Some(class_node) = diagram.elements.get_mut(class_id) {
+            if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
+                class_node.label = Some(name.to_string());
+                class_node.properties.insert("name".to_string(), serde_json::Value::String(name.to_string()));
+            }
+            if let Some(attributes) = args.get("attributes").and_then(|v| v.as_array()) {
+                class_node.properties.insert("attributes".to_string(), serde_json::Value::Array(attributes.clone()));
+            }
+            if let Some(methods) = args.get("methods").and_then(|v| v.as_array()) {
+                class_node.properties.insert("methods".to_string(), serde_json::Value::Array(methods.clone()));
+            }
+            Ok(CallToolResult {
+                content: vec![Content::text(format!("Updated UML class node with ID: {}", class_id))],
+                is_error: Some(false),
+            })
+        } else {
+            Ok(CallToolResult {
+                content: vec![Content::text(format!("Class node with ID: {} not found", class_id))],
+                is_error: Some(true),
+            })
+        }
     }
 }
 

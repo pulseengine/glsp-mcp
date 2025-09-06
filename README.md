@@ -12,17 +12,18 @@
 
 ## 📊 Current Status
 
-**Functional MVP with Strong Foundation**
+**Functional MVP with UML Diagram Support**
 
 ✅ **Working Components:**
-- Complete MCP server with 7 diagram tools implemented
+- Complete MCP server with 8+ diagram tools implemented
 - TypeScript frontend with Canvas rendering
 - Ollama integration with model auto-detection
-- Basic diagram creation and manipulation
-- Comprehensive documentation and startup instructions
+- UML class diagram creation with attributes, methods, and associations
+- Diagram deletion and management tools
+- Comprehensive error handling and user feedback
 
 ⚠️ **Ready for Use:**
-- Creates sample diagrams with basic node types
+- Creates sample UML diagrams with Person/Car classes and relationships
 - AI generates intelligent diagram planning (text-based)
 - Manual editing supports position updates and basic interactions
 - All three services integrate smoothly
@@ -109,6 +110,20 @@ ollama serve
 
 ## 🎨 Usage Examples
 
+### UML Class Diagram Creation
+The system now supports creating detailed UML class diagrams with:
+- **Class attributes** with types and visibility (public/private)
+- **Class methods** with return types and parameters
+- **Association relationships** between classes
+- **Automatic ID extraction** from server responses
+
+**Example**: Run the tasklist MCP client to create a sample diagram:
+```bash
+cd tasklist_mcp_client
+cargo run --bin tasklist_mcp_client
+```
+This creates a Person-Car relationship diagram with full attributes and methods.
+
 ### Natural Language Diagram Creation
 ```
 "Create a workflow for e-commerce order fulfillment with payment validation, inventory check, and shipping"
@@ -182,13 +197,19 @@ curl -X POST http://127.0.0.1:3000/mcp/rpc \
 - **[API Reference](docs/API_REFERENCE.md)**: Complete MCP protocol documentation
 - **[AI Integration Examples](examples/ai_agent_demo.py)**: Python demonstration scripts
 - **[Development Notes](CLAUDE.md)**: Implementation details and architecture decisions
+- **[Screenshots](docs/pictures/)**: Visual examples including current UML class diagrams
+
+### 📸 Screenshots
+
+- **Class Diagram Example**: `docs/pictures/Class_diagram.png` - Shows a complete UML class diagram with Person and Car classes, their attributes, methods, and association relationships created via MCP tools.
 
 ## 🌐 MCP Protocol Integration
 
 This implementation provides:
 
-### Tools (7 available)
-- `create_diagram`, `create_node`, `create_edge`, `delete_element`
+### Tools (8+ available)
+- `create_diagram`, `delete_diagram`, `create_node`, `create_edge`
+- `add_uml_class`, `remove_uml_class`, `update_uml_class`, `delete_element`
 - `update_element`, `apply_layout`, `export_diagram`
 
 ### Resources (Dynamic)
