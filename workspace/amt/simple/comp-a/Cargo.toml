@@ -1,0 +1,40 @@
+[package]
+name = "component_a"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[workspace]
+
+[lints.clippy]
+cast_lossless = "warn" # Indicates a more idiomatic way to replace the cast
+cast_possible_truncation = "warn"
+cast_possible_wrap = "warn"
+cast_ptr_alignment = "warn"
+cast_sign_loss = "warn" # Should be checked for and properly handled in safety related projects
+exit = "warn" # Calling exit directly is likely wrong in a safety related environment
+infinite_loop = "warn" # Indicates improper return type
+iter_over_hash_type = "warn" # Indicates unpredictable order
+invalid_upcast_comparisons = "warn" # Likely wrong code
+lossy_float_literal = "warn" # Indicates rounding error
+missing_errors_doc = "warn" # Indicates incomplete documentation
+missing_docs_in_private_items = "warn" # Undocumented internal items aren’t an option
+panic_in_result_fn = "warn" # Indicates unexpected behavior
+ptr_cast_constness = "warn"
+ref_as_ptr = "warn"
+transmute_ptr_to_ptr = "warn" # Safer alternative available
+redundant_type_annotations = "warn" # Simpler code, highlights special cases
+shadow_unrelated = "warn" # Unidiomatic and high-risk use of shadowing
+try_err = "warn" # Indicates non-idiomatic way to avoid return
+wildcard_enum_match_arm = "warn" # See section 4.4.21.3, clashes with non-exhaustive
+as_underscore = "warn"
+format_push_string = "warn" # Avoids extra allocation
+
+as_ptr_cast_mut = "warn" # Clear misuse with a better alternative
+let_underscore_must_use = "warn" # Prevents a shortcut to ignore must-use results
+missing_panics_doc = "warn" # Indicates missing panic documentation
+undocumented_unsafe_blocks = "warn" # Indicates missing unsafe reasoning
+wildcard_imports = "warn" # Indicates unconstrained symbol imports
+declare_interior_mutable_const = "warn" # Indicates common mistake

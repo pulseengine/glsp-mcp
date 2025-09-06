@@ -1,0 +1,8 @@
+/*/gen/src/
+/*/gen/cidl/
+/*/target/
+/runtime/runtime
+/temp
+*.a
+*.so
+*.o

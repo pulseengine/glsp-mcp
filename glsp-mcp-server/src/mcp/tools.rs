@@ -86,6 +86,57 @@ impl DiagramTools {
     }
 
     pub fn get_available_tools(&self) -> Vec<Tool> {
+        let mut tools = Vec::new();
+        tools.push(Tool {
+            name: "remove_uml_class".to_string(),
+            description: Some("Remove a UML class node from a diagram".to_string()),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "diagramId": { "type": "string", "description": "ID of the diagram" },
+                    "classId": { "type": "string", "description": "ID of the class node to remove" }
+                },
+                "required": ["diagramId", "classId"]
+            }),
+        });
+        tools.push(Tool {
+            name: "update_uml_class".to_string(),
+            description: Some("Update a UML class node's properties in a diagram".to_string()),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "diagramId": { "type": "string", "description": "ID of the diagram" },
+                    "classId": { "type": "string", "description": "ID of the class node to update" },
+                    "name": { "type": "string", "description": "New class name" },
+                    "attributes": { "type": "array", "items": { "type": "object" }, "description": "Updated attributes" },
+                    "methods": { "type": "array", "items": { "type": "object" }, "description": "Updated methods" }
+                },
+                "required": ["diagramId", "classId"]
+            }),
+        });
+        tools.push(Tool {
+            name: "add_uml_class".to_string(),
+            description: Some("Add a UML class node to a UML diagram".to_string()),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "diagramId": { "type": "string", "description": "ID of the UML diagram" },
+                    "name": { "type": "string", "description": "Class name" },
+                    "attributes": { "type": "array", "items": { "type": "string" }, "description": "Class attributes" },
+                    "methods": { "type": "array", "items": { "type": "string" }, "description": "Class methods" },
+                    "position": {
+                        "type": "object",
+                        "properties": {
+                            "x": { "type": "number" },
+                            "y": { "type": "number" }
+                        },
+                        "required": ["x", "y"],
+                        "description": "Position of the class node"
+                    }
+                },
+                "required": ["diagramId", "name"]
+            }),
+        });
         let mut tools = vec![
             Tool {
                 name: "create_diagram".to_string(),
@@ -103,6 +154,34 @@ impl DiagramTools {
                         }
                     },
                     "required": ["diagramType"]
+                }),
+            },
+            Tool {
+                name: "delete_diagram".to_string(),
+                description: Some("Remove an existing diagram".to_string()),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "diagramId": {
+                            "type": "string",
+                            "description": "ID of the diagram to remove"
+                        }
+                    },
+                    "required": ["diagramId"]
+                }),
+            },
+            Tool {
+                name: "create_uml_diagram".to_string(),
+                description: Some("Create a new UML diagram with a default UML class node".to_string()),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Name for the new UML diagram"
+                        }
+                    },
+                    "required": []
                 }),
             },
             Tool {
@@ -1153,8 +1232,20 @@ impl DiagramTools {
     }
 
     pub async fn call_tool(&mut self, params: CallToolParams) -> Result<CallToolResult> {
+        if params.name == "remove_uml_class" {
+            return self.remove_uml_class(params.arguments).await;
+        }
+        if params.name == "update_uml_class" {
+            return self.update_uml_class(params.arguments).await;
+        }
+        if params.name == "add_uml_class" {
+            return self.add_uml_class(params.arguments).await;
+        }
+
         match params.name.as_str() {
             "create_diagram" => self.create_diagram(params.arguments).await,
+            "delete_diagram" => self.delete_diagram(params.arguments).await,
+            "create_uml_diagram" => self.create_uml_diagram(params.arguments).await,
             "create_node" => self.create_node(params.arguments).await,
             "create_edge" => self.create_edge(params.arguments).await,
             "delete_element" => self.delete_element(params.arguments).await,
@@ -1181,41 +1272,143 @@ impl DiagramTools {
             // "get_execution_result" => self.get_execution_result(params.arguments).await, // Converted to resource
             // "list_wasm_executions" => self.list_wasm_executions().await, // Converted to resource
             "cancel_execution" => self.cancel_execution(params.arguments).await,
-            // Sensor data tools
-            // "query_sensor_data" => self.query_sensor_data(params.arguments).await, // Converted to resource
-            // "list_sensors" => self.list_sensors().await, // Converted to resource
-            // "get_sensor_metadata" => self.get_sensor_metadata(params.arguments).await, // Converted to resource
-            // "get_sensor_statistics" => self.get_sensor_statistics(params.arguments).await, // Converted to resource
-            // "get_sensor_time_range" => self.get_sensor_time_range(params.arguments).await, // Converted to resource
-            // "list_sensor_datasets" => self.list_sensor_datasets(params.arguments).await, // Converted to resource
-            // "get_dataset_info" => self.get_dataset_info(params.arguments).await, // Converted to resource
-            "set_active_dataset" => self.set_active_dataset(params.arguments).await, // This modifies state, keep as tool
-            // "visualize_sensor_data" => self.visualize_sensor_data(params.arguments).await, // Converted to resource
-            // "detect_sensor_gaps" => self.detect_sensor_gaps(params.arguments).await, // Converted to resource
-            // Component upload tools
-            "upload_wasm_component" => self.upload_wasm_component(params.arguments).await,
-            "validate_wasm_component" => self.validate_wasm_component(params.arguments).await,
-            // "list_uploaded_components" => self.list_uploaded_components(params.arguments).await, // Converted to resource
-            "delete_uploaded_component" => self.delete_uploaded_component(params.arguments).await,
-            // Component group tools
-            "create_component_group" => self.create_component_group(params.arguments).await,
-            "update_component_group" => self.update_component_group(params.arguments).await,
-            "get_component_group_interfaces" => {
-                self.get_component_group_interfaces(params.arguments).await
+            _ => Err(anyhow::anyhow!(format!("Unknown tool: {}", params.name)))
+        }
+    }
+
+    pub async fn remove_uml_class(&mut self, args: Option<Value>) -> Result<CallToolResult> {
+        let args = args.ok_or_else(|| anyhow::anyhow!("Missing arguments"))?;
+        let diagram_id = args["diagramId"].as_str().ok_or_else(|| anyhow::anyhow!("Missing diagramId"))?;
+        let class_id = args["classId"].as_str().ok_or_else(|| anyhow::anyhow!("Missing classId"))?;
+        let diagram = self.models.get_mut(diagram_id).ok_or_else(|| anyhow::anyhow!("Diagram not found"))?;
+        if diagram.elements.remove(class_id).is_some() {
+            // Remove from root's children
+            if let Some(root) = diagram.elements.get_mut(&diagram.root.id) {
+                if let Some(children) = &mut root.children {
+                    children.retain(|id| id != class_id);
+                }
             }
-            "delete_component_group" => self.delete_component_group(params.arguments).await,
-            "generate_bazel_composition" => self.generate_bazel_composition(params.arguments).await,
-            "validate_component_group" => self.validate_component_group(params.arguments).await,
-            "list_component_groups" => self.list_component_groups(params.arguments).await,
-            "deploy_component_group" => self.deploy_component_group(params.arguments).await,
-            _ => Ok(CallToolResult {
+            Ok(CallToolResult {
                 content: vec![TextContent {
                     content_type: "text".to_string(),
-                    text: format!("Unknown tool: {}", params.name),
+                    text: format!("Removed UML class node with ID: {}", class_id),
+                }],
+                is_error: None,
+            })
+        } else {
+            Ok(CallToolResult {
+                content: vec![TextContent {
+                    content_type: "text".to_string(),
+                    text: format!("Class node with ID: {} not found", class_id),
                 }],
                 is_error: Some(true),
-            }),
+            })
         }
+    }
+
+    pub async fn update_uml_class(&mut self, args: Option<Value>) -> Result<CallToolResult> {
+        let args = args.ok_or_else(|| anyhow::anyhow!("Missing arguments"))?;
+        let diagram_id = args["diagramId"].as_str().ok_or_else(|| anyhow::anyhow!("Missing diagramId"))?;
+        let class_id = args["classId"].as_str().ok_or_else(|| anyhow::anyhow!("Missing classId"))?;
+        let diagram = self.models.get_mut(diagram_id).ok_or_else(|| anyhow::anyhow!("Diagram not found"))?;
+        if let Some(class_node) = diagram.elements.get_mut(class_id) {
+            if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
+                class_node.label = Some(name.to_string());
+                class_node.properties.insert("name".to_string(), serde_json::Value::String(name.to_string()));
+            }
+            if let Some(attributes) = args.get("attributes").and_then(|v| v.as_array()) {
+                class_node.properties.insert("attributes".to_string(), serde_json::Value::Array(attributes.clone()));
+            }
+            if let Some(methods) = args.get("methods").and_then(|v| v.as_array()) {
+                class_node.properties.insert("methods".to_string(), serde_json::Value::Array(methods.clone()));
+            }
+            Ok(CallToolResult {
+                content: vec![TextContent {
+                    content_type: "text".to_string(),
+                    text: format!("Updated UML class node with ID: {}", class_id),
+                }],
+                is_error: None,
+            })
+        } else {
+            Ok(CallToolResult {
+                content: vec![TextContent {
+                    content_type: "text".to_string(),
+                    text: format!("Class node with ID: {} not found", class_id),
+                }],
+                is_error: Some(true),
+            })
+        }
+    }
+
+    pub async fn add_uml_class(&mut self, args: Option<Value>) -> Result<CallToolResult> {
+        use crate::model::{ModelElement, ElementType, Bounds};
+        let args = args.ok_or_else(|| anyhow::anyhow!("Missing arguments"))?;
+        let diagram_id = args["diagramId"].as_str().ok_or_else(|| anyhow::anyhow!("Missing diagramId"))?;
+        let name = args["name"].as_str().ok_or_else(|| anyhow::anyhow!("Missing class name"))?;
+        // Accept attributes/methods as array of objects or strings, convert to array of objects
+        let attributes = args.get("attributes").and_then(|v| v.as_array()).map(|arr| {
+            arr.iter().map(|item| {
+                if let Some(s) = item.as_str() {
+                    serde_json::json!({"name": s, "type": "", "visibility": "public"})
+                } else if let Some(obj) = item.as_object() {
+                    serde_json::Value::Object(obj.clone())
+                } else {
+                    serde_json::json!({"name": "attribute", "type": "", "visibility": "public"})
+                }
+            }).collect::<Vec<_>>()
+        }).unwrap_or_default();
+        let methods = args.get("methods").and_then(|v| v.as_array()).map(|arr| {
+            arr.iter().map(|item| {
+                if let Some(s) = item.as_str() {
+                    serde_json::json!({"name": s, "returnType": "", "visibility": "public"})
+                } else if let Some(obj) = item.as_object() {
+                    serde_json::Value::Object(obj.clone())
+                } else {
+                    serde_json::json!({"name": "method", "returnType": "", "visibility": "public"})
+                }
+            }).collect::<Vec<_>>()
+        }).unwrap_or_default();
+        let (x, y) = if let Some(pos) = args.get("position") {
+            let x = pos.get("x").and_then(|v| v.as_f64()).unwrap_or(100.0);
+            let y = pos.get("y").and_then(|v| v.as_f64()).unwrap_or(100.0);
+            (x, y)
+        } else {
+            (100.0, 100.0)
+        };
+        let class_id = uuid::Uuid::new_v4().to_string();
+        let mut properties = std::collections::HashMap::new();
+        properties.insert("name".to_string(), serde_json::Value::String(name.to_string()));
+        properties.insert("attributes".to_string(), serde_json::Value::Array(attributes));
+        properties.insert("methods".to_string(), serde_json::Value::Array(methods));
+        let class_node = ModelElement {
+            id: class_id.clone(),
+            element_type: ElementType::Custom("uml_class".to_string()),
+            children: None,
+            bounds: Some(Bounds { x, y, width: 120.0, height: 80.0 }),
+            layout_options: None,
+            properties,
+            label: Some(name.to_string()),
+            source_id: None,
+            target_id: None,
+            route: None,
+            visible: true,
+            z_index: Some(1),
+            style: std::collections::HashMap::new(),
+        };
+        let diagram = self.models.get_mut(diagram_id).ok_or_else(|| anyhow::anyhow!("Diagram not found"))?;
+        diagram.elements.insert(class_id.clone(), class_node);
+        if let Some(root) = diagram.elements.get_mut(&diagram.root.id) {
+            if let Some(children) = &mut root.children {
+                children.push(class_id.clone());
+            }
+        }
+        Ok(CallToolResult {
+            content: vec![TextContent {
+                content_type: "text".to_string(),
+                text: format!("Added UML class '{}' with ID: {}", name, class_id),
+            }],
+            is_error: None,
+        })
     }
 
     async fn create_diagram(&mut self, args: Option<Value>) -> Result<CallToolResult> {
@@ -1224,7 +1417,10 @@ impl DiagramTools {
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("Missing diagramType"))?;
 
-        let diagram = DiagramModel::new(diagram_type);
+        let mut diagram = DiagramModel::new(diagram_type);
+        if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
+            diagram.name = name.to_string();
+        }
         let diagram_id = diagram.id.clone();
         self.models.insert(diagram_id.clone(), diagram);
 
@@ -1232,6 +1428,72 @@ impl DiagramTools {
             content: vec![TextContent {
                 content_type: "text".to_string(),
                 text: format!("Created diagram '{diagram_type}' with ID: {diagram_id}"),
+            }],
+            is_error: None,
+        })
+    }
+
+    async fn delete_diagram(&mut self, args: Option<Value>) -> Result<CallToolResult> {
+        let args = args.ok_or_else(|| anyhow::anyhow!("Missing arguments"))?;
+        let diagram_id = args["diagramId"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("Missing diagramId"))?;
+
+        if self.models.remove(diagram_id).is_some() {
+            Ok(CallToolResult {
+                content: vec![TextContent {
+                    content_type: "text".to_string(),
+                    text: format!("Removed diagram with ID: {diagram_id}"),
+                }],
+                is_error: None,
+            })
+        } else {
+            Ok(CallToolResult {
+                content: vec![TextContent {
+                    content_type: "text".to_string(),
+                    text: format!("Diagram with ID: {diagram_id} not found"),
+                }],
+                is_error: Some(true),
+            })
+        }
+    }
+
+    async fn create_uml_diagram(&mut self, args: Option<Value>) -> Result<CallToolResult> {
+        use crate::model::{ModelElement, ElementType, Position};
+        let mut diagram = DiagramModel::new("uml");
+        if let Some(name) = args.as_ref().and_then(|v| v.get("name")).and_then(|v| v.as_str()) {
+            diagram.name = name.to_string();
+        }
+        // Add a default UML class node
+        let class_id = uuid::Uuid::new_v4().to_string();
+        let class_node = ModelElement {
+            id: class_id.clone(),
+            element_type: ElementType::Custom("uml_class".to_string()),
+            children: None,
+            bounds: Some(crate::model::Bounds { x: 100.0, y: 100.0, width: 120.0, height: 80.0 }),
+            layout_options: None,
+            properties: [ ("name".to_string(), serde_json::Value::String("Class1".to_string())) ].iter().cloned().collect(),
+            label: Some("Class1".to_string()),
+            source_id: None,
+            target_id: None,
+            route: None,
+            visible: true,
+            z_index: Some(1),
+            style: std::collections::HashMap::new(),
+        };
+        diagram.elements.insert(class_id.clone(), class_node);
+        // Add to root's children
+        if let Some(root) = diagram.elements.get_mut(&diagram.root.id) {
+            if let Some(children) = &mut root.children {
+                children.push(class_id);
+            }
+        }
+        let diagram_id = diagram.id.clone();
+        self.models.insert(diagram_id.clone(), diagram);
+        Ok(CallToolResult {
+            content: vec![TextContent {
+                content_type: "text".to_string(),
+                text: format!("Created UML diagram with ID: {diagram_id} and default class node."),
             }],
             is_error: None,
         })

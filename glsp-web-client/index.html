@@ -1,317 +1,317 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WASM Component Designer</title>
-    
-    <!-- Favicons -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="alternate icon" href="/favicon.ico" type="image/x-icon">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
-    <meta name="theme-color" content="#0A0E1A">
-    
-    <!-- Fallback inline favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230A0E1A'/><path d='M 6 10 L 10 22 L 12 22 L 16 14 L 20 22 L 22 22 L 26 10 L 23 10 L 21 18 L 17 10 L 15 10 L 11 18 L 9 10 Z' fill='%23654FF0'/></svg>">
-    <link rel="stylesheet" href="src/styles/wasm-palette.css">
-    <link rel="stylesheet" href="src/ui/WorkspaceSelector.css">
-    <style>
-        :root {
-            --bg-primary: #0A0E1A;
-            --bg-secondary: #151B2C;
-            --bg-tertiary: #1C2333;
-            --bg-canvas: #0D1117;
-            --text-primary: #E6EDF3;
-            --text-secondary: #7D8590;
-            --text-dim: #484F58;
-            --border: #30363D;
-            --border-bright: #3D444D;
-            --accent-wasm: #654FF0;
-            --accent-success: #3FB950;
-            --accent-warning: #F0B72F;
-            --accent-error: #F85149;
-            --accent-info: #58A6FF;
-            --gradient-wasm: linear-gradient(135deg, #654FF0, #8B5CF6);
-            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-            --radius-sm: 6px;
-            --radius-md: 10px;
-            --radius-lg: 16px;
-            --font-mono: 'SF Mono', 'Consolas', 'Monaco', monospace;
-        }
+	<html lang="en">
+	<head>
+	    <meta charset="UTF-8">
+	    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	    <title>WASM Component Designer</title>
+	    
+	    <!-- Favicons -->
+	    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+	    <link rel="alternate icon" href="/favicon.ico" type="image/x-icon">
+	    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	    <link rel="manifest" href="/site.webmanifest">
+	    <meta name="theme-color" content="#0A0E1A">
+	    
+	    <!-- Fallback inline favicon -->
+	    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230A0E1A'/><path d='M 6 10 L 10 22 L 12 22 L 16 14 L 20 22 L 22 22 L 26 10 L 23 10 L 21 18 L 17 10 L 15 10 L 11 18 L 9 10 Z' fill='%23654FF0'/></svg>">
+	    <link rel="stylesheet" href="src/styles/wasm-palette.css">
+	    <link rel="stylesheet" href="src/ui/WorkspaceSelector.css">
+	    <style>
+		:root {
+		    --bg-primary: #0A0E1A;
+		    --bg-secondary: #151B2C;
+		    --bg-tertiary: #1C2333;
+		    --bg-canvas: #0D1117;
+		    --text-primary: #E6EDF3;
+		    --text-secondary: #7D8590;
+		    --text-dim: #484F58;
+		    --border: #30363D;
+		    --border-bright: #3D444D;
+		    --accent-wasm: #654FF0;
+		    --accent-success: #3FB950;
+		    --accent-warning: #F0B72F;
+		    --accent-error: #F85149;
+		    --accent-info: #58A6FF;
+		    --gradient-wasm: linear-gradient(135deg, #654FF0, #8B5CF6);
+		    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+		    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+		    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+		    --radius-sm: 6px;
+		    --radius-md: 10px;
+		    --radius-lg: 16px;
+		    --font-mono: 'SF Mono', 'Consolas', 'Monaco', monospace;
+		}
 
-        /* Component Upload Panel Animations */
-        @keyframes slideIn {
-            from {
-                transform: translate(-50%, -60%);
-                opacity: 0;
-            }
-            to {
-                transform: translate(-50%, -50%);
-                opacity: 1;
-            }
-        }
+		/* Component Upload Panel Animations */
+		@keyframes slideIn {
+		    from {
+			transform: translate(-50%, -60%);
+			opacity: 0;
+		    }
+		    to {
+			transform: translate(-50%, -50%);
+			opacity: 1;
+		    }
+		}
 
-        @keyframes slideOut {
-            from {
-                transform: translate(-50%, -50%);
-                opacity: 1;
-            }
-            to {
-                transform: translate(-50%, -60%);
-                opacity: 0;
-            }
-        }
+		@keyframes slideOut {
+		    from {
+			transform: translate(-50%, -50%);
+			opacity: 1;
+		    }
+		    to {
+			transform: translate(-50%, -60%);
+			opacity: 0;
+		    }
+		}
 
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
+		@keyframes fadeIn {
+		    from { opacity: 0; }
+		    to { opacity: 1; }
+		}
 
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
+		@keyframes fadeOut {
+		    from { opacity: 1; }
+		    to { opacity: 0; }
+		}
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+		@keyframes pulse {
+		    0%, 100% { opacity: 1; }
+		    50% { opacity: 0.5; }
+		}
 
-        @keyframes progressGlow {
-            0% { box-shadow: 0 0 5px rgba(74, 158, 255, 0.3); }
-            50% { box-shadow: 0 0 20px rgba(74, 158, 255, 0.6); }
-            100% { box-shadow: 0 0 5px rgba(74, 158, 255, 0.3); }
-        }
+		@keyframes progressGlow {
+		    0% { box-shadow: 0 0 5px rgba(74, 158, 255, 0.3); }
+		    50% { box-shadow: 0 0 20px rgba(74, 158, 255, 0.6); }
+		    100% { box-shadow: 0 0 5px rgba(74, 158, 255, 0.3); }
+		}
 
-        /* Upload Panel Styles */
-        .component-upload-panel {
-            animation: slideIn 0.3s ease !important;
-        }
+		/* Upload Panel Styles */
+		.component-upload-panel {
+		    animation: slideIn 0.3s ease !important;
+		}
 
-        .component-upload-panel .upload-area:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
+		.component-upload-panel .upload-area:hover {
+		    transform: translateY(-2px);
+		    box-shadow: var(--shadow-md);
+		}
 
-        .component-upload-panel .progress-bar {
-            animation: progressGlow 2s ease-in-out infinite;
-        }
+		.component-upload-panel .progress-bar {
+		    animation: progressGlow 2s ease-in-out infinite;
+		}
 
-        .component-upload-panel .upload-btn:hover:not(:disabled) {
-            /* Use position instead of transform to avoid blur */
-            position: relative;
-            top: -1px;
-            box-shadow: 0 4px 12px rgba(74, 158, 255, 0.4);
-        }
+		.component-upload-panel .upload-btn:hover:not(:disabled) {
+		    /* Use position instead of transform to avoid blur */
+		    position: relative;
+		    top: -1px;
+		    box-shadow: 0 4px 12px rgba(74, 158, 255, 0.4);
+		}
 
-        .component-upload-panel .upload-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
+		.component-upload-panel .upload-btn:disabled {
+		    opacity: 0.6;
+		    cursor: not-allowed;
+		}
 
-        /* Notification Styles */
-        .notification {
-            animation: slideInFromRight 0.3s ease;
-        }
+		/* Notification Styles */
+		.notification {
+		    animation: slideInFromRight 0.3s ease;
+		}
 
-        .notification.hiding {
-            animation: slideOutToRight 0.3s ease;
-        }
+		.notification.hiding {
+		    animation: slideOutToRight 0.3s ease;
+		}
 
-        @keyframes slideInFromRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
+		@keyframes slideInFromRight {
+		    from {
+			transform: translateX(100%);
+			opacity: 0;
+		    }
+		    to {
+			transform: translateX(0);
+			opacity: 1;
+		    }
+		}
 
-        /* =============================================
-         * RESPONSIVE HEADER SYSTEM
-         * ============================================= */
-        
-        /* Mobile Menu Button */
-        .mobile-menu-btn {
-            display: none;
-            background: transparent;
-            border: none;
-            font-size: 20px;
-            color: var(--text-primary);
-            cursor: pointer;
-            padding: 8px;
-            border-radius: var(--radius-sm);
-            transition: all 0.2s ease;
-        }
-        
-        .mobile-menu-btn:hover {
-            background: var(--bg-tertiary);
-            transform: scale(1.05);
-        }
-        
-        /* Overflow Menu for Header Actions */
-        .header-overflow-menu {
-            position: relative;
-            display: none;
-        }
-        
-        .header-overflow-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-primary);
-            cursor: pointer;
-            padding: 8px;
-            border-radius: var(--radius-sm);
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            transition: all 0.2s ease;
-        }
-        
-        .header-overflow-btn:hover {
-            background: var(--bg-tertiary);
-        }
-        
-        .header-overflow-dropdown {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-            min-width: 200px;
-            z-index: 1001;
-            padding: 8px 0;
-            opacity: 0;
-            transform: translateY(-10px);
-            pointer-events: none;
-            transition: all 0.3s ease;
-        }
-        
-        .header-overflow-dropdown.open {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: all;
-        }
-        
-        .header-overflow-item {
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-            border: none;
-            background: transparent;
-            width: 100%;
-            text-align: left;
-            color: var(--text-primary);
-            font-size: 14px;
-        }
-        
-        .header-overflow-item:hover {
-            background: var(--bg-tertiary);
-        }
+		/* =============================================
+		 * RESPONSIVE HEADER SYSTEM
+		 * ============================================= */
+		
+		/* Mobile Menu Button */
+		.mobile-menu-btn {
+		    display: none;
+		    background: transparent;
+		    border: none;
+		    font-size: 20px;
+		    color: var(--text-primary);
+		    cursor: pointer;
+		    padding: 8px;
+		    border-radius: var(--radius-sm);
+		    transition: all 0.2s ease;
+		}
+		
+		.mobile-menu-btn:hover {
+		    background: var(--bg-tertiary);
+		    transform: scale(1.05);
+		}
+		
+		/* Overflow Menu for Header Actions */
+		.header-overflow-menu {
+		    position: relative;
+		    display: none;
+		}
+		
+		.header-overflow-btn {
+		    background: transparent;
+		    border: none;
+		    color: var(--text-primary);
+		    cursor: pointer;
+		    padding: 8px;
+		    border-radius: var(--radius-sm);
+		    font-size: 16px;
+		    display: flex;
+		    align-items: center;
+		    gap: 4px;
+		    transition: all 0.2s ease;
+		}
+		
+		.header-overflow-btn:hover {
+		    background: var(--bg-tertiary);
+		}
+		
+		.header-overflow-dropdown {
+		    position: absolute;
+		    top: 100%;
+		    right: 0;
+		    background: var(--bg-secondary);
+		    border: 1px solid var(--border);
+		    border-radius: var(--radius-md);
+		    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+		    min-width: 200px;
+		    z-index: 1001;
+		    padding: 8px 0;
+		    opacity: 0;
+		    transform: translateY(-10px);
+		    pointer-events: none;
+		    transition: all 0.3s ease;
+		}
+		
+		.header-overflow-dropdown.open {
+		    opacity: 1;
+		    transform: translateY(0);
+		    pointer-events: all;
+		}
+		
+		.header-overflow-item {
+		    padding: 12px 16px;
+		    display: flex;
+		    align-items: center;
+		    gap: 12px;
+		    cursor: pointer;
+		    transition: background-color 0.2s ease;
+		    border: none;
+		    background: transparent;
+		    width: 100%;
+		    text-align: left;
+		    color: var(--text-primary);
+		    font-size: 14px;
+		}
+		
+		.header-overflow-item:hover {
+		    background: var(--bg-tertiary);
+		}
 
-        /* =============================================
-         * RESPONSIVE BREAKPOINTS
-         * ============================================= */
+		/* =============================================
+		 * RESPONSIVE BREAKPOINTS
+		 * ============================================= */
 
-        /* Large Desktop (1200px+) */
-        @media (min-width: 1200px) {
-            .header {
-                padding: 0 32px;
-                height: 64px;
-            }
-            
-            .brand-name {
-                font-size: 20px;
-            }
-            
-            .header-actions {
-                gap: 20px;
-            }
-            
-            /* Ensure AI Assistant stays floating on large desktop */
-            .ai-assistant {
-                position: fixed !important;
-                right: 20px !important;
-                bottom: 20px !important;
-                width: 380px !important;
-                height: 500px !important;
-                left: auto !important;
-            }
-        }
+		/* Large Desktop (1200px+) */
+		@media (min-width: 1200px) {
+		    .header {
+			padding: 0 32px;
+			height: 64px;
+		    }
+		    
+		    .brand-name {
+			font-size: 20px;
+		    }
+		    
+		    .header-actions {
+			gap: 20px;
+		    }
+		    
+		    /* Ensure AI Assistant stays floating on large desktop */
+		    .ai-assistant {
+			position: fixed !important;
+			right: 20px !important;
+			bottom: 20px !important;
+			width: 380px !important;
+			height: 500px !important;
+			left: auto !important;
+		    }
+		}
 
-        /* Desktop/Tablet (769px - 1199px) */
-        @media (max-width: 1199px) and (min-width: 769px) {
-            .header {
-                padding: 0 24px;
-                height: 60px;
-            }
-            
-            .header-actions {
-                gap: 16px;
-            }
-            
-            /* Ensure AI Assistant stays floating on desktop */
-            .ai-assistant {
-                position: fixed !important;
-                right: 20px !important;
-                bottom: 20px !important;
-                width: 380px !important;
-                height: 500px !important;
-                left: auto !important;
-            }
-        }
+		/* Desktop/Tablet (769px - 1199px) */
+		@media (max-width: 1199px) and (min-width: 769px) {
+		    .header {
+			padding: 0 24px;
+			height: 60px;
+		    }
+		    
+		    .header-actions {
+			gap: 16px;
+		    }
+		    
+		    /* Ensure AI Assistant stays floating on desktop */
+		    .ai-assistant {
+			position: fixed !important;
+			right: 20px !important;
+			bottom: 20px !important;
+			width: 380px !important;
+			height: 500px !important;
+			left: auto !important;
+		    }
+		}
 
-        /* Tablet Portrait (481px - 768px) */
-        @media (max-width: 768px) {
-            .header {
-                padding: 0 16px;
-                height: 56px;
-            }
-            
-            /* Hide brand name on tablet */
-            .brand-name {
-                display: none;
-            }
-            
-            /* Compact brand icon */
-            .brand-icon {
-                width: 28px;
-                height: 28px;
-                font-size: 14px;
-            }
-            
-            /* Reduce header actions gap */
-            .header-actions {
-                gap: 12px;
-            }
-            
-            /* Show overflow menu */
-            .header-overflow-menu {
-                display: block;
-            }
-            
-            /* Hide theme control in overflow menu */
-            .theme-control {
-                display: none;
-            }
-            
-            /* Compact status chip */
-            .status-chip {
-                font-size: 12px;
-                padding: 6px 10px;
+		/* Tablet Portrait (481px - 768px) */
+		@media (max-width: 768px) {
+		    .header {
+			padding: 0 16px;
+			height: 56px;
+		    }
+		    
+		    /* Hide brand name on tablet */
+		    .brand-name {
+			display: none;
+		    }
+		    
+		    /* Compact brand icon */
+		    .brand-icon {
+			width: 28px;
+			height: 28px;
+			font-size: 14px;
+		    }
+		    
+		    /* Reduce header actions gap */
+		    .header-actions {
+			gap: 12px;
+		    }
+		    
+		    /* Show overflow menu */
+		    .header-overflow-menu {
+			display: block;
+		    }
+		    
+		    /* Hide theme control in overflow menu */
+		    .theme-control {
+			display: none;
+		    }
+		    
+		    /* Compact status chip */
+		    .status-chip {
+			font-size: 12px;
+			padding: 6px 10px;
             }
             
             .status-chip span {

@@ -1,0 +1,12 @@
+package example:user
+
+interface user {
+  record user-profile {
+    id: u32,
+    username: string,
+    is-active: bool,
+  }
+
+  greet-user: func(profile: user-profile) -> string
+}
+

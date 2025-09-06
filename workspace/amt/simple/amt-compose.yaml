@@ -1,0 +1,101 @@
+components:
+- name: component-a
+  imports:
+  - name: goodies
+    iid: amt-composer:simple/host-goodies
+  exports:
+  - name: main
+    iid: amt-composer:simple/guest-main
+  - name: inter
+    iid: amt-composer:simple/inter-guest
+  library: null
+  codegen:
+    profile: default
+    out_dir: comp-a/gen/src
+    lang: rust
+- name: component-b
+  imports:
+  - name: goodies
+    iid: amt-composer:simple/host-goodies
+  - name: inter
+    iid: amt-composer:simple/inter-guest
+  exports:
+  - name: main
+    iid: amt-composer:simple/guest-main
+  disabled: false
+  library: null
+  codegen:
+    profile: default
+    out_dir: comp-b/gen/src
+- name: runtime
+  disabled: false
+  imports:
+  - name: main-a
+    iid: amt-composer:simple/guest-main
+  - name: main-b
+    iid: amt-composer:simple/guest-main
+  exports:
+  - name: goodies
+    iid: amt-composer:simple/host-goodies
+  codegen:
+    profile: default
+    out_dir: runtime/gen/src
+
+compositions:
+- name: Composition1
+  instances:
+  - name: component-a
+    component: component-a
+  - name: component-b
+    component: component-b
+  - name: runtime
+    component: runtime
+
+  mesh:
+    component:
+      name: mesh
+      disabled: false
+      library: null
+      codegen:
+        profile: default
+        out_dir: mesh/gen/src
+
+    links:
+    - from:
+        instance: component-a
+        interface: inter
+      to:
+        instance: component-b
+        interface: inter
+    - from:
+        instance: component-a
+        interface: main
+      to:
+        instance: runtime
+        interface: main-a
+    - from:
+        instance: component-b
+        interface: main
+      to:
+        instance: runtime
+        interface: main-b
+    - from:
+        instance: runtime
+        interface: goodies
+      to:
+        instance: component-a
+        interface: goodies
+    - from:
+        instance: runtime
+        interface: goodies
+      to:
+        instance: component-b
+        interface: goodies
+
+wit:
+  search_dir: model
+
+codegen:
+  default:
+    lang: cpp
+    format: true

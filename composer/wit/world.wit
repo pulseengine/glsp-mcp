@@ -1,0 +1,9 @@
+package composer:test
+
+world my-world {
+    import example:math/math;
+    import example:user/user;
+}
+# this is a test world for the composer package
+# it imports the math and user packages from the example namespace
+# it is used to test the composer functionality

@@ -1,0 +1,20 @@
+{
+  "id": "295439b8-c7cd-4327-8b27-51c54dd753b8",
+  "name": "New workflow Diagram",
+  "diagram_type": "workflow",
+  "revision": 2,
+  "created_at": "2025-07-31T13:26:54.929749868Z",
+  "updated_at": "2025-07-31T13:26:54.929756176Z",
+  "nodes": [
+    {
+      "id": "4ec53c5d-e690-49e1-8acc-17d22d691112",
+      "node_type": "decision",
+      "label": "New decision",
+      "properties": {
+        "label": "New decision"
+      }
+    }
+  ],
+  "edges": [],
+  "metadata": {}
+}

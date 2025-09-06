@@ -1,0 +1,96 @@
+{
+  "diagram_id": "2812a3bd-1a13-4d0c-b094-ab2fc19754f0",
+  "revision": 27,
+  "updated_at": "2025-08-13T10:16:16.640493993Z",
+  "elements": {
+    "22b78303-3c5c-4c54-aaf9-3b218ad56333": {
+      "bounds": {
+        "x": 500.0,
+        "y": 50.0,
+        "width": 100.0,
+        "height": 50.0
+      },
+      "z_index": null,
+      "visible": true,
+      "style": {}
+    },
+    "57554197-62f0-425d-8340-4013c1dc290e": {
+      "bounds": {
+        "x": 950.0,
+        "y": 50.0,
+        "width": 100.0,
+        "height": 50.0
+      },
+      "z_index": null,
+      "visible": true,
+      "style": {}
+    },
+    "61a739da-275c-477b-a313-ad9c15fdd081": {
+      "bounds": {
+        "x": 190.0,
+        "y": 368.0,
+        "width": 100.0,
+        "height": 50.0
+      },
+      "z_index": null,
+      "visible": true,
+      "style": {}
+    },
+    "817ab002-f881-496c-8989-0ae0b0e8fd87": {
+      "bounds": {
+        "x": 200.0,
+        "y": 50.0,
+        "width": 100.0,
+        "height": 50.0
+      },
+      "z_index": null,
+      "visible": true,
+      "style": {}
+    },
+    "2ef40357-7eed-4f36-b407-2236f173016a": {
+      "bounds": {
+        "x": 650.0,
+        "y": 50.0,
+        "width": 100.0,
+        "height": 50.0
+      },
+      "z_index": null,
+      "visible": true,
+      "style": {}
+    },
+    "cde6a93c-8b58-4d39-b68c-89f0144d95ba": {
+      "bounds": {
+        "x": 1100.0,
+        "y": 50.0,
+        "width": 100.0,
+        "height": 50.0
+      },
+      "z_index": null,
+      "visible": true,
+      "style": {}
+    },
+    "5e4be02d-5e24-4106-94a8-9fa7133d6577": {
+      "bounds": {
+        "x": 800.0,
+        "y": 50.0,
+        "width": 100.0,
+        "height": 50.0
+      },
+      "z_index": null,
+      "visible": true,
+      "style": {}
+    },
+    "39e2d522-aaf5-46df-aa3b-c16c7a161877": {
+      "bounds": {
+        "x": 350.0,
+        "y": 50.0,
+        "width": 100.0,
+        "height": 50.0
+      },
+      "z_index": null,
+      "visible": true,
+      "style": {}
+    }
+  },
+  "viewport": null
+}
