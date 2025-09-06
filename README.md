@@ -201,7 +201,9 @@ curl -X POST http://127.0.0.1:3000/mcp/rpc \
 
 ### 📸 Screenshots
 
-- **Class Diagram Example**: `docs/pictures/Class_diagram.png` - Shows a complete UML class diagram with Person and Car classes, their attributes, methods, and association relationships created via MCP tools.
+- **[Class Diagram Example](docs/pictures/Class_diagram.png)** - Shows a complete UML class diagram with Person and Car classes, their attributes, methods, and association relationships created via MCP tools.
+
+![UML Class Diagram](docs/pictures/Class_diagram.png)
 
 ## 🌐 MCP Protocol Integration
 
