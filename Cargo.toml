@@ -25,10 +25,10 @@ tower-http = { version = "0.5", features = ["cors", "trace"] }
 
 # Additional dependencies
 chrono = { version = "0.4", features = ["serde"] }
-wasm-tools = "1.0"
-wasmparser = "0.118"
-wit-component = "0.218"
-wit-parser = "0.218"
+wasm-tools = "1.220"
+wasmparser = "0.220"
+wit-component = "0.220"
+wit-parser = "0.220"
 
 # Authentication and security dependencies
 sha2 = "0.10"
@@ -53,9 +53,9 @@ governor = "0.6"
 axum-core = "0.4"
 
 # Additional utilities
-dashmap = "6.0"
+dashmap = "6.1"
 once_cell = "1.0"
 parking_lot = "0.12"
 validator = "0.18"
 futures-util = "0.3"
-lru = "0.12"
+lru = "0.16"
