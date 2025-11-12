@@ -645,11 +645,11 @@ impl wasmtime::ResourceLimiter for ResourceLimiter {
 
     fn table_growing(
         &mut self,
-        _current: u32,
-        desired: u32,
-        _maximum: Option<u32>,
+        _current: usize,
+        desired: usize,
+        _maximum: Option<usize>,
     ) -> anyhow::Result<bool> {
-        Ok(desired <= self.table_limit as u32)
+        Ok(desired <= self.table_limit)
     }
 }
 

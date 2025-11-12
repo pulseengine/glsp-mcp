@@ -1,0 +1,18 @@
+[package]
+name = "adas-wasi-nn-utils"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "adas_wasi_nn_utils"
+path = "src/lib.rs"
+
+[dependencies]
+# No external dependencies - uses only std library
+
+[dev-dependencies]
+# Test dependencies if needed
+
+[[test]]
+name = "integration"
+path = "src/lib.rs"

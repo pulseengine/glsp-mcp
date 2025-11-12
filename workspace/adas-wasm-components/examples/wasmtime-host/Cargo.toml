@@ -6,8 +6,8 @@ description = "Wasmtime host application for ADAS complete system"
 
 [dependencies]
 # Wasmtime with component model and WASI support
-wasmtime = { version = "25.0", features = ["component-model", "async"] }
-wasmtime-wasi = "25.0"
+wasmtime = { version = "27.0", features = ["component-model", "async"] }
+wasmtime-wasi = "27.0"
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }

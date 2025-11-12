@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# PulseEngine MCP Framework dependencies from crates.io (0.4.4) - with memory auth
+# PulseEngine MCP Framework dependencies from crates.io (0.4.4) - keeping stable version
+# TODO: Upgrade to 0.13.0 after establishing test coverage
 pulseengine-mcp-protocol = "0.4.4"
 pulseengine-mcp-transport = { version = "0.4.4", default-features = false }
 pulseengine-mcp-server = { version = "0.4.4", default-features = false }
@@ -40,20 +41,20 @@ wit-parser = { workspace = true }
 chrono = { workspace = true }
 
 # WASM execution
-wasmtime = "24.0"
+wasmtime = "27.0"
 
 # Filesystem watching
-notify = "6.1"
+notify = "7.0"
 
 # Graphics rendering dependencies
 lru = { workspace = true }
 sha2 = { workspace = true }
 
 # Database abstraction dependencies
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"], optional = true }
-redis = { version = "0.24", features = ["tokio-comp", "connection-manager"], optional = true }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"], optional = true }
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }
 influxdb = { version = "0.7", optional = true }
-base64 = "0.21"
+base64 = "0.22"
 
 # SSE support is now provided by the framework
 
@@ -71,6 +72,10 @@ path = "src/lib.rs"
 [[bin]]
 name = "server"
 path = "src/main.rs"
+
+[dev-dependencies]
+tempfile = "3.0"
+tokio-test = "0.4"
 
 [features]
 default = []
