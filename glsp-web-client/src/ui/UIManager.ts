@@ -201,6 +201,233 @@ export class UIManager {
         });
     }
 
+    /**
+     * Update sidebar sections based on the current diagram type (Context-Aware Sidebar)
+     * Shows/hides sections dynamically to provide relevant tools for each diagram type
+     */
+    public updateSidebarSections(diagramType: string): void {
+        if (!this.sidebar) {
+            console.warn('UIManager: Cannot update sidebar sections - sidebar not initialized');
+            return;
+        }
+
+        console.log('UIManager: Updating sidebar sections for diagram type:', diagramType);
+
+        // Define which sections should be visible for each diagram type
+        const sectionVisibility: Record<string, Set<string>> = {
+            'workflow': new Set(['workspace', 'diagram-controls', 'toolbox', 'properties', 'diagrams']),
+            'bpmn': new Set(['workspace', 'diagram-controls', 'toolbox', 'properties', 'diagrams']),
+            'uml-class': new Set(['workspace', 'diagram-controls', 'toolbox', 'properties', 'diagrams']),
+            'system-architecture': new Set(['workspace', 'diagram-controls', 'toolbox', 'properties', 'diagrams']),
+            'wasm-component': new Set(['workspace', 'diagram-controls', 'wasm-view-modes', 'component-library', 'properties', 'diagrams']),
+            'wit-schema': new Set(['workspace', 'diagram-controls', 'toolbox', 'properties', 'diagrams']),
+            // Legacy support
+            'wit-interface': new Set(['workspace', 'diagram-controls', 'toolbox', 'properties', 'diagrams'])
+        };
+
+        const visibleSections = sectionVisibility[diagramType] || new Set(['diagram-controls', 'toolbox', 'properties', 'diagrams']);
+
+        // Handle WASM-specific view modes section
+        if (diagramType === 'wasm-component' && !this.sidebar.hasSection('wasm-view-modes')) {
+            this.addWasmViewModesSection();
+        } else if (diagramType !== 'wasm-component' && this.sidebar.hasSection('wasm-view-modes')) {
+            this.sidebar.removeSection('wasm-view-modes');
+        }
+
+        // Show/hide toolbox based on diagram type
+        if (visibleSections.has('toolbox') && !visibleSections.has('component-library')) {
+            // Show toolbox for non-WASM diagrams
+            if (!this.sidebar.hasSection('toolbox')) {
+                this.sidebar.addSection(this.toolboxSection!.createSection());
+            }
+        } else {
+            // Hide toolbox for WASM diagrams (they use component library instead)
+            if (this.sidebar.hasSection('toolbox')) {
+                this.sidebar.removeSection('toolbox');
+            }
+        }
+
+        // Show/hide component library based on diagram type
+        if (visibleSections.has('component-library')) {
+            if (!this.sidebar.hasSection('component-library')) {
+                this.sidebar.addSection(this.componentLibrarySection!.createSection());
+            }
+        } else {
+            if (this.sidebar.hasSection('component-library')) {
+                this.sidebar.removeSection('component-library');
+            }
+        }
+
+        console.log('UIManager: Sidebar sections updated for', diagramType);
+    }
+
+    /**
+     * Add WASM view modes section to sidebar (for wasm-component diagrams)
+     */
+    private addWasmViewModesSection(): void {
+        if (!this.sidebar) return;
+
+        const viewModesContainer = document.createElement('div');
+        viewModesContainer.className = 'wasm-view-modes';
+        viewModesContainer.innerHTML = `
+            <div class="view-modes-header" style="
+                padding: 8px 12px;
+                background: var(--bg-secondary);
+                border-bottom: 1px solid var(--border);
+                margin-bottom: 12px;
+                border-radius: var(--radius-sm);
+            ">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-weight: 600; color: var(--text-primary); font-size: 13px;">View Mode</span>
+                    <button class="view-mode-help-mini" style="
+                        background: var(--accent-info);
+                        color: white;
+                        border: none;
+                        width: 18px;
+                        height: 18px;
+                        border-radius: 50%;
+                        font-size: 11px;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                    " title="View modes transform how you see the diagram without changing data">?</button>
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary);">
+                    Transform visualization without changing data
+                </div>
+            </div>
+            <div class="view-mode-buttons" style="
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding: 0 8px;
+            ">
+                <button class="view-mode-btn" data-mode="component" style="
+                    background: var(--accent-success);
+                    color: white;
+                    border: none;
+                    padding: 10px 14px;
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
+                    font-size: 13px;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                ">
+                    <span>📦</span>
+                    <span>Component View</span>
+                </button>
+                <button class="view-mode-btn" data-mode="uml-interface" style="
+                    background: var(--bg-tertiary);
+                    color: var(--text-primary);
+                    border: 1px solid var(--border);
+                    padding: 10px 14px;
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
+                    font-size: 13px;
+                    font-weight: 500;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: all 0.2s ease;
+                ">
+                    <span>🏗️</span>
+                    <span>UML View</span>
+                </button>
+                <button class="view-mode-btn" data-mode="wit-interface" style="
+                    background: var(--bg-tertiary);
+                    color: var(--text-primary);
+                    border: 1px solid var(--border);
+                    padding: 10px 14px;
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
+                    font-size: 13px;
+                    font-weight: 500;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: all 0.2s ease;
+                ">
+                    <span>🔷</span>
+                    <span>WIT Interface</span>
+                </button>
+                <button class="view-mode-btn" data-mode="wit-dependencies" style="
+                    background: var(--bg-tertiary);
+                    color: var(--text-primary);
+                    border: 1px solid var(--border);
+                    padding: 10px 14px;
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
+                    font-size: 13px;
+                    font-weight: 500;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: all 0.2s ease;
+                ">
+                    <span>🔗</span>
+                    <span>Dependencies</span>
+                </button>
+            </div>
+        `;
+
+        // Add hover effects
+        const buttons = viewModesContainer.querySelectorAll('.view-mode-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('mouseenter', () => {
+                (btn as HTMLElement).style.transform = 'translateX(4px)';
+                if ((btn as HTMLElement).dataset.mode !== 'component') {
+                    (btn as HTMLElement).style.background = 'var(--accent-wasm)';
+                    (btn as HTMLElement).style.color = 'white';
+                    (btn as HTMLElement).style.borderColor = 'var(--accent-wasm)';
+                }
+            });
+            btn.addEventListener('mouseleave', () => {
+                (btn as HTMLElement).style.transform = 'translateX(0)';
+                if ((btn as HTMLElement).dataset.mode !== 'component') {
+                    (btn as HTMLElement).style.background = 'var(--bg-tertiary)';
+                    (btn as HTMLElement).style.color = 'var(--text-primary)';
+                    (btn as HTMLElement).style.borderColor = 'var(--border)';
+                }
+            });
+
+            // Click handler - dispatch view mode change event
+            btn.addEventListener('click', () => {
+                const mode = (btn as HTMLElement).dataset.mode;
+                console.log('UIManager: View mode button clicked:', mode);
+                window.dispatchEvent(new CustomEvent('view-mode-change', { detail: { mode } }));
+
+                // Update button states
+                buttons.forEach(b => {
+                    if ((b as HTMLElement).dataset.mode === mode) {
+                        (b as HTMLElement).style.background = 'var(--accent-success)';
+                        (b as HTMLElement).style.color = 'white';
+                        (b as HTMLElement).style.borderColor = 'var(--accent-success)';
+                    } else {
+                        (b as HTMLElement).style.background = 'var(--bg-tertiary)';
+                        (b as HTMLElement).style.color = 'var(--text-primary)';
+                        (b as HTMLElement).style.borderColor = 'var(--border)';
+                    }
+                });
+            });
+        });
+
+        this.sidebar.addSection({
+            id: 'wasm-view-modes',
+            title: 'View Modes',
+            icon: '👁️',
+            collapsible: true,
+            collapsed: false,
+            order: 2,
+            content: viewModesContainer
+        });
+    }
+
     private createToolbar(): HTMLElement {
         const toolbar = document.createElement('div');
         toolbar.className = 'glsp-toolbar';

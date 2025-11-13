@@ -1024,12 +1024,14 @@ export class AppController {
     }
     
     /**
-     * Update sidebar title and content based on diagram type
+     * Update sidebar title and content based on diagram type (Context-Aware Sidebar)
+     * This method now calls updateSidebarSections to dynamically show/hide sections
      */
     private updateSidebarForDiagramType(diagramType: string): void {
         const sidebar = this.uiManager.getSidebar();
         if (!sidebar) return;
 
+        // Update sidebar title
         const titleMap: Record<string, { title: string; icon: string }> = {
             'workflow': { title: 'Workflow Elements', icon: '📊' },
             'bpmn': { title: 'BPMN Elements', icon: '📊' },
@@ -1043,6 +1045,9 @@ export class AppController {
 
         const config = titleMap[diagramType] || { title: 'Components', icon: '📦' };
         sidebar.updateTitle(config.title, config.icon);
+
+        // Update sidebar sections to show context-appropriate content (Phase 2)
+        this.uiManager.updateSidebarSections(diagramType);
     }
 
     /**

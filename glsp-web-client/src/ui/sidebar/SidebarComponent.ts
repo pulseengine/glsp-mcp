@@ -207,7 +207,11 @@ export class SidebarComponent {
             this.renderSections();
         }
     }
-    
+
+    public hasSection(id: string): boolean {
+        return this.sections.has(id);
+    }
+
     private renderSections(): void {
         const content = this.element.querySelector('.sidebar-content') as HTMLElement;
         content.innerHTML = '';
