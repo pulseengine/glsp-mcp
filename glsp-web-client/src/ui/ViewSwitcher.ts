@@ -278,11 +278,11 @@ export class ViewSwitcher {
         document.head.appendChild(style);
     }
     
-    private switchMode(modeId: string): void {
+    public switchMode(modeId: string): void {
         if (modeId === this.currentMode) return;
-        
+
         console.log(`ViewSwitcher: Switching from ${this.currentMode} to ${modeId}`);
-        
+
         this.currentMode = modeId;
         
         // Update button states

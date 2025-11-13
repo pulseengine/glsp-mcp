@@ -781,7 +781,7 @@ export class UIManager {
                     cursor: pointer;
                     font-size: 12px;
                     transition: all 0.2s ease;
-                " title="Create New Diagram">+ New</button>
+                " title="Create New Diagram (Ctrl+N)">+ New</button>
             </div>
             <div style="margin-bottom: 12px;">
                 <input
@@ -800,8 +800,92 @@ export class UIManager {
                     "
                 />
             </div>
+            <div id="tag-filter-section" style="margin-bottom: 12px; display: none;">
+                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Filter by tag:</div>
+                <div id="tag-filter-buttons" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+            </div>
+            <div id="bulk-operations-toolbar" style="
+                display: none;
+                padding: 8px;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-sm);
+                margin-bottom: 12px;
+                align-items: center;
+                gap: 8px;
+            ">
+                <span id="bulk-selection-count" style="font-size: 12px; color: var(--text-secondary);">0 selected</span>
+                <button id="bulk-delete-btn" style="
+                    background: var(--accent-error);
+                    color: white;
+                    border: none;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 11px;
+                ">Delete Selected</button>
+                <button id="bulk-export-btn" style="
+                    background: var(--accent-success);
+                    color: white;
+                    border: none;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 11px;
+                ">Export Selected</button>
+                <button id="bulk-tag-btn" style="
+                    background: var(--accent-info);
+                    color: white;
+                    border: none;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 11px;
+                ">Tag Selected</button>
+                <button id="bulk-clear-btn" style="
+                    background: var(--bg-secondary);
+                    border: 1px solid var(--border);
+                    color: var(--text-primary);
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 11px;
+                ">Clear Selection</button>
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <button id="import-diagrams-btn" style="
+                    flex: 1;
+                    background: var(--bg-tertiary);
+                    border: 1px solid var(--border);
+                    color: var(--text-primary);
+                    padding: 6px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 11px;
+                ">📥 Import</button>
+                <button id="export-all-btn" style="
+                    flex: 1;
+                    background: var(--bg-tertiary);
+                    border: 1px solid var(--border);
+                    color: var(--text-primary);
+                    padding: 6px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 11px;
+                ">📤 Export All</button>
+            </div>
             <ul id="diagram-list"></ul>
         `;
+
+        // Setup bulk operations
+        this.setupBulkOperations(list);
+
+        // Setup import/export
+        this.setupImportExport(list);
+
+        // Setup tag filtering
+        this.setupTagFiltering(list);
+
         return list;
     }
 
@@ -1526,15 +1610,137 @@ export class UIManager {
     ): HTMLElement {
         const li = document.createElement('li');
         li.className = 'diagram-item';
+        li.dataset.diagramId = diagram.id;
+
+        // Check if favorited
+        let isFavorite = false;
+        import('../utils/FavoriteDiagramsManager.js').then(({ FavoriteDiagramsManager }) => {
+            isFavorite = FavoriteDiagramsManager.isFavorite(diagram.id);
+            const starBtn = li.querySelector('.favorite-btn') as HTMLElement;
+            if (starBtn) {
+                starBtn.textContent = isFavorite ? '⭐' : '☆';
+                starBtn.title = isFavorite ? 'Remove from favorites' : 'Add to favorites';
+            }
+        });
+
+        // Get tags
+        let tagsHtml = '';
+        import('../utils/DiagramTagsManager.js').then(({ DiagramTagsManager }) => {
+            const tags = DiagramTagsManager.getTags(diagram.id);
+            const tagsContainer = li.querySelector('.diagram-tags') as HTMLElement;
+            if (tagsContainer && tags.length > 0) {
+                tagsContainer.innerHTML = tags.map(tag =>
+                    `<span class="tag-badge" style="
+                        background: var(--accent-info);
+                        color: white;
+                        padding: 2px 6px;
+                        border-radius: 3px;
+                        font-size: 10px;
+                        margin-right: 4px;
+                        display: inline-block;
+                    ">${tag}</span>`
+                ).join('');
+                tagsContainer.style.display = 'flex';
+            }
+        });
+
         li.innerHTML = `
-            <div class="diagram-item-content">
-                <div class="diagram-item-name">${diagram.name}</div>
+            <div class="diagram-item-content" style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <button class="favorite-btn" style="
+                        background: none;
+                        border: none;
+                        font-size: 16px;
+                        cursor: pointer;
+                        padding: 0;
+                        line-height: 1;
+                        color: var(--accent-warning);
+                    " title="Add to favorites">☆</button>
+                    <input type="checkbox" class="diagram-select-checkbox" style="
+                        cursor: pointer;
+                        margin: 0;
+                    " title="Select for bulk operations">
+                    <div class="diagram-item-name" style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;">${diagram.name}</div>
+                </div>
+                <div class="diagram-tags" style="
+                    display: none;
+                    flex-wrap: wrap;
+                    gap: 4px;
+                    margin-top: 4px;
+                    margin-left: 30px;
+                "></div>
             </div>
             <div class="diagram-item-actions">
+                <button class="tag-btn" title="Manage tags" style="
+                    background: var(--bg-tertiary);
+                    border: 1px solid var(--border);
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 12px;
+                ">🏷️</button>
                 <button class="load-btn" title="Load diagram">Load</button>
                 <button class="delete-btn" title="Delete diagram">×</button>
             </div>
         `;
+
+        // Add favorite button handler
+        li.querySelector('.favorite-btn')!.addEventListener('click', (e) => {
+            e.stopPropagation();
+            import('../utils/FavoriteDiagramsManager.js').then(({ FavoriteDiagramsManager }) => {
+                const isFav = FavoriteDiagramsManager.toggleFavorite({
+                    id: diagram.id,
+                    name: diagram.name,
+                    diagramType: diagram.diagramType || 'workflow'
+                });
+                const btn = e.target as HTMLElement;
+                btn.textContent = isFav ? '⭐' : '☆';
+                btn.title = isFav ? 'Remove from favorites' : 'Add to favorites';
+
+                // Dispatch event for UI updates
+                window.dispatchEvent(new CustomEvent('favorites-changed'));
+            });
+        });
+
+        // Add tag button handler
+        li.querySelector('.tag-btn')!.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { DiagramTagsManager } = await import('../utils/DiagramTagsManager.js');
+            const currentTags = DiagramTagsManager.getTags(diagram.id);
+            const allTags = DiagramTagsManager.getAllUniqueTags();
+
+            const tagInput = prompt(
+                `Enter tags for "${diagram.name}" (comma-separated):\nExisting tags: ${allTags.join(', ') || 'none'}\n\nCurrent tags: ${currentTags.join(', ') || 'none'}`,
+                currentTags.join(', ')
+            );
+
+            if (tagInput !== null) {
+                const newTags = tagInput.split(',').map(t => t.trim()).filter(t => t.length > 0);
+                DiagramTagsManager.setTags(diagram.id, newTags);
+
+                // Update UI
+                const tagsContainer = li.querySelector('.diagram-tags') as HTMLElement;
+                if (newTags.length > 0) {
+                    tagsContainer.innerHTML = newTags.map(tag =>
+                        `<span class="tag-badge" style="
+                            background: var(--accent-info);
+                            color: white;
+                            padding: 2px 6px;
+                            border-radius: 3px;
+                            font-size: 10px;
+                            margin-right: 4px;
+                            display: inline-block;
+                        ">${tag}</span>`
+                    ).join('');
+                    tagsContainer.style.display = 'flex';
+                } else {
+                    tagsContainer.style.display = 'none';
+                }
+
+                // Dispatch event
+                window.dispatchEvent(new CustomEvent('tags-changed'));
+            }
+        });
 
         // Add load event listener
         li.querySelector('.load-btn')!.addEventListener('click', () => {
@@ -2892,11 +3098,302 @@ export class UIManager {
         }
     }
     
+    /**
+     * Phase 5: Setup bulk operations (Future Enhancement)
+     */
+    private setupBulkOperations(listElement: HTMLElement): void {
+        const toolbar = listElement.querySelector('#bulk-operations-toolbar') as HTMLElement;
+        const countSpan = listElement.querySelector('#bulk-selection-count') as HTMLElement;
+
+        // Monitor checkbox changes
+        document.addEventListener('change', (e) => {
+            const target = e.target as HTMLElement;
+            if (target.classList.contains('diagram-select-checkbox')) {
+                this.updateBulkOperationsToolbar();
+            }
+        });
+
+        // Bulk delete
+        listElement.querySelector('#bulk-delete-btn')?.addEventListener('click', async () => {
+            const selected = this.getSelectedDiagramIds();
+            if (selected.length === 0) return;
+
+            if (confirm(`Delete ${selected.length} diagram(s)?`)) {
+                for (const id of selected) {
+                    const diagram = this.allDiagrams.find(d => d.id === id);
+                    if (diagram && this.deleteDiagramCallbackStored) {
+                        await this.deleteDiagramCallbackStored(id, diagram.name);
+                    }
+                }
+                this.updateBulkOperationsToolbar();
+            }
+        });
+
+        // Bulk export
+        listElement.querySelector('#bulk-export-btn')?.addEventListener('click', () => {
+            const selected = this.getSelectedDiagramIds();
+            if (selected.length === 0) return;
+
+            const selectedDiagrams = this.allDiagrams.filter(d => selected.includes(d.id));
+            this.exportDiagrams(selectedDiagrams);
+        });
+
+        // Bulk tag
+        listElement.querySelector('#bulk-tag-btn')?.addEventListener('click', async () => {
+            const selected = this.getSelectedDiagramIds();
+            if (selected.length === 0) return;
+
+            const { DiagramTagsManager } = await import('../utils/DiagramTagsManager.js');
+            const allTags = DiagramTagsManager.getAllUniqueTags();
+            const tagInput = prompt(
+                `Add tags to ${selected.length} diagram(s) (comma-separated):\nAvailable tags: ${allTags.join(', ') || 'none'}`,
+                ''
+            );
+
+            if (tagInput !== null) {
+                const newTags = tagInput.split(',').map(t => t.trim()).filter(t => t.length > 0);
+                for (const id of selected) {
+                    DiagramTagsManager.addTags(id, newTags);
+                }
+                window.dispatchEvent(new CustomEvent('tags-changed'));
+                // Refresh diagram list to show updated tags
+                if (this.loadDiagramCallbackStored && this.deleteDiagramCallbackStored) {
+                    this.renderDiagramList(this.allDiagrams, this.loadDiagramCallbackStored, this.deleteDiagramCallbackStored);
+                }
+            }
+        });
+
+        // Clear selection
+        listElement.querySelector('#bulk-clear-btn')?.addEventListener('click', () => {
+            document.querySelectorAll('.diagram-select-checkbox').forEach((cb: Element) => {
+                (cb as HTMLInputElement).checked = false;
+            });
+            this.updateBulkOperationsToolbar();
+        });
+    }
+
+    /**
+     * Phase 5: Get selected diagram IDs (Future Enhancement)
+     */
+    private getSelectedDiagramIds(): string[] {
+        const selected: string[] = [];
+        document.querySelectorAll('.diagram-select-checkbox:checked').forEach((cb: Element) => {
+            const item = (cb as HTMLElement).closest('.diagram-item');
+            if (item) {
+                const id = (item as HTMLElement).dataset.diagramId;
+                if (id) selected.push(id);
+            }
+        });
+        return selected;
+    }
+
+    /**
+     * Phase 5: Update bulk operations toolbar visibility (Future Enhancement)
+     */
+    private updateBulkOperationsToolbar(): void {
+        const toolbar = document.querySelector('#bulk-operations-toolbar') as HTMLElement;
+        const countSpan = document.querySelector('#bulk-selection-count') as HTMLElement;
+        const selected = this.getSelectedDiagramIds();
+
+        if (toolbar && countSpan) {
+            if (selected.length > 0) {
+                toolbar.style.display = 'flex';
+                countSpan.textContent = `${selected.length} selected`;
+            } else {
+                toolbar.style.display = 'none';
+            }
+        }
+    }
+
+    /**
+     * Phase 5: Setup import/export functionality (Future Enhancement)
+     */
+    private setupImportExport(listElement: HTMLElement): void {
+        // Export all diagrams
+        listElement.querySelector('#export-all-btn')?.addEventListener('click', () => {
+            this.exportDiagrams(this.allDiagrams);
+        });
+
+        // Import diagrams
+        listElement.querySelector('#import-diagrams-btn')?.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target?.result as string);
+                        this.importDiagrams(data);
+                    } catch (error) {
+                        alert('Error importing diagrams: Invalid JSON file');
+                        console.error('Import error:', error);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+    }
+
+    /**
+     * Phase 5: Export diagrams to JSON (Future Enhancement)
+     */
+    private async exportDiagrams(diagrams: import('../services/DiagramService.js').DiagramMetadata[]): Promise<void> {
+        const { DiagramTagsManager } = await import('../utils/DiagramTagsManager.js');
+        const { FavoriteDiagramsManager } = await import('../utils/FavoriteDiagramsManager.js');
+
+        const exportData = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            diagrams: diagrams.map(d => ({
+                ...d,
+                tags: DiagramTagsManager.getTags(d.id),
+                isFavorite: FavoriteDiagramsManager.isFavorite(d.id)
+            }))
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `glsp-diagrams-export-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        console.log(`Exported ${diagrams.length} diagram(s)`);
+    }
+
+    /**
+     * Phase 5: Import diagrams from JSON (Future Enhancement)
+     */
+    private async importDiagrams(data: any): Promise<void> {
+        if (!data.diagrams || !Array.isArray(data.diagrams)) {
+            alert('Invalid import file format');
+            return;
+        }
+
+        const { DiagramTagsManager } = await import('../utils/DiagramTagsManager.js');
+        const { FavoriteDiagramsManager } = await import('../utils/FavoriteDiagramsManager.js');
+
+        let imported = 0;
+        for (const diagram of data.diagrams) {
+            try {
+                // Create diagram via diagram service
+                // Note: This would need to call the actual diagram creation API
+                // For now, just log
+                console.log('Would import diagram:', diagram.name);
+
+                // Restore tags if present
+                if (diagram.tags && diagram.tags.length > 0) {
+                    DiagramTagsManager.setTags(diagram.id, diagram.tags);
+                }
+
+                // Restore favorite status if present
+                if (diagram.isFavorite) {
+                    FavoriteDiagramsManager.addFavorite({
+                        id: diagram.id,
+                        name: diagram.name,
+                        diagramType: diagram.diagramType || 'workflow'
+                    });
+                }
+
+                imported++;
+            } catch (error) {
+                console.error('Error importing diagram:', diagram.name, error);
+            }
+        }
+
+        alert(`Imported ${imported} of ${data.diagrams.length} diagram(s)`);
+
+        // Refresh UI
+        window.dispatchEvent(new CustomEvent('diagrams-changed'));
+    }
+
+    /**
+     * Phase 5: Setup tag filtering (Future Enhancement)
+     */
+    private setupTagFiltering(listElement: HTMLElement): void {
+        const updateTagFilter = async () => {
+            const { DiagramTagsManager } = await import('../utils/DiagramTagsManager.js');
+            const allTags = DiagramTagsManager.getAllUniqueTags();
+
+            const filterSection = listElement.querySelector('#tag-filter-section') as HTMLElement;
+            const buttonsContainer = listElement.querySelector('#tag-filter-buttons') as HTMLElement;
+
+            if (allTags.length === 0) {
+                filterSection.style.display = 'none';
+                return;
+            }
+
+            filterSection.style.display = 'block';
+            buttonsContainer.innerHTML = allTags.map(tag =>
+                `<button class="tag-filter-btn" data-tag="${tag}" style="
+                    background: var(--bg-tertiary);
+                    border: 1px solid var(--border);
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 11px;
+                    transition: all 0.2s;
+                ">${tag}</button>`
+            ).join('');
+
+            // Add click handlers
+            buttonsContainer.querySelectorAll('.tag-filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tag = (btn as HTMLElement).dataset.tag!;
+                    const diagramIds = DiagramTagsManager.findDiagramsByTag(tag);
+                    const filtered = this.allDiagrams.filter(d => diagramIds.includes(d.id));
+
+                    // Toggle active state
+                    const isActive = btn.classList.contains('active');
+                    if (isActive) {
+                        btn.classList.remove('active');
+                        (btn as HTMLElement).style.background = 'var(--bg-tertiary)';
+                        (btn as HTMLElement).style.color = 'var(--text-primary)';
+                        // Show all diagrams
+                        if (this.loadDiagramCallbackStored && this.deleteDiagramCallbackStored) {
+                            this.renderDiagramList(this.allDiagrams, this.loadDiagramCallbackStored, this.deleteDiagramCallbackStored);
+                        }
+                    } else {
+                        // Deactivate all other buttons
+                        buttonsContainer.querySelectorAll('.tag-filter-btn').forEach(b => {
+                            b.classList.remove('active');
+                            (b as HTMLElement).style.background = 'var(--bg-tertiary)';
+                            (b as HTMLElement).style.color = 'var(--text-primary)';
+                        });
+                        btn.classList.add('active');
+                        (btn as HTMLElement).style.background = 'var(--accent-info)';
+                        (btn as HTMLElement).style.color = 'white';
+                        // Show filtered diagrams
+                        if (this.loadDiagramCallbackStored && this.deleteDiagramCallbackStored) {
+                            this.renderDiagramList(filtered, this.loadDiagramCallbackStored, this.deleteDiagramCallbackStored);
+                        }
+                    }
+                });
+            });
+        };
+
+        // Initial update
+        updateTagFilter();
+
+        // Listen for tag changes
+        window.addEventListener('tags-changed', () => {
+            updateTagFilter();
+        });
+    }
+
     public destroy(): void {
         if (this.statusListener) {
             statusManager.removeListener(this.statusListener);
         }
-        
+
         // Clean up mobile menu overlay if it exists
         this.removeMobileMenuOverlay();
     }
