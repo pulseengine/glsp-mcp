@@ -10,7 +10,11 @@ fn test_mock_components_available() {
     // Verify mock components work
     let wasm = get_mock_wasm_component();
     assert!(!wasm.is_empty(), "Mock WASM component should not be empty");
-    assert_eq!(&wasm[0..4], &[0x00, 0x61, 0x73, 0x6d], "Should have WASM magic number");
+    assert_eq!(
+        &wasm[0..4],
+        &[0x00, 0x61, 0x73, 0x6d],
+        "Should have WASM magic number"
+    );
 }
 
 #[test]
