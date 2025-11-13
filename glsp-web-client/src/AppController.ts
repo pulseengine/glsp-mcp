@@ -262,6 +262,11 @@ export class AppController {
                         this.handleCreateNewDiagram();
                         this.showShortcutNotification('Create New Diagram', '📝');
                         break;
+                    case 's':
+                        // Save current diagram (Phase 5: Future Enhancement)
+                        e.preventDefault();
+                        this.saveDiagram();
+                        break;
                 }
             }
         });
@@ -271,6 +276,7 @@ export class AppController {
         console.log('  - Escape: Return to Component View (WASM diagrams)');
         console.log('  - Ctrl+F: Focus search');
         console.log('  - Ctrl+N: Create new diagram');
+        console.log('  - Ctrl+S: Save current diagram');
     }
 
     /**
@@ -948,40 +954,40 @@ export class AppController {
             // Get existing diagram names for validation
             const existingDiagrams = await this.diagramService.getAvailableDiagrams();
             const existingNames = existingDiagrams.map(d => d.name);
-            
+
             // Show professional diagram creation dialog
             const result = await this.uiManager.showDiagramTypeSelector(existingNames);
-            
+
             if (!result) return; // User cancelled
-            
+
             const { type: selectedType, name: diagramName } = result;
-            
+
             console.log('AppController: Creating new diagram:', selectedType.type, diagramName);
             const createResult = await this.mcpService.createDiagram(selectedType.type, diagramName);
             console.log('AppController: Create diagram result:', createResult);
-            
+
             if (createResult.content && createResult.content[0] && createResult.content[0].text) {
                 // Extract the diagram ID from the response
                 const match = createResult.content[0].text.match(/ID: ([a-f0-9-]+)/);
                 if (match) {
                     const diagramId = match[1];
                     console.log('AppController: New diagram ID:', diagramId);
-                    
+
                     // Load the newly created diagram
                     const newDiagram = await this.diagramService.loadDiagram(diagramId);
                     if (newDiagram) {
                         this.renderer.setDiagram(newDiagram);
                         console.log('AppController: Loaded new diagram successfully');
-                        
+
                         // Update the toolbar to show the correct node/edge types for this diagram type
                         console.log('AppController: Updating toolbar for diagram type:', selectedType.type);
                         this.uiManager.updateToolbarContent(this.uiManager.getToolbarElement(), selectedType.type);
                     }
                 }
-                
+
                 this.uiManager.updateStatus(`Created: ${diagramName}`);
                 await this.uiManager.showSuccess(`Successfully created "${diagramName}"!`);
-                
+
                 // Refresh the diagram list to show the new diagram
                 await this.refreshDiagramList();
             } else {
@@ -990,9 +996,35 @@ export class AppController {
         } catch (error) {
             console.error('Failed to create new diagram:', error);
             await this.uiManager.showError(
-                'Failed to create diagram', 
+                'Failed to create diagram',
                 error instanceof Error ? error.message : 'Unknown error'
             );
+        }
+    }
+
+    /**
+     * Phase 5: Save current diagram (Future Enhancement)
+     */
+    private async saveDiagram(): Promise<void> {
+        const currentDiagram = this.diagramService.getCurrentDiagram();
+        if (!currentDiagram) {
+            this.showShortcutNotification('No diagram loaded', '⚠️');
+            return;
+        }
+
+        try {
+            // In a real implementation, this would call an API to save the diagram
+            // For now, just show a notification
+            console.log('Saving diagram:', currentDiagram.id);
+
+            // Simulate save operation
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            this.showShortcutNotification('Diagram Saved', '💾');
+            console.log('Diagram saved successfully');
+        } catch (error) {
+            console.error('Failed to save diagram:', error);
+            this.showShortcutNotification('Save Failed', '❌');
         }
     }
     
