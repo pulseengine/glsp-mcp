@@ -1036,7 +1036,9 @@ export class AppController {
             'uml-class': { title: 'UML Elements', icon: '🏗️' },
             'system-architecture': { title: 'Architecture Components', icon: '🏭' },
             'wasm-component': { title: 'WASM Components', icon: '📦' },
-            'wit-interface': { title: 'WIT Types', icon: '🔷' }
+            'wit-schema': { title: 'WIT Schema Types', icon: '🔷' },
+            // Legacy support for old 'wit-interface' diagram type
+            'wit-interface': { title: 'WIT Schema Types', icon: '🔷' }
         };
 
         const config = titleMap[diagramType] || { title: 'Components', icon: '📦' };

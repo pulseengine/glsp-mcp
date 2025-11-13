@@ -1244,6 +1244,8 @@ export class UIManager {
             'uml-class': '🏗️',
             'system-architecture': '🏭',
             'wasm-component': '📦',
+            'wit-schema': '🔷',
+            // Legacy support for old 'wit-interface' diagram type
             'wit-interface': '🔷'
         };
         return iconMap[type] || '📋';
@@ -1256,7 +1258,9 @@ export class UIManager {
             'uml-class': 'UML Class Diagrams',
             'system-architecture': 'System Architecture',
             'wasm-component': 'WASM Components',
-            'wit-interface': 'WIT Interfaces'
+            'wit-schema': 'WIT Schemas',
+            // Legacy support for old 'wit-interface' diagram type
+            'wit-interface': 'WIT Schemas'
         };
         return labelMap[type] || type.split('-').map(word =>
             word.charAt(0).toUpperCase() + word.slice(1)

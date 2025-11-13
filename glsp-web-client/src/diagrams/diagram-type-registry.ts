@@ -113,9 +113,9 @@ class DiagramTypeRegistryImpl implements DiagramTypeRegistry {
 
         // WebAssembly Interface Types (WIT) diagrams
         this.registerType({
-            type: 'wit-interface',
-            label: 'WIT Interface Diagram',
-            description: 'WebAssembly Interface Types structure and dependencies visualization',
+            type: 'wit-schema',
+            label: 'WIT Schema Diagram',
+            description: 'WebAssembly Interface Types (WIT) schema definitions and package structure',
             nodeTypes: WIT_NODE_TYPES,
             edgeTypes: WIT_EDGE_TYPES,
             icon: '🔷',
