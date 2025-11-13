@@ -117,6 +117,9 @@ export class AppController {
         // Setup UI event handlers
         this.setupUIEventHandlers();
 
+        // Setup keyboard shortcuts for view modes and navigation
+        this.setupKeyboardShortcuts();
+
         // Setup AI model selection
         await this.setupAIModelSelection();
 
@@ -182,6 +185,159 @@ export class AppController {
             console.log('AppController: Diagram close requested - clearing canvas');
             this.renderer.clear();
         });
+    }
+
+    /**
+     * Setup keyboard shortcuts for view modes and navigation (Phase 3)
+     * Provides quick access to view mode switching and common actions
+     */
+    private setupKeyboardShortcuts(): void {
+        document.addEventListener('keydown', (e) => {
+            // Only process shortcuts if not typing in an input field
+            const activeElement = document.activeElement;
+            if (activeElement instanceof HTMLInputElement ||
+                activeElement instanceof HTMLTextAreaElement ||
+                activeElement instanceof HTMLSelectElement) {
+                return;
+            }
+
+            // Get current diagram
+            const currentDiagram = this.diagramService.getCurrentDiagram();
+            if (!currentDiagram) return;
+
+            const diagramType = currentDiagram.diagramType || currentDiagram.diagram_type;
+            const isWasmDiagram = diagramType === 'wasm-component';
+
+            // View mode shortcuts (only for WASM diagrams)
+            if (isWasmDiagram) {
+                switch (e.key) {
+                    case '1':
+                        e.preventDefault();
+                        this.switchViewMode('component');
+                        this.showShortcutNotification('Switched to Component View', '📦');
+                        break;
+                    case '2':
+                        e.preventDefault();
+                        this.switchViewMode('uml-interface');
+                        this.showShortcutNotification('Switched to UML View', '🏗️');
+                        break;
+                    case '3':
+                        e.preventDefault();
+                        this.switchViewMode('wit-interface');
+                        this.showShortcutNotification('Switched to WIT Interface View', '🔷');
+                        break;
+                    case '4':
+                        e.preventDefault();
+                        this.switchViewMode('wit-dependencies');
+                        this.showShortcutNotification('Switched to Dependencies View', '🔗');
+                        break;
+                    case 'Escape':
+                        // Return to component view
+                        if (this.viewSwitcher.getCurrentMode() !== 'component') {
+                            e.preventDefault();
+                            this.switchViewMode('component');
+                            this.showShortcutNotification('Returned to Component View', '📦');
+                        }
+                        break;
+                }
+            }
+
+            // Global shortcuts (all diagram types)
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key.toLowerCase()) {
+                    case 'f':
+                        // Focus search input
+                        e.preventDefault();
+                        const searchInput = document.querySelector('#diagram-search-input') as HTMLInputElement;
+                        if (searchInput) {
+                            searchInput.focus();
+                            searchInput.select();
+                            this.showShortcutNotification('Search Diagrams', '🔍');
+                        }
+                        break;
+                }
+            }
+        });
+
+        console.log('AppController: Keyboard shortcuts initialized');
+        console.log('  - Number keys (1-4): Switch view modes (WASM diagrams only)');
+        console.log('  - Escape: Return to Component View (WASM diagrams)');
+        console.log('  - Ctrl+F: Focus search');
+    }
+
+    /**
+     * Switch to a specific view mode (Phase 3 helper)
+     */
+    private switchViewMode(mode: string): void {
+        this.viewSwitcher.switchMode(mode);
+        // Dispatch event for any listeners
+        window.dispatchEvent(new CustomEvent('view-mode-change', { detail: { mode } }));
+    }
+
+    /**
+     * Show temporary notification for keyboard shortcut actions (Phase 3)
+     */
+    private showShortcutNotification(message: string, icon: string): void {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            animation: slideIn 0.2s ease;
+            font-size: 14px;
+            color: var(--text-primary);
+        `;
+
+        notification.innerHTML = `
+            <span style="font-size: 20px;">${icon}</span>
+            <span style="font-weight: 500;">${message}</span>
+        `;
+
+        // Add CSS animation if not already added
+        if (!document.querySelector('#shortcut-notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'shortcut-notification-styles';
+            style.textContent = `
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+                @keyframes fadeOut {
+                    from {
+                        opacity: 1;
+                    }
+                    to {
+                        opacity: 0;
+                        transform: translateX(100%);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(notification);
+
+        // Auto-remove after 2 seconds
+        setTimeout(() => {
+            notification.style.animation = 'fadeOut 0.2s ease';
+            setTimeout(() => notification.remove(), 200);
+        }, 2000);
     }
 
     /**
