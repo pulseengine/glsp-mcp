@@ -56,6 +56,11 @@ export class UIManager {
     private themeController: ThemeController;
     private headerIconManager: HeaderIconManager;
     private statusListener?: StatusListener;
+
+    // Diagram list management
+    private allDiagrams: import('../services/DiagramService.js').DiagramMetadata[] = [];
+    private loadDiagramCallbackStored?: (diagramId: string) => void;
+    private deleteDiagramCallbackStored?: (diagramId: string, diagramName: string) => void;
     
     // Modern sidebar components
     private sidebar?: SidebarComponent;
@@ -768,15 +773,32 @@ export class UIManager {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h3 style="margin: 0;">Diagrams</h3>
                 <button id="create-new-diagram-btn" style="
-                    background: var(--accent-wasm); 
-                    color: white; 
-                    border: none; 
-                    padding: 6px 12px; 
-                    border-radius: var(--radius-sm); 
-                    cursor: pointer; 
+                    background: var(--accent-wasm);
+                    color: white;
+                    border: none;
+                    padding: 6px 12px;
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
                     font-size: 12px;
                     transition: all 0.2s ease;
                 " title="Create New Diagram">+ New</button>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <input
+                    type="text"
+                    id="diagram-search-input"
+                    placeholder="🔍 Search diagrams..."
+                    style="
+                        width: 100%;
+                        padding: 8px 12px;
+                        background: var(--bg-secondary);
+                        border: 1px solid var(--border);
+                        border-radius: var(--radius-sm);
+                        color: var(--text-primary);
+                        font-size: 13px;
+                        transition: all 0.2s ease;
+                    "
+                />
             </div>
             <ul id="diagram-list"></ul>
         `;
@@ -1358,30 +1380,98 @@ export class UIManager {
 
     public updateDiagramList(diagrams: import('../services/DiagramService.js').DiagramMetadata[], loadDiagramCallback: (diagramId: string) => void, deleteDiagramCallback?: (diagramId: string, diagramName: string) => void): void {
         console.log('UIManager: updateDiagramList called with', diagrams.length, 'diagrams');
-        const listElement = this.diagramListElement.querySelector('#diagram-list');
-        console.log('UIManager: diagram list element found:', !!listElement);
-        if (listElement) {
-            listElement.innerHTML = '';
 
-            // Group diagrams by type
-            const grouped = diagrams.reduce((acc, diagram) => {
-                const type = diagram.diagramType || 'workflow';
-                if (!acc[type]) acc[type] = [];
-                acc[type].push(diagram);
-                return acc;
-            }, {} as Record<string, import('../services/DiagramService.js').DiagramMetadata[]>);
+        // Store diagrams and callbacks for filtering
+        this.allDiagrams = diagrams;
+        this.loadDiagramCallbackStored = loadDiagramCallback;
+        this.deleteDiagramCallbackStored = deleteDiagramCallback;
 
-            // Add diagram grouping styles if not already added
-            this.addDiagramGroupingStyles();
-
-            // Render grouped sections
-            Object.entries(grouped).forEach(([type, typeDiagrams]) => {
-                const section = this.createDiagramSection(type, typeDiagrams, loadDiagramCallback, deleteDiagramCallback);
-                listElement.appendChild(section);
+        // Setup search input listener (only once)
+        const searchInput = this.diagramListElement.querySelector('#diagram-search-input') as HTMLInputElement;
+        if (searchInput && !searchInput.dataset.listenerAttached) {
+            searchInput.dataset.listenerAttached = 'true';
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = (e.target as HTMLInputElement).value.toLowerCase();
+                this.filterDiagrams(searchTerm);
             });
-        } else {
-            console.error('UIManager: diagram-list element not found in diagramListElement');
+
+            // Add focus styling
+            searchInput.addEventListener('focus', () => {
+                searchInput.style.borderColor = 'var(--accent-wasm)';
+                searchInput.style.boxShadow = '0 0 0 2px rgba(101, 79, 240, 0.2)';
+            });
+            searchInput.addEventListener('blur', () => {
+                searchInput.style.borderColor = 'var(--border)';
+                searchInput.style.boxShadow = 'none';
+            });
         }
+
+        // Render all diagrams initially
+        this.renderDiagramList(diagrams, loadDiagramCallback, deleteDiagramCallback);
+    }
+
+    private filterDiagrams(searchTerm: string): void {
+        if (!searchTerm) {
+            // Show all diagrams if search is empty
+            this.renderDiagramList(this.allDiagrams, this.loadDiagramCallbackStored!, this.deleteDiagramCallbackStored);
+            return;
+        }
+
+        // Filter diagrams by name or type
+        const filtered = this.allDiagrams.filter(diagram =>
+            diagram.name.toLowerCase().includes(searchTerm) ||
+            (diagram.diagramType && diagram.diagramType.toLowerCase().includes(searchTerm))
+        );
+
+        this.renderDiagramList(filtered, this.loadDiagramCallbackStored!, this.deleteDiagramCallbackStored);
+
+        // Show message if no results
+        const listElement = this.diagramListElement.querySelector('#diagram-list');
+        if (listElement && filtered.length === 0) {
+            listElement.innerHTML = `
+                <div style="
+                    text-align: center;
+                    padding: 24px 16px;
+                    color: var(--text-secondary);
+                    font-size: 13px;
+                ">
+                    <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+                    <div>No diagrams found matching "${searchTerm}"</div>
+                    <div style="font-size: 12px; margin-top: 4px; color: var(--text-dim);">Try a different search term</div>
+                </div>
+            `;
+        }
+    }
+
+    private renderDiagramList(diagrams: import('../services/DiagramService.js').DiagramMetadata[], loadDiagramCallback: (diagramId: string) => void, deleteDiagramCallback?: (diagramId: string, diagramName: string) => void): void {
+        const listElement = this.diagramListElement.querySelector('#diagram-list');
+        if (!listElement) {
+            console.error('UIManager: diagram-list element not found in diagramListElement');
+            return;
+        }
+
+        listElement.innerHTML = '';
+
+        if (diagrams.length === 0) {
+            return; // Empty list handled by calling code
+        }
+
+        // Group diagrams by type
+        const grouped = diagrams.reduce((acc, diagram) => {
+            const type = diagram.diagramType || 'workflow';
+            if (!acc[type]) acc[type] = [];
+            acc[type].push(diagram);
+            return acc;
+        }, {} as Record<string, import('../services/DiagramService.js').DiagramMetadata[]>);
+
+        // Add diagram grouping styles if not already added
+        this.addDiagramGroupingStyles();
+
+        // Render grouped sections
+        Object.entries(grouped).forEach(([type, typeDiagrams]) => {
+            const section = this.createDiagramSection(type, typeDiagrams, loadDiagramCallback, deleteDiagramCallback);
+            listElement.appendChild(section);
+        });
     }
 
     private createDiagramSection(
