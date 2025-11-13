@@ -934,7 +934,7 @@ impl WasmSimulationEngine {
             }
 
             // Update frame rate statistics
-            if _frame_count % 30 == 0 {
+            if _frame_count.is_multiple_of(30) {
                 let elapsed = start_time.elapsed().as_secs_f64();
                 let fps = _frame_count as f64 / elapsed;
 
