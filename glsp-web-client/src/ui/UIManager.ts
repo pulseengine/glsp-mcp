@@ -1135,62 +1135,295 @@ export class UIManager {
         console.log('UIManager: diagram list element found:', !!listElement);
         if (listElement) {
             listElement.innerHTML = '';
-            diagrams.forEach((diagram) => {
-                console.log('UIManager: Adding diagram to list:', diagram.name, diagram.id);
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <div style="flex: 1;">
-                        <div style="font-weight: 500;">${diagram.name}</div>
-                        <div style="font-size: 0.8em; color: var(--text-dim);">${diagram.diagramType}</div>
-                    </div>
-                    <div style="display: flex; gap: 4px;">
-                        <button class="load-btn" style="
-                            background: var(--accent-wasm); 
-                            color: white; 
-                            border: none; 
-                            padding: 4px 8px; 
-                            border-radius: var(--radius-sm); 
-                            cursor: pointer; 
-                            font-size: 11px;
-                        ">Load</button>
-                        <button class="delete-btn" style="
-                            background: var(--accent-error); 
-                            color: white; 
-                            border: none; 
-                            padding: 4px 8px; 
-                            border-radius: var(--radius-sm); 
-                            cursor: pointer; 
-                            font-size: 11px;
-                        " title="Delete diagram">×</button>
-                    </div>
-                `;
-                
-                // Update li styling for flex layout
-                li.style.display = 'flex';
-                li.style.alignItems = 'center';
-                li.style.gap = '8px';
-                
-                // Add load event listener
-                li.querySelector('.load-btn')!.addEventListener('click', () => {
-                    console.log('UIManager: Load button clicked for diagram:', diagram.id);
-                    loadDiagramCallback(diagram.id);
-                });
-                
-                // Add delete event listener if callback provided
-                if (deleteDiagramCallback) {
-                    li.querySelector('.delete-btn')!.addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        console.log('UIManager: Delete button clicked for diagram:', diagram.id);
-                        // AppController handles the confirmation dialog
-                        deleteDiagramCallback(diagram.id, diagram.name);
-                    });
-                }
-                
-                listElement.appendChild(li);
+
+            // Group diagrams by type
+            const grouped = diagrams.reduce((acc, diagram) => {
+                const type = diagram.diagramType || 'workflow';
+                if (!acc[type]) acc[type] = [];
+                acc[type].push(diagram);
+                return acc;
+            }, {} as Record<string, import('../services/DiagramService.js').DiagramMetadata[]>);
+
+            // Add diagram grouping styles if not already added
+            this.addDiagramGroupingStyles();
+
+            // Render grouped sections
+            Object.entries(grouped).forEach(([type, typeDiagrams]) => {
+                const section = this.createDiagramSection(type, typeDiagrams, loadDiagramCallback, deleteDiagramCallback);
+                listElement.appendChild(section);
             });
         } else {
             console.error('UIManager: diagram-list element not found in diagramListElement');
         }
+    }
+
+    private createDiagramSection(
+        type: string,
+        diagrams: import('../services/DiagramService.js').DiagramMetadata[],
+        loadDiagramCallback: (diagramId: string) => void,
+        deleteDiagramCallback?: (diagramId: string, diagramName: string) => void
+    ): HTMLElement {
+        const section = document.createElement('div');
+        section.className = 'diagram-section';
+
+        // Create collapsible header
+        const header = document.createElement('div');
+        header.className = 'diagram-section-header';
+        header.innerHTML = `
+            <span class="section-icon">${this.getTypeIcon(type)}</span>
+            <span class="section-title">${this.getTypeLabel(type)}</span>
+            <span class="section-count">${diagrams.length}</span>
+            <span class="section-chevron">▼</span>
+        `;
+
+        // Create content container
+        const content = document.createElement('div');
+        content.className = 'diagram-section-content';
+
+        // Add diagram items
+        diagrams.forEach((diagram) => {
+            const item = this.createDiagramListItem(diagram, loadDiagramCallback, deleteDiagramCallback);
+            content.appendChild(item);
+        });
+
+        // Make header collapsible
+        header.addEventListener('click', () => {
+            const isCollapsed = content.classList.toggle('collapsed');
+            header.classList.toggle('collapsed', isCollapsed);
+            const chevron = header.querySelector('.section-chevron');
+            if (chevron) {
+                chevron.textContent = isCollapsed ? '▶' : '▼';
+            }
+        });
+
+        section.appendChild(header);
+        section.appendChild(content);
+
+        return section;
+    }
+
+    private createDiagramListItem(
+        diagram: import('../services/DiagramService.js').DiagramMetadata,
+        loadDiagramCallback: (diagramId: string) => void,
+        deleteDiagramCallback?: (diagramId: string, diagramName: string) => void
+    ): HTMLElement {
+        const li = document.createElement('li');
+        li.className = 'diagram-item';
+        li.innerHTML = `
+            <div class="diagram-item-content">
+                <div class="diagram-item-name">${diagram.name}</div>
+            </div>
+            <div class="diagram-item-actions">
+                <button class="load-btn" title="Load diagram">Load</button>
+                <button class="delete-btn" title="Delete diagram">×</button>
+            </div>
+        `;
+
+        // Add load event listener
+        li.querySelector('.load-btn')!.addEventListener('click', () => {
+            console.log('UIManager: Load button clicked for diagram:', diagram.id);
+            loadDiagramCallback(diagram.id);
+        });
+
+        // Add delete event listener if callback provided
+        if (deleteDiagramCallback) {
+            li.querySelector('.delete-btn')!.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                console.log('UIManager: Delete button clicked for diagram:', diagram.id);
+                deleteDiagramCallback(diagram.id, diagram.name);
+            });
+        }
+
+        return li;
+    }
+
+    private getTypeIcon(type: string): string {
+        const iconMap: Record<string, string> = {
+            'workflow': '📊',
+            'bpmn': '📊',
+            'uml-class': '🏗️',
+            'system-architecture': '🏭',
+            'wasm-component': '📦',
+            'wit-interface': '🔷'
+        };
+        return iconMap[type] || '📋';
+    }
+
+    private getTypeLabel(type: string): string {
+        const labelMap: Record<string, string> = {
+            'workflow': 'Workflow Diagrams',
+            'bpmn': 'BPMN Diagrams',
+            'uml-class': 'UML Class Diagrams',
+            'system-architecture': 'System Architecture',
+            'wasm-component': 'WASM Components',
+            'wit-interface': 'WIT Interfaces'
+        };
+        return labelMap[type] || type.split('-').map(word =>
+            word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+    }
+
+    private addDiagramGroupingStyles(): void {
+        // Check if styles already added
+        if (document.querySelector('#diagram-grouping-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'diagram-grouping-styles';
+        style.textContent = `
+            .diagram-section {
+                margin-bottom: 12px;
+            }
+
+            .diagram-section-header {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                background: var(--bg-tertiary);
+                border-radius: var(--radius-sm);
+                cursor: pointer;
+                transition: all 0.2s ease;
+                user-select: none;
+            }
+
+            .diagram-section-header:hover {
+                background: var(--bg-secondary);
+                transform: translateX(2px);
+            }
+
+            .diagram-section-header.collapsed {
+                opacity: 0.7;
+            }
+
+            .section-icon {
+                font-size: 16px;
+                flex-shrink: 0;
+            }
+
+            .section-title {
+                flex: 1;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--text-primary);
+            }
+
+            .section-count {
+                background: var(--accent-wasm);
+                color: white;
+                padding: 2px 8px;
+                border-radius: 10px;
+                font-size: 11px;
+                font-weight: 600;
+                flex-shrink: 0;
+            }
+
+            .section-chevron {
+                font-size: 10px;
+                color: var(--text-secondary);
+                transition: transform 0.2s ease;
+                flex-shrink: 0;
+            }
+
+            .diagram-section-content {
+                padding: 4px 0 4px 12px;
+                max-height: 1000px;
+                overflow: hidden;
+                transition: max-height 0.3s ease, opacity 0.3s ease;
+                opacity: 1;
+            }
+
+            .diagram-section-content.collapsed {
+                max-height: 0;
+                opacity: 0;
+                padding: 0 0 0 12px;
+            }
+
+            .diagram-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                margin: 4px 0;
+                background: var(--bg-secondary);
+                border-radius: var(--radius-sm);
+                transition: all 0.2s ease;
+                list-style: none;
+            }
+
+            .diagram-item:hover {
+                background: var(--bg-tertiary);
+                transform: translateX(4px);
+            }
+
+            .diagram-item-content {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .diagram-item-name {
+                font-weight: 500;
+                font-size: 13px;
+                color: var(--text-primary);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .diagram-item-actions {
+                display: flex;
+                gap: 4px;
+                flex-shrink: 0;
+            }
+
+            .diagram-item .load-btn {
+                background: var(--accent-wasm);
+                color: white;
+                border: none;
+                padding: 4px 10px;
+                border-radius: var(--radius-sm);
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 600;
+                transition: all 0.2s ease;
+            }
+
+            .diagram-item .load-btn:hover {
+                background: var(--accent-info);
+                transform: scale(1.05);
+            }
+
+            .diagram-item .delete-btn {
+                background: transparent;
+                color: var(--text-secondary);
+                border: 1px solid var(--border);
+                padding: 4px 8px;
+                border-radius: var(--radius-sm);
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: bold;
+                transition: all 0.2s ease;
+                line-height: 1;
+            }
+
+            .diagram-item .delete-btn:hover {
+                background: var(--accent-error);
+                border-color: var(--accent-error);
+                color: white;
+                transform: scale(1.1);
+            }
+
+            /* Empty state for no diagrams in section */
+            .diagram-section-content:empty::after {
+                content: 'No diagrams';
+                display: block;
+                padding: 12px;
+                color: var(--text-dim);
+                font-size: 12px;
+                text-align: center;
+                font-style: italic;
+            }
+        `;
+        document.head.appendChild(style);
     }
     
     public setupCreateDiagramButton(createDiagramCallback: () => void): void {
