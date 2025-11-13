@@ -17,6 +17,7 @@ import { serviceContainer } from './core/ServiceContainer.js';
 import { registerServices, getService, getServiceHealthDashboard } from './core/ServiceRegistration.js';
 import { integrationTester } from './core/IntegrationTesting.js';
 import { testComponentLoading } from './debug/ComponentLoadingTest.js';
+import { RecentDiagramsManager } from './utils/RecentDiagramsManager.js';
 
 // Debug interface for window properties
 interface WindowDebug {
@@ -255,6 +256,12 @@ export class AppController {
                             this.showShortcutNotification('Search Diagrams', '🔍');
                         }
                         break;
+                    case 'n':
+                        // Create new diagram (Phase 4: Optional Enhancement)
+                        e.preventDefault();
+                        this.handleCreateNewDiagram();
+                        this.showShortcutNotification('Create New Diagram', '📝');
+                        break;
                 }
             }
         });
@@ -263,6 +270,7 @@ export class AppController {
         console.log('  - Number keys (1-4): Switch view modes (WASM diagrams only)');
         console.log('  - Escape: Return to Component View (WASM diagrams)');
         console.log('  - Ctrl+F: Focus search');
+        console.log('  - Ctrl+N: Create new diagram');
     }
 
     /**
@@ -826,7 +834,7 @@ export class AppController {
         if (loadedDiagram) {
             console.log('AppController: Diagram loaded successfully:', loadedDiagram);
             this.renderer.setDiagram(loadedDiagram);
-            
+
             // Update the toolbar to show the correct node/edge types for this diagram type
             // Handle both camelCase and snake_case naming conventions
             const diagramType = loadedDiagram.diagramType || loadedDiagram.diagram_type || 'workflow';
@@ -838,6 +846,16 @@ export class AppController {
 
             // Update sidebar title based on diagram type
             this.updateSidebarForDiagramType(diagramType);
+
+            // Track as recent diagram (Phase 4: Optional Enhancement)
+            RecentDiagramsManager.addRecent({
+                id: loadedDiagram.id,
+                name: loadedDiagram.name || 'Untitled Diagram',
+                diagramType: diagramType
+            });
+
+            // Update recent diagrams UI
+            this.uiManager.updateRecentDiagrams();
         } else {
             console.warn('AppController: Failed to load diagram:', diagramId);
         }
@@ -899,14 +917,18 @@ export class AppController {
             
             if (success) {
                 console.log('AppController: Diagram deleted successfully');
-                
+
                 // Canvas is already cleared if it was the current diagram
                 if (isCurrentDiagram) {
                     console.log('AppController: Canvas was pre-cleared for current diagram');
                 }
-                
-                // Refresh the diagram list
+
+                // Remove from recent diagrams (Phase 4: Optional Enhancement)
+                RecentDiagramsManager.removeRecent(diagramId);
+
+                // Refresh the diagram list and recent diagrams
                 await this.refreshDiagramList();
+                this.uiManager.updateRecentDiagrams();
                 await this.uiManager.showSuccess(`Successfully deleted "${diagramName}"`);
             } else {
                 console.error('AppController: Failed to delete diagram - server error or unknown tool');
