@@ -1584,6 +1584,166 @@ export class UIManager {
         ).join(' ');
     }
 
+    /**
+     * Update recent diagrams section (Phase 4: Optional Enhancement)
+     */
+    public updateRecentDiagrams(): void {
+        // Import the manager
+        import('../utils/RecentDiagramsManager.js').then(({ RecentDiagramsManager }) => {
+            const recent = RecentDiagramsManager.getRecent();
+
+            // Find or create the recent diagrams container
+            let recentContainer = this.diagramListElement.querySelector('#recent-diagrams-section') as HTMLElement;
+
+            if (!recentContainer) {
+                // Create the container if it doesn't exist
+                recentContainer = document.createElement('div');
+                recentContainer.id = 'recent-diagrams-section';
+                recentContainer.style.cssText = `
+                    margin-bottom: 16px;
+                    padding-bottom: 16px;
+                    border-bottom: 1px solid var(--border);
+                `;
+
+                // Insert before the search input
+                const searchInput = this.diagramListElement.querySelector('#diagram-search-input');
+                if (searchInput && searchInput.parentElement) {
+                    searchInput.parentElement.parentNode!.insertBefore(recentContainer, searchInput.parentElement);
+                }
+            }
+
+            // Clear and rebuild
+            recentContainer.innerHTML = '';
+
+            if (recent.length === 0) {
+                // Don't show section if no recent diagrams
+                recentContainer.style.display = 'none';
+                return;
+            }
+
+            recentContainer.style.display = 'block';
+
+            // Create header
+            const header = document.createElement('div');
+            header.style.cssText = `
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 8px;
+                padding: 0 4px;
+            `;
+            header.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 16px;">🕒</span>
+                    <span style="font-weight: 600; font-size: 13px; color: var(--text-primary);">Recent</span>
+                    <span style="
+                        background: var(--accent-info);
+                        color: white;
+                        padding: 2px 6px;
+                        border-radius: 8px;
+                        font-size: 10px;
+                        font-weight: 600;
+                    ">${recent.length}</span>
+                </div>
+                <button id="clear-recent-btn" style="
+                    background: transparent;
+                    border: none;
+                    color: var(--text-dim);
+                    cursor: pointer;
+                    font-size: 11px;
+                    padding: 4px 8px;
+                    border-radius: var(--radius-sm);
+                    transition: all 0.2s ease;
+                " title="Clear recent diagrams">Clear</button>
+            `;
+            recentContainer.appendChild(header);
+
+            // Add clear button handler
+            const clearBtn = header.querySelector('#clear-recent-btn');
+            clearBtn?.addEventListener('click', () => {
+                RecentDiagramsManager.clearRecent();
+                this.updateRecentDiagrams();
+            });
+            clearBtn?.addEventListener('mouseenter', (e) => {
+                (e.target as HTMLElement).style.background = 'var(--accent-error)';
+                (e.target as HTMLElement).style.color = 'white';
+            });
+            clearBtn?.addEventListener('mouseleave', (e) => {
+                (e.target as HTMLElement).style.background = 'transparent';
+                (e.target as HTMLElement).style.color = 'var(--text-dim)';
+            });
+
+            // Create list
+            const list = document.createElement('div');
+            list.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            `;
+
+            // Add recent diagrams (limit to 5 most recent)
+            recent.slice(0, 5).forEach(diagram => {
+                const item = document.createElement('button');
+                item.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px 12px;
+                    background: var(--bg-secondary);
+                    border: 1px solid var(--border);
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    width: 100%;
+                    text-align: left;
+                `;
+
+                const icon = this.getTypeIcon(diagram.diagramType);
+                const timeAgo = RecentDiagramsManager.getTimeAgo(diagram.lastAccessed);
+
+                item.innerHTML = `
+                    <span style="font-size: 16px;">${icon}</span>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="
+                            font-weight: 500;
+                            font-size: 13px;
+                            color: var(--text-primary);
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        ">${diagram.name}</div>
+                        <div style="
+                            font-size: 11px;
+                            color: var(--text-dim);
+                        ">${timeAgo}</div>
+                    </div>
+                `;
+
+                item.addEventListener('mouseenter', () => {
+                    item.style.background = 'var(--bg-tertiary)';
+                    item.style.borderColor = 'var(--accent-wasm)';
+                    item.style.transform = 'translateX(4px)';
+                });
+
+                item.addEventListener('mouseleave', () => {
+                    item.style.background = 'var(--bg-secondary)';
+                    item.style.borderColor = 'var(--border)';
+                    item.style.transform = 'translateX(0)';
+                });
+
+                item.addEventListener('click', () => {
+                    if (this.loadDiagramCallbackStored) {
+                        this.loadDiagramCallbackStored(diagram.id);
+                    }
+                });
+
+                list.appendChild(item);
+            });
+
+            recentContainer.appendChild(list);
+        });
+    }
+
     private addDiagramGroupingStyles(): void {
         // Check if styles already added
         if (document.querySelector('#diagram-grouping-styles')) return;
