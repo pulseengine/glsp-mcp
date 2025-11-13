@@ -58,7 +58,16 @@ export class ViewSwitcher {
             <span class="indicator-mode">${this.getViewModeLabel(this.currentMode)}</span>
         `;
         container.appendChild(indicator);
-        
+
+        // Add return to component view button (shown when not in component view)
+        const returnBtn = document.createElement('button');
+        returnBtn.className = 'return-to-component-btn';
+        returnBtn.innerHTML = '<span class="return-arrow">←</span> <span class="return-label">Back to Component View</span>';
+        returnBtn.style.display = this.currentMode === 'component' ? 'none' : 'flex';
+        returnBtn.onclick = () => this.switchMode('component');
+        returnBtn.title = 'Return to the original component view';
+        container.appendChild(returnBtn);
+
         // Add mode buttons
         this.viewModes.forEach(mode => {
             const button = document.createElement('button');
@@ -100,6 +109,24 @@ export class ViewSwitcher {
                 border-radius: var(--radius-sm);
                 border-left: 3px solid var(--accent-wasm);
                 margin-right: 4px;
+                transition: all 0.2s ease;
+            }
+
+            .view-mode-indicator.transformed-view {
+                background: var(--accent-info, #58A6FF);
+                color: white;
+                border-left-color: white;
+                font-weight: 600;
+                padding: 6px 12px;
+                box-shadow: 0 2px 8px rgba(88, 166, 255, 0.3);
+            }
+
+            .view-mode-indicator.transformed-view .indicator-label {
+                color: rgba(255, 255, 255, 0.9);
+            }
+
+            .view-mode-indicator.transformed-view .indicator-mode {
+                color: white;
             }
 
             .indicator-label {
@@ -115,7 +142,44 @@ export class ViewSwitcher {
                 color: var(--text-primary);
                 font-weight: 500;
             }
-            
+
+            .return-to-component-btn {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 12px;
+                background: var(--accent-success, #3FB950);
+                color: white;
+                border: none;
+                border-radius: var(--radius-sm);
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 600;
+                transition: all 0.2s ease;
+                white-space: nowrap;
+                margin-right: 8px;
+            }
+
+            .return-to-component-btn:hover {
+                background: #4CC95F;
+                transform: translateX(-2px);
+            }
+
+            .return-arrow {
+                font-size: 14px;
+                font-weight: bold;
+            }
+
+            .return-label {
+                display: none;
+            }
+
+            @media (min-width: 900px) {
+                .return-label {
+                    display: inline;
+                }
+            }
+
             .view-mode-btn {
                 display: flex;
                 align-items: center;
@@ -194,11 +258,27 @@ export class ViewSwitcher {
         });
 
         // Update view mode indicator
+        const indicator = this.container.querySelector('.view-mode-indicator');
         const indicatorMode = this.container.querySelector('.indicator-mode');
         if (indicatorMode) {
             indicatorMode.textContent = this.getViewModeLabel(modeId);
         }
-        
+
+        // Add visual badge for transformed views
+        if (indicator) {
+            if (modeId === 'component') {
+                indicator.classList.remove('transformed-view');
+            } else {
+                indicator.classList.add('transformed-view');
+            }
+        }
+
+        // Update return button visibility
+        const returnBtn = this.container.querySelector('.return-to-component-btn') as HTMLElement;
+        if (returnBtn) {
+            returnBtn.style.display = modeId === 'component' ? 'none' : 'flex';
+        }
+
         // Show visual feedback that mode is changing
         const activeBtn = this.container.querySelector('.view-mode-btn.active') as HTMLElement;
         if (activeBtn) {
@@ -240,7 +320,8 @@ export class ViewSwitcher {
     
     public showForDiagramType(diagramType: string): void {
         // Show/hide view switcher based on diagram type
-        if (diagramType === 'wasm-component' || diagramType === 'wit-interface') {
+        // ONLY show for wasm-component (the only type that actually supports view transformations)
+        if (diagramType === 'wasm-component') {
             this.container.style.display = 'flex';
         } else {
             this.container.style.display = 'none';

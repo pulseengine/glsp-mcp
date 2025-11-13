@@ -482,4 +482,14 @@ export class SidebarComponent {
             existingBtn.remove();
         }
     }
+
+    /**
+     * Update the sidebar title based on the diagram type
+     */
+    public updateTitle(title: string, icon?: string): void {
+        const titleElement = this.element.querySelector('.sidebar-header h3');
+        if (titleElement) {
+            titleElement.textContent = icon ? `${icon} ${title}` : title;
+        }
+    }
 }

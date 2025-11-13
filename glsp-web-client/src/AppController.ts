@@ -676,9 +676,12 @@ export class AppController {
             const diagramType = loadedDiagram.diagramType || loadedDiagram.diagram_type || 'workflow';
             console.log('AppController: Updating toolbar for loaded diagram type:', diagramType);
             this.uiManager.updateToolbarContent(this.uiManager.getToolbarElement(), diagramType);
-            
+
             // Show/hide view switcher based on diagram type
             this.viewSwitcher.showForDiagramType(diagramType);
+
+            // Update sidebar title based on diagram type
+            this.updateSidebarForDiagramType(diagramType);
         } else {
             console.warn('AppController: Failed to load diagram:', diagramId);
         }
@@ -985,10 +988,15 @@ export class AppController {
         
         // Show/hide view switcher based on diagram type
         this.viewSwitcher.showForDiagramType(newType);
-        
+
+        // Update sidebar title based on diagram type
+        this.updateSidebarForDiagramType(newType);
+
         // Show/hide WASM palette based on diagram type
         if (newType === 'wasm-component') {
             await this.wasmRuntimeManager.showEnhancedPalette();
+            // Add friendly notification
+            this.uiManager.updateStatus('💡 WASM palette opened - drag components to canvas');
             console.log('Enhanced WASM palette shown for wasm-component diagram type');
         } else {
             this.wasmRuntimeManager.hidePalette();
@@ -1015,6 +1023,26 @@ export class AppController {
         }
     }
     
+    /**
+     * Update sidebar title and content based on diagram type
+     */
+    private updateSidebarForDiagramType(diagramType: string): void {
+        const sidebar = this.uiManager.getSidebar();
+        if (!sidebar) return;
+
+        const titleMap: Record<string, { title: string; icon: string }> = {
+            'workflow': { title: 'Workflow Elements', icon: '📊' },
+            'bpmn': { title: 'BPMN Elements', icon: '📊' },
+            'uml-class': { title: 'UML Elements', icon: '🏗️' },
+            'system-architecture': { title: 'Architecture Components', icon: '🏭' },
+            'wasm-component': { title: 'WASM Components', icon: '📦' },
+            'wit-interface': { title: 'WIT Types', icon: '🔷' }
+        };
+
+        const config = titleMap[diagramType] || { title: 'Components', icon: '📦' };
+        sidebar.updateTitle(config.title, config.icon);
+    }
+
     /**
      * Confirm diagram type change with user
      */

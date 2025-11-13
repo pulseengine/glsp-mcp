@@ -117,6 +117,7 @@ export class UIManager {
     public getAIAssistantPanel(): AIAssistantPanel { return this.aiAssistantPanel; }
     public getThemeController(): ThemeController { return this.themeController; }
     public getHeaderIconManager(): HeaderIconManager { return this.headerIconManager; }
+    public getSidebar(): SidebarComponent | undefined { return this.sidebar; }
     
     public initializeModernSidebar(container: HTMLElement, onDiagramTypeChange?: (type: string) => void): void {
         // Create sidebar component
