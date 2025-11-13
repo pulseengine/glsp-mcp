@@ -12,6 +12,7 @@ import { ViewSwitcher } from './ui/ViewSwitcher.js';
 import { ViewModeManager } from './ui/ViewModeManager.js';
 import { WasmViewTransformer } from './ui/WasmViewTransformer.js';
 import { WasmComponent } from './types/wasm-component.js';
+import { PanelManagerIntegration, initializePanelManager } from './ui/PanelManagerIntegration.js';
 import { serviceContainer } from './core/ServiceContainer.js';
 import { registerServices, getService, getServiceHealthDashboard } from './core/ServiceRegistration.js';
 import { integrationTester } from './core/IntegrationTesting.js';
@@ -55,6 +56,7 @@ export class AppController {
     private witVisualizationPanel!: WitVisualizationPanel;
     private viewSwitcher!: ViewSwitcher;
     private viewModeManager!: ViewModeManager;
+    private panelManager!: PanelManagerIntegration;
 
     constructor(private canvas: HTMLCanvasElement) {
         // Register all services with the container
@@ -300,6 +302,9 @@ export class AppController {
             this.renderer.updateTheme();
             console.log('AppController: Canvas theme updated');
         });
+
+        // Initialize Panel Manager for consistent panel behavior
+        this.initializePanelManager();
     }
     
     private async loadWasmComponentsToSidebar(): Promise<void> {
@@ -1341,10 +1346,43 @@ export class AppController {
         this.viewModeManager.addViewModeListener((newMode: string) => {
             this.viewSwitcher.setMode(newMode);
         });
-        
+
         // Set up diagram change listener (will be added to DiagramService)
         // For now, we'll call this manually when diagrams change
         console.log('ViewModeManager setup complete');
+    }
+
+    /**
+     * Initialize Panel Manager for consistent panel behavior
+     */
+    private initializePanelManager(): void {
+        console.log('AppController: Initializing Panel Manager...');
+
+        // Initialize the singleton panel manager
+        this.panelManager = initializePanelManager();
+
+        // Register AI Assistant Panel
+        if (this.uiManager) {
+            const aiPanel = this.uiManager.getAIAssistantPanel();
+            this.panelManager.registerPanel(
+                'ai-assistant',
+                aiPanel,
+                '🤖'
+            );
+            console.log('AppController: AI Assistant Panel registered with Panel Manager');
+        }
+
+        // Register WIT Visualization Panel
+        if (this.witVisualizationPanel) {
+            this.panelManager.registerPanel(
+                'wit-visualization',
+                this.witVisualizationPanel,
+                '📊'
+            );
+            console.log('AppController: WIT Visualization Panel registered with Panel Manager');
+        }
+
+        console.log('AppController: Panel Manager initialized successfully');
     }
     
     /**
