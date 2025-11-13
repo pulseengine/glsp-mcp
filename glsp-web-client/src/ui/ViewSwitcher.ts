@@ -77,13 +77,26 @@ export class ViewSwitcher {
                 <span class="view-mode-icon">${mode.icon}</span>
                 <span class="view-mode-label">${mode.label}</span>
             `;
-            
+
             button.onclick = () => this.switchMode(mode.id);
             container.appendChild(button);
         });
-        
+
+        // Add help tooltip button
+        const helpBtn = this.createHelpTooltip();
+        container.appendChild(helpBtn);
+
         this.addStyles();
         return container;
+    }
+
+    private createHelpTooltip(): HTMLElement {
+        const helpBtn = document.createElement('button');
+        helpBtn.className = 'view-mode-help';
+        helpBtn.innerHTML = '?';
+        helpBtn.title = `View Modes transform how you see your WASM components:\n\n• Component View: Original component connections\n• UML View: Transformed to UML class diagram\n• WIT Interface: Shows WIT type structure\n• Dependencies: Shows interface relationships\n\nNote: Switching views doesn't create new diagrams or lose data.`;
+
+        return helpBtn;
     }
     
     private addStyles(): void {
@@ -221,7 +234,30 @@ export class ViewSwitcher {
                     display: inline;
                 }
             }
-            
+
+            .view-mode-help {
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                background: var(--accent-info, #58A6FF);
+                color: white;
+                border: none;
+                cursor: help;
+                font-size: 14px;
+                font-weight: bold;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-left: 4px;
+                transition: all 0.2s ease;
+                flex-shrink: 0;
+            }
+
+            .view-mode-help:hover {
+                background: #79B8FF;
+                transform: scale(1.1);
+            }
+
             /* Compact mode for smaller screens */
             @media (max-width: 768px) {
                 .view-switcher {
