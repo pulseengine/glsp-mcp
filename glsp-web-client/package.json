@@ -6,8 +6,14 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.build.json && vite build",
     "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest --watch",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives",
-    "lint:strict": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint:strict": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@bytecodealliance/jco": "^1.0.0",
@@ -18,8 +24,13 @@
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "@vitest/ui": "^2.0.0",
     "eslint": "^8.57.0",
+    "happy-dom": "^15.0.0",
+    "jsdom": "^25.0.0",
     "typescript": "^5.2.2",
-    "vite": "^5.0.8"
+    "vite": "^5.0.8",
+    "vitest": "^2.0.0"
   }
 }
