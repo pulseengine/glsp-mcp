@@ -213,6 +213,13 @@ export abstract class FloatingPanel {
             });
         }
 
+        // Double-click title to collapse
+        this.headerElement?.querySelector('.floating-panel-title')?.addEventListener('dblclick', () => {
+            if (this.config.collapsible) {
+                this.toggleCollapse();
+            }
+        });
+
         // Dragging
         if (this.config.draggable) {
             this.headerElement.addEventListener('mousedown', (e) => {
@@ -337,12 +344,27 @@ export abstract class FloatingPanel {
 
     public show(): void {
         this.element.style.display = 'block';
+        this.element.classList.remove('minimizing');
+        this.element.classList.add('restoring');
+
+        setTimeout(() => {
+            this.element.classList.remove('restoring');
+        }, 300);
+
         this.bringToFront();
         document.body.appendChild(this.element);
+        this.onShow();
     }
 
     public hide(): void {
-        this.element.style.display = 'none';
+        this.element.classList.add('minimizing');
+
+        setTimeout(() => {
+            this.element.style.display = 'none';
+            this.element.classList.remove('minimizing');
+        }, 300);
+
+        this.onHide();
     }
 
     public close(): void {
@@ -446,6 +468,14 @@ export abstract class FloatingPanel {
             width: this.element.offsetWidth,
             height: this.element.offsetHeight
         };
+    }
+
+    public isVisible(): boolean {
+        return this.element.style.display !== 'none';
+    }
+
+    public getTitle(): string {
+        return this.config.title;
     }
 
     // Abstract method to be implemented by subclasses

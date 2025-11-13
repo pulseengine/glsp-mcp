@@ -114,6 +114,7 @@ export class UIManager {
     public getStatusElement(): HTMLElement { return this.statusElement; }
     public getDiagramListElement(): HTMLElement { return this.diagramListElement; }
     public getAIPanelElement(): HTMLElement { return this.aiAssistantPanel.getElement(); }
+    public getAIAssistantPanel(): AIAssistantPanel { return this.aiAssistantPanel; }
     public getThemeController(): ThemeController { return this.themeController; }
     public getHeaderIconManager(): HeaderIconManager { return this.headerIconManager; }
     
